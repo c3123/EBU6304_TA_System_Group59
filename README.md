@@ -11,6 +11,38 @@
 
 ---
 
+## Quick Start
+This project uses a standard Maven Servlet/JSP web module under `web/`.
+
+Project structure:
+
+```text
+web/
+|- pom.xml
+`- src/
+   `- main/
+      |- java/
+      `- webapp/
+```
+
+Build the project:
+
+```powershell
+mvn -f web/pom.xml clean package
+```
+
+The WAR file will be generated at:
+
+```text
+web/target/web.war
+```
+
+Deploy `web/target/web.war` to Tomcat 10.1+ and open:
+
+```text
+http://localhost:8080/web/
+```
+
 ## 1. Project Introduction 
 ### Project Overview
 The **International School Teaching Assistant Recruitment System** is developed for BUPT International School to streamline their current manual, Excel-based TA recruitment process\. This project follows **Agile methodologies**, delivering functional software increments through multiple sprints. 
