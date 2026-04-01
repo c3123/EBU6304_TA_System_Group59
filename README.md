@@ -64,7 +64,7 @@ To establish the system's foundational architecture and implement core functions
 
 | Category | Tasks | Assignees | Priority |
 | :--- | :--- | :--- | :--- |
-| **Core** | Architecture, JSON Utility, Login/Logout | [User], Tianxiao Ma | Must Have |
+| **Core** | Architecture, JSON Utility, Login/Logout | Sihan Chen, Tianxiao Ma | Must Have |
 | **TA** | Profile Setup, Job List Viewing | Tianzi Xiong, Fangyu Chu | Must Have |
 | **MO** | Job Posting Form, My Jobs Dashboard | Wanhe Ji, Huishun Hu | Must Have |
 
