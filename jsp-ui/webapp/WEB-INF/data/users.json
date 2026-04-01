@@ -1,0 +1,29 @@
+[
+  {
+    "id": "stu001",
+    "name": "Alex Chen",
+    "email": "student@demo.com",
+    "password": "demo123",
+    "role": "student",
+    "studentId": "201234567",
+    "programme": "MSc Computer Science"
+  },
+  {
+    "id": "mo001",
+    "name": "Dr. Smith",
+    "email": "teacher@demo.com",
+    "password": "demo123",
+    "role": "teacher",
+    "studentId": "",
+    "programme": ""
+  },
+  {
+    "id": "adm001",
+    "name": "Admin User",
+    "email": "admin@demo.com",
+    "password": "demo123",
+    "role": "admin",
+    "studentId": "",
+    "programme": ""
+  }
+]
