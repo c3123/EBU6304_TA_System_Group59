@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
       tip.style.color = "#16a34a";
 
       if (user.role === "student") location.href = "student.jsp";
-      if (user.role === "teacher") location.href = "mo-applications.jsp";
+      if (user.role === "teacher") location.href = "teacher.jsp";
       if (user.role === "admin") location.href = "admin.jsp";
     } catch (err) {
       tip.textContent = err.message;

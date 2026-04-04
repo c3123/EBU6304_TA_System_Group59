@@ -1,15 +1,5 @@
 package com.ta.model;
 
-/**
- * Job posting / demand model used by MO iteration 1.
- *
- * Unified field contract:
- * 1) approvalStatus: pending | approved | rejected
- * 2) published: true after MO publishes approved demand
- * 3) withdrawn: true when MO withdraws (only if no active applications)
- * 4) location: online | offline (filled when publishing)
- * 5) deadline: locked after published=true
- */
 public class JobPosting {
     private String id;
     private String teacherId;
@@ -20,17 +10,6 @@ public class JobPosting {
     private int positions;
     private String status;
     private String deadline;
-
-    // MO iteration 1 agreed fields
-    private Integer hourMin;
-    private Integer hourMax;
-    private String approvalStatus;
-    private Boolean published;
-    private Boolean withdrawn;
-    private String location;
-    private String requirements;
-    private String createdAt;
-    private String updatedAt;
 
     public JobPosting() {
     }
@@ -105,77 +84,5 @@ public class JobPosting {
 
     public void setDeadline(String deadline) {
         this.deadline = deadline;
-    }
-
-    public Integer getHourMin() {
-        return hourMin;
-    }
-
-    public void setHourMin(Integer hourMin) {
-        this.hourMin = hourMin;
-    }
-
-    public Integer getHourMax() {
-        return hourMax;
-    }
-
-    public void setHourMax(Integer hourMax) {
-        this.hourMax = hourMax;
-    }
-
-    public String getApprovalStatus() {
-        return approvalStatus;
-    }
-
-    public void setApprovalStatus(String approvalStatus) {
-        this.approvalStatus = approvalStatus;
-    }
-
-    public Boolean getPublished() {
-        return published;
-    }
-
-    public void setPublished(Boolean published) {
-        this.published = published;
-    }
-
-    public Boolean getWithdrawn() {
-        return withdrawn;
-    }
-
-    public void setWithdrawn(Boolean withdrawn) {
-        this.withdrawn = withdrawn;
-    }
-
-    public String getLocation() {
-        return location;
-    }
-
-    public void setLocation(String location) {
-        this.location = location;
-    }
-
-    public String getRequirements() {
-        return requirements;
-    }
-
-    public void setRequirements(String requirements) {
-        this.requirements = requirements;
-    }
-
-    public String getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(String createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public String getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(String updatedAt) {
-        this.updatedAt = updatedAt;
     }
 }
