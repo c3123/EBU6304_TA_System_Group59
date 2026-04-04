@@ -12,7 +12,7 @@
     <div class="topbar">
       <strong>Admin Dashboard</strong>
       <div class="row">
-        <a href="login.jsp">Logout</a>
+        <a href="<%= request.getContextPath() %>/logout">Logout</a>
       </div>
     </div>
 
