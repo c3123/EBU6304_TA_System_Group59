@@ -25,8 +25,8 @@ A centralized login portal that validates credentials and directs users to their
 - **Data Logic:** The system must use a JSON parser (e.g., GSON) to read `id`, `password`, and `role` fields from `users.json`.
 - **Session Management:** `HttpSession` must be used to persist user identity across the web application.
 
-**Assignee:** Sihan Chen/ Tianxiao Ma
-**Completion Date:** 
+**Assignee:** Sihan Chen / Tianxiao Ma
+**Completion Date:**
 
 ---
 
