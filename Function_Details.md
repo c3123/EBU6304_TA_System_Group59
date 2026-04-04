@@ -22,15 +22,15 @@ A centralized login portal that validates credentials and directs users to their
 
 **Functional Requirement Details:**
 - **Servlet Implementation:** `LoginServlet` handles POST requests for authentication.
-- **Data Logic:** The system must use a JSON parser (e.g., GSON) to read `id`, `password`, and `role` fields from `users.json`.
+- [cite_start]**Data Logic:** The system must use a JSON parser (e.g., GSON) to read `id`, `password`, and `role` fields from `users.json` [cite: 43-44].
 - **Session Management:** `HttpSession` must be used to persist user identity across the web application.
 
-**Assignee:** Sihan Chen / Tianxiao Ma
-**Completion Date:**
+**Assignee:** Sihan Chen/ Tianxiao Ma
+**Completion Date:** 
 
 ---
 
-### 2.2 Feature: Applicant Core Recruitment Workflow System
+### 2.2 Feature: Applicant Core Recruitment Workflow System 
 
 **User Stories:**
 **TA_01:** As an Applicant (TA), I want to create an applicant profile, so that I can apply for TA positions.
@@ -57,10 +57,10 @@ The system ensures that applicants can smoothly complete the entire process from
 5. The applicant can view detailed job descriptions including requirements, workload, and duration.
 
 6. The applicant can check application status with clear labels:
-   - Submitted
-   - Under Review
-   - Accepted
-   - Rejected
+   - Submitted  
+   - Under Review  
+   - Accepted  
+   - Rejected  
 
 **Functional Requirement Details:**
 
@@ -74,10 +74,10 @@ The system ensures that applicants can smoothly complete the entire process from
   - Applicant data (profile + CV path) is stored in a structured format (e.g., JSON).
   - Job data includes module name, requirements, workload, and schedule.
   - Application records store status values:
-    - Submitted
-    - Under Review
-    - Accepted
-    - Rejected
+    - Submitted  
+    - Under Review  
+    - Accepted  
+    - Rejected  
 
 - **File Handling:**
   - The system must validate file format before upload.
@@ -87,8 +87,9 @@ The system ensures that applicants can smoothly complete the entire process from
   - `HttpSession` is used to maintain applicant login state.
   - User-specific data is retrieved based on session identity.
 
-**Assignee:** Fangyu Chu / Tianzi Xiong
+**Assignee:**  Fangyu Chu / Tianzi Xiong  
 
-**Completion Date:**
+**Completion Date:**  
 
 ---
+
