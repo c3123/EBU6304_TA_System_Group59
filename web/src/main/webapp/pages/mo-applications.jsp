@@ -3,13 +3,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>MO Applicants - TA Recruitment Platform</title>
+  <title>Applicants - Module Organiser Portal</title>
   <link rel="stylesheet" href="../assets/css/main.css" />
   <style>
-    .two-col {
-      display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 16px;
+    .mo-tab svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
     }
     .status-pill {
       display: inline-block;
@@ -21,103 +21,98 @@
       font-weight: 600;
     }
     .status-pending {
-      background: #fff5dd;
-      color: #a05f00;
-      border: 1px solid #ffe1a6;
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fcd34d;
     }
     .status-viewed {
-      background: #e8f9ee;
-      color: #0d8e44;
-      border: 1px solid #b7ebca;
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #6ee7b7;
     }
-    .click-row {
-      cursor: pointer;
-    }
-    .click-row:hover {
-      background: #f8fbff;
-    }
-    .click-row.active {
-      background: #eef4ff;
-    }
-    .detail-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-    }
-    .detail-box {
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px;
-      background: #fff;
-    }
-    @media (max-width: 900px) {
-      .two-col {
-        grid-template-columns: 1fr;
-      }
+    .mo-filter-row .field {
+      margin-bottom: 0;
     }
   </style>
 </head>
-<body>
-<div class="app-shell">
-  <div class="container">
-    <div class="topbar">
-      <strong>Module Organiser Portal - Applicants</strong>
-      <div class="row">
-        <a href="teacher.jsp">My Jobs</a>
-        <a href="login.jsp">Logout</a>
+<body class="mo-portal">
+<header class="mo-portal-header">
+  <div class="mo-portal-header-inner">
+    <div class="mo-portal-brand">
+      <div class="mo-portal-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+        </svg>
+      </div>
+      <div>
+        <h1>Module Organiser Portal</h1>
+        <p>Applicant Management</p>
       </div>
     </div>
-
-    <div class="card" style="margin-bottom:16px">
-      <h3>Applicant Management</h3>
-      <p class="desc">View applications for your own jobs and track status transitions.</p>
-      <div class="row">
-        <div class="field" style="min-width:240px; margin:0;">
-          <label for="jobIdInput">Filter by Job ID (optional)</label>
-          <input id="jobIdInput" type="text" placeholder="e.g. 101" />
-        </div>
-        <button id="queryBtn" class="btn btn-primary" type="button">Query</button>
-        <button id="resetBtn" class="btn btn-outline" type="button">Reset</button>
-      </div>
-      <p id="pageNotice" class="notice"></p>
-    </div>
-
-    <div class="two-col">
-      <div class="card">
-        <h3>Application List</h3>
-        <div class="table-wrap">
-          <table>
-            <thead>
-            <tr>
-              <th>Name</th>
-              <th>Student No</th>
-              <th>Course Grade</th>
-              <th>Applied At</th>
-              <th>Status</th>
-            </tr>
-            </thead>
-            <tbody id="applicationsBody"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3>Application Detail</h3>
-        <div id="detailEmpty" class="notice">Select one application record to view detail.</div>
-        <div id="detailPanel" class="detail-grid" style="display:none;">
-          <div class="detail-box"><strong>Application ID</strong><div id="dApplicationId"></div></div>
-          <div class="detail-box"><strong>Job ID</strong><div id="dJobId"></div></div>
-          <div class="detail-box"><strong>Student Name</strong><div id="dStudentName"></div></div>
-          <div class="detail-box"><strong>Student No</strong><div id="dStudentNo"></div></div>
-          <div class="detail-box"><strong>Course Grade</strong><div id="dCourseGrade"></div></div>
-          <div class="detail-box"><strong>Applied At</strong><div id="dAppliedAt"></div></div>
-          <div class="detail-box"><strong>Status</strong><div id="dStatus"></div></div>
-          <div class="detail-box"><strong>Updated At</strong><div id="dUpdatedAt"></div></div>
-        </div>
-      </div>
-    </div>
+    <a class="mo-btn-logout" href="login.jsp">Logout</a>
   </div>
-</div>
+</header>
+
+<main class="mo-portal-main">
+  <nav class="mo-tabs" aria-label="MO portal sections">
+    <a class="mo-tab" href="teacher.jsp">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+      </svg>
+      My Jobs
+    </a>
+    <span class="mo-tab active" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+        <circle cx="9" cy="7" r="4"></circle>
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+      </svg>
+      Applicants
+    </span>
+  </nav>
+
+  <div class="mo-applicants-head">
+    <div>
+      <h2 class="mo-section-title">Applicant Management</h2>
+      <p class="mo-section-desc">Review applications for your positions. Layout follows the MO applicants prototype; iteration&nbsp;1 only supports pending/viewed and active applications.</p>
+    </div>
+    <button type="button" class="btn btn-outline" disabled title="Planned for a later iteration (not in iteration 1)">Export CSV</button>
+  </div>
+
+  <div class="mo-scope-note" role="note">
+    <strong>Iteration 1.</strong>
+    Workload analysis, coloured workload panels, and hire/shortlist/reject actions are shown in Figma prototypes for later work.
+    Here you can browse active applicants, open <strong>View details</strong> to load the full record and move <strong>pending → viewed</strong> on the server.
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="row mo-filter-row" style="align-items:flex-end;">
+      <div class="field" style="min-width:220px;">
+        <label for="jobIdInput">Filter by Job ID (optional)</label>
+        <input id="jobIdInput" type="text" placeholder="e.g. 101" />
+      </div>
+      <button id="queryBtn" class="btn btn-primary" type="button">Query</button>
+      <button id="resetBtn" class="btn btn-outline" type="button">Reset</button>
+    </div>
+    <p id="pageNotice" class="notice"></p>
+  </div>
+
+  <div id="applicationsEmpty" class="mo-empty-state" style="display:none;" role="status">
+    <svg class="mo-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+      <circle cx="9" cy="7" r="4"></circle>
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+    </svg>
+    <h3>No Applications Yet</h3>
+    <p>There are no active applications for this view. Withdrawn applications stay hidden; the list refreshes automatically.</p>
+  </div>
+
+  <div id="applicationsFeed" class="mo-applicant-feed" style="display:none;" aria-live="polite"></div>
+</main>
 <script src="../assets/js/common.js"></script>
 <script src="../assets/js/mo-applications.js"></script>
 </body>

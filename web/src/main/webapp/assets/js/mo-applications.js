@@ -9,9 +9,7 @@ function apiBase() {
 }
 
 /**
- * MO identity for API calls when dev fallback is enabled on the server.
- * Order: URL ?moId= → localStorage ta_mo_dev_id → default mo001 (local demo data).
- * With ENABLE_DEV_MO_ID_FALLBACK=false, session login is required and this only helps if you still pass moId.
+ * MO identity when dev fallback or query param is used.
  */
 function getResolvedMoId() {
   const fromUrl = new URLSearchParams(window.location.search).get("moId");
@@ -30,6 +28,15 @@ function safeText(value) {
   return String(value);
 }
 
+function escapeHtml(s) {
+  if (s == null) return "";
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function statusTag(status) {
   const normalized = String(status || "").toLowerCase();
   if (normalized === "pending") {
@@ -38,12 +45,12 @@ function statusTag(status) {
   if (normalized === "viewed") {
     return '<span class="status-pill status-viewed">viewed</span>';
   }
-  return `<span class="status-pill">${safeText(status)}</span>`;
+  return `<span class="status-pill">${escapeHtml(safeText(status))}</span>`;
 }
 
 const state = {
   items: [],
-  selectedId: null,
+  jobTitles: {},
   pollingTimer: null
 };
 
@@ -64,60 +71,154 @@ async function getJson(url) {
   return body.data;
 }
 
+async function loadJobTitles() {
+  try {
+    const moId = getResolvedMoId();
+    const q = moId ? `?moId=${encodeURIComponent(moId)}` : "";
+    const data = await getJson(`${apiBase()}/demands/list${q}`);
+    const map = {};
+    (data.items || []).forEach(it => {
+      if (it.jobId) {
+        map[it.jobId] = it.courseName && String(it.courseName).trim()
+          ? it.courseName
+          : it.jobId;
+      }
+    });
+    state.jobTitles = map;
+  } catch (_) {
+    state.jobTitles = state.jobTitles || {};
+  }
+}
+
 function setNotice(message, isError) {
   const notice = byId("pageNotice");
   notice.textContent = message || "";
   notice.style.color = isError ? "#dc2626" : "#475569";
 }
 
-function renderList(items) {
-  const tbody = byId("applicationsBody");
-  if (!items || items.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="5" class="notice">No active applications.</td>
-      </tr>
-    `;
+function renderApplicantCard(item) {
+  const id = escapeHtml(item.applicationId);
+  const jobLabel = escapeHtml(safeText(state.jobTitles[item.jobId] || item.jobId || "—"));
+  return `
+    <article class="mo-app-card" data-application-id="${id}">
+      <div class="mo-app-card-head">
+        <div>
+          <h4>${escapeHtml(safeText(item.studentName))}</h4>
+          <p class="mo-app-meta">${jobLabel} • Applied: ${escapeHtml(safeText(item.appliedAt))}</p>
+        </div>
+        <div class="mo-app-status-slot">${statusTag(item.status)}</div>
+      </div>
+      <div class="mo-app-grid">
+        <div>
+          <span class="mo-app-lbl">Student No</span>
+          <div>${escapeHtml(safeText(item.studentNo))}</div>
+        </div>
+        <div>
+          <span class="mo-app-lbl">Student ID (user)</span>
+          <div>${escapeHtml(safeText(item.studentId))}</div>
+        </div>
+      </div>
+      <div>
+        <span class="mo-app-lbl">Course grade</span>
+        <div>${escapeHtml(safeText(item.courseGrade))}</div>
+      </div>
+      <div class="mo-app-expand">
+        <p class="mo-app-meta" style="margin-bottom:10px">Server record (GET detail updates <strong>pending</strong> → <strong>viewed</strong>).</p>
+        <div class="mo-app-expand-grid">
+          <div><span class="mo-app-lbl">Application ID</span><div data-field="applicationId"></div></div>
+          <div><span class="mo-app-lbl">Job ID</span><div data-field="jobId"></div></div>
+          <div><span class="mo-app-lbl">Student name</span><div data-field="studentName"></div></div>
+          <div><span class="mo-app-lbl">Student No</span><div data-field="studentNo"></div></div>
+          <div><span class="mo-app-lbl">Course grade</span><div data-field="courseGrade"></div></div>
+          <div><span class="mo-app-lbl">Applied at</span><div data-field="appliedAt"></div></div>
+          <div><span class="mo-app-lbl">Status</span><div data-field="status"></div></div>
+          <div><span class="mo-app-lbl">Updated at</span><div data-field="updatedAt"></div></div>
+        </div>
+      </div>
+      <div class="mo-app-actions">
+        <button type="button" class="btn btn-primary mo-app-detail-btn">View details</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderApplicantFeed(items) {
+  const feed = byId("applicationsFeed");
+  const emptyEl = byId("applicationsEmpty");
+  const hasItems = items && items.length > 0;
+
+  if (!hasItems) {
+    emptyEl.style.display = "block";
+    feed.style.display = "none";
+    feed.innerHTML = "";
     return;
   }
 
-  tbody.innerHTML = items.map(item => {
-    const activeClass = state.selectedId === item.applicationId ? "active" : "";
-    return `
-      <tr class="click-row ${activeClass}" data-id="${item.applicationId}">
-        <td>${safeText(item.studentName)}</td>
-        <td>${safeText(item.studentNo)}</td>
-        <td>${safeText(item.courseGrade)}</td>
-        <td>${safeText(item.appliedAt)}</td>
-        <td>${statusTag(item.status)}</td>
-      </tr>
-    `;
-  }).join("");
+  emptyEl.style.display = "none";
+  feed.style.display = "flex";
 
-  tbody.querySelectorAll("tr[data-id]").forEach(row => {
-    row.addEventListener("click", async () => {
-      const applicationId = row.getAttribute("data-id");
-      await loadDetail(applicationId);
-    });
+  const groups = new Map();
+  for (const item of items) {
+    const j = item.jobId != null ? String(item.jobId) : "";
+    if (!groups.has(j)) groups.set(j, []);
+    groups.get(j).push(item);
+  }
+
+  const keys = Array.from(groups.keys()).sort();
+  const parts = [];
+
+  for (const jobId of keys) {
+    const groupItems = groups.get(jobId);
+    const label = state.jobTitles[jobId] || (jobId ? `Job ${jobId}` : "Unknown job");
+    parts.push(`<section class="mo-job-group">`);
+    parts.push(
+      `<h3 class="mo-job-group-title">${escapeHtml(label)} ` +
+      `<span style="font-weight:500;color:#64748b">(${groupItems.length} applicant${groupItems.length === 1 ? "" : "s"})</span></h3>`
+    );
+    for (const item of groupItems) {
+      parts.push(renderApplicantCard(item));
+    }
+    parts.push(`</section>`);
+  }
+
+  feed.innerHTML = parts.join("");
+}
+
+function fillDetailFields(expandEl, detail) {
+  expandEl.querySelectorAll("[data-field]").forEach(el => {
+    const k = el.getAttribute("data-field");
+    const val = detail[k];
+    if (k === "status") {
+      el.innerHTML = statusTag(val);
+    } else {
+      el.textContent = safeText(val);
+    }
   });
 }
 
-function showDetail(detail) {
-  byId("detailEmpty").style.display = "none";
-  byId("detailPanel").style.display = "grid";
-  byId("dApplicationId").textContent = safeText(detail.applicationId);
-  byId("dJobId").textContent = safeText(detail.jobId);
-  byId("dStudentName").textContent = safeText(detail.studentName);
-  byId("dStudentNo").textContent = safeText(detail.studentNo);
-  byId("dCourseGrade").textContent = safeText(detail.courseGrade);
-  byId("dAppliedAt").textContent = safeText(detail.appliedAt);
-  byId("dStatus").innerHTML = statusTag(detail.status);
-  byId("dUpdatedAt").textContent = safeText(detail.updatedAt);
-}
+async function openCardDetail(card, btn) {
+  const rawId = card.getAttribute("data-application-id");
+  const expand = card.querySelector(".mo-app-expand");
+  if (!rawId || !expand || !btn) return;
 
-function hideDetail() {
-  byId("detailEmpty").style.display = "block";
-  byId("detailPanel").style.display = "none";
+  btn.disabled = true;
+  try {
+    const moId = getResolvedMoId();
+    const url = moId
+      ? `${apiBase()}/applications/detail/${encodeURIComponent(rawId)}?moId=${encodeURIComponent(moId)}`
+      : `${apiBase()}/applications/detail/${encodeURIComponent(rawId)}`;
+    const detail = await getJson(url);
+    fillDetailFields(expand, detail);
+    expand.classList.add("mo-open");
+
+    const slot = card.querySelector(".mo-app-status-slot");
+    if (slot) slot.innerHTML = statusTag(detail.status);
+
+    const it = state.items.find(i => i.applicationId === rawId);
+    if (it) it.status = detail.status;
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 async function loadList() {
@@ -133,44 +234,20 @@ async function loadList() {
 
   const data = await getJson(url);
   state.items = data && Array.isArray(data.items) ? data.items : [];
-
-  if (state.selectedId && !state.items.some(i => i.applicationId === state.selectedId)) {
-    state.selectedId = null;
-    hideDetail();
-  }
-
-  renderList(state.items);
-}
-
-async function loadDetail(applicationId) {
-  state.selectedId = applicationId;
-  renderList(state.items);
-
-  const moId = getResolvedMoId();
-  const detailUrl = moId
-    ? `${apiBase()}/applications/detail/${encodeURIComponent(applicationId)}?moId=${encodeURIComponent(moId)}`
-    : `${apiBase()}/applications/detail/${encodeURIComponent(applicationId)}`;
-  const detail = await getJson(detailUrl);
-  showDetail(detail);
-
-  const listItem = state.items.find(i => i.applicationId === applicationId);
-  if (listItem) {
-    listItem.status = detail.status;
-    renderList(state.items);
-  }
+  renderApplicantFeed(state.items);
 }
 
 async function queryWithFeedback() {
   try {
     setNotice("Loading applications...", false);
+    await loadJobTitles();
     await loadList();
     setNotice(`Loaded ${state.items.length} active application(s).`, false);
   } catch (err) {
     const code = err && err.code ? err.code : "REQUEST_ERROR";
     const message = err && err.message ? err.message : "Request failed.";
     setNotice(`${code}: ${message}`, true);
-    renderList([]);
-    hideDetail();
+    renderApplicantFeed([]);
   }
 }
 
@@ -180,28 +257,40 @@ function startPolling() {
   }
   state.pollingTimer = setInterval(async () => {
     try {
+      await loadJobTitles();
       await loadList();
     } catch (_) {
-      // Keep silent on polling errors to avoid noisy UX.
+      /* silent */
     }
   }, 12000);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  const feed = byId("applicationsFeed");
+  feed.addEventListener("click", async e => {
+    const btn = e.target.closest(".mo-app-detail-btn");
+    if (!btn) return;
+    const card = btn.closest(".mo-app-card");
+    const expand = card.querySelector(".mo-app-expand");
+    if (expand.classList.contains("mo-open")) {
+      expand.classList.remove("mo-open");
+      btn.textContent = "View details";
+      return;
+    }
+    btn.textContent = "Loading...";
+    await openCardDetail(card, btn);
+    btn.textContent = "Hide details";
+  });
+
   byId("queryBtn").addEventListener("click", async () => {
-    state.selectedId = null;
-    hideDetail();
     await queryWithFeedback();
   });
 
   byId("resetBtn").addEventListener("click", async () => {
     byId("jobIdInput").value = "";
-    state.selectedId = null;
-    hideDetail();
     await queryWithFeedback();
   });
 
-  hideDetail();
   await queryWithFeedback();
   startPolling();
 });

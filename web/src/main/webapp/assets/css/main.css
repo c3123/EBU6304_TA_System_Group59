@@ -175,3 +175,319 @@ th { background: #f8fbff; }
   font-size: 13px;
   color: var(--subtext);
 }
+
+/* --- MO portal shell (aligns with TeacherDashboard / Figma prototypes) --- */
+.mo-portal {
+  min-height: 100vh;
+  background: #f9fafb;
+}
+
+.mo-portal-header {
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 16px 24px;
+}
+
+.mo-portal-header-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.mo-portal-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mo-portal-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mo-portal-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.mo-portal-brand h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.mo-portal-brand p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.mo-btn-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.mo-btn-logout:hover {
+  background: #f9fafb;
+  text-decoration: none;
+}
+
+.mo-portal-main {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.mo-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 24px;
+}
+
+.mo-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  font-family: inherit;
+}
+
+.mo-tab:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.mo-tab.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+  font-weight: 600;
+}
+
+.mo-section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: var(--text);
+}
+
+.mo-section-desc {
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.mo-empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  background: #fff;
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.mo-empty-state .mo-empty-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto;
+  color: #9ca3af;
+}
+
+.mo-empty-state h3 {
+  margin: 16px 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.mo-empty-state p {
+  margin: 0 auto 16px;
+  max-width: 28rem;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.mo-two-col {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .mo-two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- MO applicants (card feed, Figma-style) --- */
+.mo-applicants-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.mo-applicants-head .mo-section-title {
+  margin-bottom: 4px;
+}
+
+.mo-applicants-head .mo-section-desc {
+  margin-bottom: 0;
+  max-width: 36rem;
+}
+
+.mo-scope-note {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: #1e3a5f;
+  line-height: 1.5;
+}
+
+.mo-scope-note strong {
+  color: #1e40af;
+}
+
+.mo-applicant-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.mo-job-group-title {
+  margin: 0 0 12px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.mo-app-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+  padding: 20px;
+  margin-bottom: 12px;
+}
+
+.mo-app-card:last-child {
+  margin-bottom: 0;
+}
+
+.mo-app-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.mo-app-card-head h4 {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.mo-app-meta {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.mo-app-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 20px;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 600px) {
+  .mo-app-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mo-app-lbl {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 2px;
+}
+
+.mo-app-expand {
+  display: none;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.mo-app-expand.mo-open {
+  display: block;
+}
+
+.mo-app-expand-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  font-size: 13px;
+}
+
+@media (max-width: 600px) {
+  .mo-app-expand-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mo-app-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.btn[disabled],
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
