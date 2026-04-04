@@ -15,6 +15,9 @@
   if ("missing".equals(error)) {
     message = "Please enter your user ID or email and password.";
     messageColor = "#dc2626";
+  } else if ("auth".equals(error)) {
+    message = "Please log in to continue.";
+    messageColor = "#dc2626";
   } else if ("invalid".equals(error)) {
     message = "Invalid ID or Password.";
     messageColor = "#dc2626";
