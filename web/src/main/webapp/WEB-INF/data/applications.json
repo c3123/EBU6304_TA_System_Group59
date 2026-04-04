@@ -1,1 +1,24 @@
-[]
+[
+  {
+    "id": "app001",
+    "jobId": "101",
+    "studentId": "stu001",
+    "studentName": "Alex Chen",
+    "studentNo": "201234567",
+    "courseGrade": "A",
+    "appliedAt": "2026-04-01T10:00:00Z",
+    "status": "pending",
+    "active": true
+  },
+  {
+    "id": "app002",
+    "jobId": "101",
+    "studentId": "stu001",
+    "studentName": "Alex Chen",
+    "studentNo": "201234567",
+    "courseGrade": "B",
+    "appliedAt": "2026-03-28T10:00:00Z",
+    "status": "pending",
+    "active": false
+  }
+]

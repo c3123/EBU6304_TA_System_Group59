@@ -2,6 +2,7 @@ package com.ta.web.mo;
 
 import com.ta.constant.ErrorCodes;
 import com.ta.service.mo.MoApplicationService;
+import com.ta.service.mo.MoBusinessException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,9 +34,10 @@ public class MoApplicationDetailServlet extends MoBaseServlet {
                 return;
             }
 
-            // TODO Object data = moApplicationService.getDetailAndMarkViewed(moId, applicationId);
-            Object data = null;
+            Object data = moApplicationService.getDetailAndMarkViewed(getServletContext(), moId, applicationId);
             writeSuccess(resp, data);
+        } catch (MoBusinessException ex) {
+            writeError(resp, ex.getHttpStatus(), ex.getCode(), ex.getMessage());
         } catch (Exception ex) {
             writeError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", ex.getMessage());
         }

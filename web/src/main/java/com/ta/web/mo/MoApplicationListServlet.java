@@ -2,6 +2,7 @@ package com.ta.web.mo;
 
 import com.ta.constant.ErrorCodes;
 import com.ta.service.mo.MoApplicationService;
+import com.ta.service.mo.MoBusinessException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,10 +28,10 @@ public class MoApplicationListServlet extends MoBaseServlet {
             }
 
             String jobId = req.getParameter("jobId");
-
-            // TODO Object data = moApplicationService.listApplications(moId, jobId);
-            Object data = null;
+            Object data = moApplicationService.listApplications(getServletContext(), moId, jobId);
             writeSuccess(resp, data);
+        } catch (MoBusinessException ex) {
+            writeError(resp, ex.getHttpStatus(), ex.getCode(), ex.getMessage());
         } catch (Exception ex) {
             writeError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", ex.getMessage());
         }
