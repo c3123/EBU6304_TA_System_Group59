@@ -25,7 +25,7 @@ public abstract class MoBaseServlet extends HttpServlet {
      * 1) Set this to false, OR
      * 2) Delete the whole "DEV-ONLY FALLBACK" block in getMoIdFromSession(...).
      */
-    private static final boolean ENABLE_DEV_MO_ID_FALLBACK = false;
+    private static final boolean ENABLE_DEV_MO_ID_FALLBACK = true;
 
     protected <T> T readJson(HttpServletRequest req, Class<T> clazz) throws IOException {
         req.setCharacterEncoding(StandardCharsets.UTF_8.name());
