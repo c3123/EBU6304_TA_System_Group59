@@ -149,7 +149,7 @@
         <p>Demand submission, publishing and withdrawal</p>
       </div>
     </div>
-    <a class="mo-btn-logout" href="login.jsp">Logout</a>
+    <a class="mo-btn-logout" href="<%= request.getContextPath() %>/logout">Logout</a>
   </div>
 </header>
 
