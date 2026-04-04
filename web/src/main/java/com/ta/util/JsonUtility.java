@@ -3,6 +3,7 @@ package com.ta.util;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import com.ta.model.ApplicationRecord;
 import com.ta.model.JobPosting;
 import com.ta.model.StudentProfile;
 import com.ta.model.User;
@@ -26,6 +27,7 @@ public final class JsonUtility {
     private static final Type USER_LIST_TYPE = new TypeToken<List<User>>() { }.getType();
     private static final Type STUDENT_LIST_TYPE = new TypeToken<List<StudentProfile>>() { }.getType();
     private static final Type JOB_LIST_TYPE = new TypeToken<List<JobPosting>>() { }.getType();
+    private static final Type APPLICATION_LIST_TYPE = new TypeToken<List<ApplicationRecord>>() { }.getType();
 
     private JsonUtility() {
     }
@@ -52,6 +54,14 @@ public final class JsonUtility {
 
     public static synchronized void saveJobs(ServletContext context, List<JobPosting> jobs) throws IOException {
         writeList(context, "jobs.json", jobs);
+    }
+
+    public static synchronized List<ApplicationRecord> loadApplications(ServletContext context) throws IOException {
+        return readList(context, "applications.json", APPLICATION_LIST_TYPE);
+    }
+
+    public static synchronized void saveApplications(ServletContext context, List<ApplicationRecord> applications) throws IOException {
+        writeList(context, "applications.json", applications);
     }
 
     private static <T> List<T> readList(ServletContext context, String fileName, Type listType) throws IOException {
