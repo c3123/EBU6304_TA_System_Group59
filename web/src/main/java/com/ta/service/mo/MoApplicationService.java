@@ -1,11 +1,14 @@
 package com.ta.service.mo;
 
 import com.ta.constant.ErrorCodes;
+import com.ta.dto.mo.MoApplicationAttachmentResponse;
 import com.ta.dto.mo.MoApplicationDetailResponse;
 import com.ta.dto.mo.MoApplicationListItemResponse;
 import com.ta.dto.mo.MoApplicationListResponse;
 import com.ta.model.ApplicationRecord;
+import com.ta.model.Attachment;
 import com.ta.model.JobPosting;
+import com.ta.model.StudentProfile;
 import com.ta.util.JsonUtility;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletResponse;
@@ -15,6 +18,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -127,6 +131,7 @@ public class MoApplicationService {
             }
 
             MoApplicationDetailResponse response = toDetail(record);
+            response.setAttachments(buildAttachmentDetails(context, record));
             response.setUpdatedAt(updatedAt);
             return response;
         } catch (IOException e) {
@@ -158,5 +163,49 @@ public class MoApplicationService {
         d.setAppliedAt(a.getAppliedAt());
         d.setStatus(a.getStatus());
         return d;
+    }
+
+    private List<MoApplicationAttachmentResponse> buildAttachmentDetails(ServletContext context, ApplicationRecord record) throws IOException {
+        List<String> selectedIds = record.getSelectedAttachmentIds() != null
+                ? record.getSelectedAttachmentIds()
+                : new ArrayList<>();
+        if (selectedIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<StudentProfile> profiles = JsonUtility.loadStudents(context);
+        StudentProfile profile = profiles.stream()
+                .filter(p -> record.getStudentId() != null && record.getStudentId().equals(p.getUserId()))
+                .findFirst()
+                .orElse(null);
+
+        if (profile == null || profile.getAttachments() == null || profile.getAttachments().isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        Map<String, Attachment> byId = profile.getAttachments().stream()
+                .filter(a -> a.getId() != null)
+                .collect(Collectors.toMap(Attachment::getId, a -> a, (a, b) -> a));
+
+        List<MoApplicationAttachmentResponse> items = new ArrayList<>();
+        for (String id : selectedIds) {
+            Attachment att = byId.get(id);
+            if (att == null) {
+                continue;
+            }
+            MoApplicationAttachmentResponse r = new MoApplicationAttachmentResponse();
+            r.setAttachmentId(att.getId());
+            r.setFileName(att.getFileName());
+            r.setLabel(att.getLabel());
+            r.setFileSize(att.getFileSize());
+            r.setUploadedAt(att.getUploadedAt());
+            r.setDownloadUrl("/api/attachments/" + safe(record.getStudentNo()) + "/" + safe(att.getId()) + "/download");
+            items.add(r);
+        }
+        return items;
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value;
     }
 }

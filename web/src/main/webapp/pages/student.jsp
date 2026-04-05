@@ -1,4 +1,4 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+﻿<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -267,7 +267,90 @@
       font-weight: 600;
     }
 
+    .job-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .job-detail-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 1000;
+    }
+
+    .job-detail-overlay.open {
+      display: flex;
+    }
+
+    .job-detail-modal {
+      width: min(860px, 100%);
+      max-height: 80vh;
+      overflow-y: auto;
+      background: #ffffff;
+      border: 1px solid #dbe2ee;
+      border-radius: 16px;
+      box-shadow: 0 24px 45px rgba(21, 43, 88, 0.22);
+      padding: 18px;
+    }
+
+    .job-detail-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .job-detail-head h3 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    .job-detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .job-detail-block {
+      background: #f8fbff;
+      border: 1px solid #dbe2ee;
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    .job-detail-label {
+      display: block;
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+
+    .job-detail-value {
+      font-size: 14px;
+      color: #0f172a;
+      white-space: pre-wrap;
+    }
+
+    .job-detail-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
     @media (max-width: 760px) {
+      .job-detail-grid {
+        grid-template-columns: 1fr;
+      }
+
       .student-content {
         padding: 14px;
       }
@@ -369,7 +452,43 @@
                 <textarea id="profileExperience" placeholder="Describe your relevant experience"></textarea>
               </div>
             </div>
-            <div class="row" style="margin-top: 14px; justify-content: center;">
+
+            <!-- Attachments Section -->
+            <div style="margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 24px;">
+              <h3 style="margin: 0 0 14px 0; font-size: 16px; font-weight: 600;">Supporting Documents</h3>
+              <p style="margin: 0 0 14px 0; color: #6b7280; font-size: 13px;">Upload certificates, transcripts, or other supporting documents (Max 50MB total)</p>
+
+              <!-- Upload Area -->
+              <div id="uploadArea" style="border: 2px dashed #9ca3af; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; background-color: #f9fafb; transition: all 0.2s;">
+                <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 500;">Drag & drop files or click to browse</p>
+                <p style="margin: 0; font-size: 12px; color: #6b7280;">PDF, DOCX, XLSX, JPG, PNG (Max 50MB total)</p>
+                <input id="fileInput" type="file" style="display: none;" />
+              </div>
+
+              <!-- Label Selection -->
+              <div style="margin-top: 14px;">
+                <label for="attachmentLabel" style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px;">Document Type</label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:center;">
+                  <select id="attachmentLabel" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                    <option value="Resume">Resume</option>
+                    <option value="Certificate">Certificate</option>
+                    <option value="Transcript">Transcript</option>
+                    <option value="Custom">Custom...</option>
+                  </select>
+                  <input id="attachmentCustomLabel" type="text" placeholder="Type custom label" style="display:none;width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;" />
+                </div>
+              </div>
+
+              <!-- Uploaded Files List -->
+              <div style="margin-top: 16px;">
+                <p style="margin: 0 0 10px 0; font-size: 13px; font-weight: 500;">Uploaded Documents</p>
+                <div id="attachmentsList" style="border: 1px solid #e5e7eb; border-radius: 6px; max-height: 250px; overflow-y: auto;">
+                  <p style="margin: 14px; text-align: center; color: #6b7280; font-size: 13px;">No documents uploaded yet</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="row" style="margin-top: 20px; justify-content: center;">
               <button type="button" class="btn btn-primary" id="saveProfileBtn">Save Profile</button>
             </div>
           </div>
@@ -380,7 +499,56 @@
     </main>
   </div>
 </div>
+
+      <p id="studentNotice" class="portal-notice" aria-live="polite"></p>
+    </main>
+  </div>
+</div>
+
+<div class="job-detail-overlay" id="jobDetailOverlay" aria-hidden="true">
+  <div class="job-detail-modal" role="dialog" aria-modal="true" aria-labelledby="jobDetailTitle">
+    <div class="job-detail-head">
+      <div>
+        <h3 id="jobDetailTitle">Job Detail</h3>
+        <p class="notice" id="jobDetailSubtitle">Review details before applying.</p>
+      </div>
+      <button type="button" class="btn btn-outline" id="closeJobDetailBtn">Close</button>
+    </div>
+
+    <div class="job-detail-grid">
+      <div class="job-detail-block"><span class="job-detail-label">Module</span><div class="job-detail-value" id="detailModule"></div></div>
+      <div class="job-detail-block"><span class="job-detail-label">Teacher</span><div class="job-detail-value" id="detailTeacher"></div></div>
+      <div class="job-detail-block"><span class="job-detail-label">Workload</span><div class="job-detail-value" id="detailHours"></div></div>
+      <div class="job-detail-block"><span class="job-detail-label">Positions</span><div class="job-detail-value" id="detailPositions"></div></div>
+      <div class="job-detail-block"><span class="job-detail-label">Deadline</span><div class="job-detail-value" id="detailDeadline"></div></div>
+      <div class="job-detail-block"><span class="job-detail-label">Status</span><div class="job-detail-value" id="detailStatus"></div></div>
+    </div>
+
+    <div class="job-detail-block">
+      <span class="job-detail-label">Requirements</span>
+      <div class="job-detail-value" id="detailRequirements"></div>
+    </div>
+
+    <div class="job-detail-block" style="margin-top:10px;">
+      <span class="job-detail-label">Submitted Profile Snapshot</span>
+      <div class="job-detail-value" id="detailProfileSnapshot"></div>
+    </div>
+
+    <div class="job-detail-block" style="margin-top:10px;">
+      <span class="job-detail-label">Attachments For This Application</span>
+      <p class="notice" id="detailAttachmentHint" style="margin:0 0 8px 0;">At least one attachment is required. All are selected by default.</p>
+      <div class="job-detail-value" id="detailAttachmentsList"></div>
+    </div>
+
+    <div class="job-detail-actions">
+      <button type="button" class="btn btn-outline" id="detailCancelBtn">Cancel</button>
+      <button type="button" class="btn btn-primary" id="detailApplyBtn">Submit Application</button>
+    </div>
+  </div>
+</div>
 <script src="../assets/js/common.js"></script>
 <script src="../assets/js/student.js"></script>
 </body>
 </html>
+
+
