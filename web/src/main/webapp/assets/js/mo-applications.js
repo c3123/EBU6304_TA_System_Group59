@@ -133,6 +133,7 @@ function renderApplicantCard(item) {
           <div><span class="mo-app-lbl">Applied at</span><div data-field="appliedAt"></div></div>
           <div><span class="mo-app-lbl">Status</span><div data-field="status"></div></div>
           <div><span class="mo-app-lbl">Updated at</span><div data-field="updatedAt"></div></div>
+          <div style="grid-column:1/-1;"><span class="mo-app-lbl">Attachments</span><div data-field="attachments"></div></div>
         </div>
       </div>
       <div class="mo-app-actions">
@@ -187,6 +188,23 @@ function renderApplicantFeed(items) {
 function fillDetailFields(expandEl, detail) {
   expandEl.querySelectorAll("[data-field]").forEach(el => {
     const k = el.getAttribute("data-field");
+    if (k === "attachments") {
+      const list = Array.isArray(detail.attachments) ? detail.attachments : [];
+      if (list.length === 0) {
+        el.innerHTML = '<span style="color:#64748b;">No attachments submitted.</span>';
+        return;
+      }
+      const contextPath = getContextPath();
+      el.innerHTML = list.map(att => {
+        const href = `${window.location.origin}${contextPath}${att.downloadUrl}`;
+        const sizeText = Number(att.fileSize || 0) > 0 ? ` (${Math.round((att.fileSize / 1024) * 10) / 10} KB)` : "";
+        return `<div style="margin:6px 0;display:flex;justify-content:space-between;gap:12px;align-items:center;">`
+          + `<span>${escapeHtml(safeText(att.label || "Attachment"))}: ${escapeHtml(safeText(att.fileName || "file"))}${escapeHtml(sizeText)}</span>`
+          + `<a class="btn btn-outline" style="padding:4px 10px;font-size:12px;" href="${encodeURI(href)}" target="_blank" rel="noopener">Download</a>`
+          + `</div>`;
+      }).join("");
+      return;
+    }
     const val = detail[k];
     if (k === "status") {
       el.innerHTML = statusTag(val);
