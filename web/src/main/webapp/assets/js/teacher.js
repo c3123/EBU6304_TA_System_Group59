@@ -8,18 +8,6 @@ function teacherApiBase() {
   return `${window.location.origin}${getTeacherContextPath()}/api/mo`;
 }
 
-function getTeacherMoId() {
-  const fromUrl = new URLSearchParams(window.location.search).get("moId");
-  if (fromUrl && fromUrl.trim()) return fromUrl.trim();
-  try {
-    const fromStorage = localStorage.getItem("ta_mo_dev_id");
-    if (fromStorage && fromStorage.trim()) return fromStorage.trim();
-  } catch (_) {
-    /* ignore */
-  }
-  return "";
-}
-
 function teacherSafeText(value) {
   if (value === null || value === undefined || value === "") return "-";
   return String(value);
@@ -83,11 +71,7 @@ const teacherState = {
 };
 
 async function teacherRequest(url, options) {
-  const moId = getTeacherMoId();
   const headers = Object.assign({}, options && options.headers ? options.headers : {});
-  if (moId) {
-    headers["X-MO-ID"] = moId;
-  }
 
   const response = await fetch(url, {
     method: options && options.method ? options.method : "GET",
@@ -107,9 +91,7 @@ async function teacherRequest(url, options) {
 }
 
 async function loadTeacherJobs() {
-  const moId = getTeacherMoId();
-  const query = moId ? `?moId=${encodeURIComponent(moId)}` : "";
-  const data = await teacherRequest(`${teacherApiBase()}/demands/list${query}`, { method: "GET" });
+  const data = await teacherRequest(`${teacherApiBase()}/demands/list`, { method: "GET" });
   teacherState.items = data && Array.isArray(data.items) ? data.items : [];
   renderTeacherJobs();
 }
@@ -192,7 +174,7 @@ function renderTeacherJobCard(item) {
       <div class="mo-demand-actions">
         <button class="btn btn-primary" type="button" data-open-publish="${teacherEscapeHtml(item.jobId)}" ${publishDisabled}>${publishLocked}</button>
         <button class="btn btn-outline" type="button" data-withdraw-job="${teacherEscapeHtml(item.jobId)}" ${withdrawDisabled}>Withdraw job</button>
-        <a class="btn btn-outline" href="mo-applications.jsp${getTeacherMoId() ? `?moId=${encodeURIComponent(getTeacherMoId())}` : ""}">Applicants</a>
+        <a class="btn btn-outline" href="mo-applications.jsp">Applicants</a>
       </div>
 
       ${detailBlock}
@@ -214,9 +196,7 @@ async function submitDemandForm(event) {
       hourMax: Number(byId("hourMax").value)
     };
 
-    const moId = getTeacherMoId();
-    const query = moId ? `?moId=${encodeURIComponent(moId)}` : "";
-    const data = await teacherRequest(`${teacherApiBase()}/demands${query}`, {
+    const data = await teacherRequest(`${teacherApiBase()}/demands`, {
       method: "POST",
       headers: { "Content-Type": "application/json; charset=UTF-8" },
       body: JSON.stringify(payload)
@@ -243,9 +223,7 @@ async function submitPublishForm(form) {
       deadline: form.deadline.value,
       requirements: form.requirements.value.trim()
     };
-    const moId = getTeacherMoId();
-    const query = moId ? `?moId=${encodeURIComponent(moId)}` : "";
-    await teacherRequest(`${teacherApiBase()}/jobs/publish/${encodeURIComponent(jobId)}${query}`, {
+    await teacherRequest(`${teacherApiBase()}/jobs/publish/${encodeURIComponent(jobId)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json; charset=UTF-8" },
       body: JSON.stringify(payload)
@@ -262,9 +240,7 @@ async function submitPublishForm(form) {
 async function withdrawJob(jobId, button) {
   teacherSetButtonLoading(button, "Withdrawing...", "Withdraw job", true);
   try {
-    const moId = getTeacherMoId();
-    const query = moId ? `?moId=${encodeURIComponent(moId)}` : "";
-    await teacherRequest(`${teacherApiBase()}/jobs/withdraw/${encodeURIComponent(jobId)}${query}`, {
+    await teacherRequest(`${teacherApiBase()}/jobs/withdraw/${encodeURIComponent(jobId)}`, {
       method: "POST"
     });
     teacherSetNotice("jobsNotice", `Job ${jobId} withdrawn successfully.`, false);
@@ -329,7 +305,6 @@ async function reloadTeacherWorkflow() {
     teacherSetNotice("jobsNotice", `Loaded ${teacherState.items.length} job record(s).`, false);
   } catch (err) {
     teacherSetNotice("jobsNotice", `${err.code || "REQUEST_ERROR"}: ${err.message}`, true);
-    teacherSetNotice("globalNotice", "For production login flow, MO session must be created by backend login servlet.", false);
   }
 }
 

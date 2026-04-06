@@ -108,33 +108,15 @@
     return `/${first}`;
   }
 
-  function getDevStudentId() {
-    const byQuery = new URLSearchParams(window.location.search).get("userId");
-    if (byQuery && byQuery.trim()) return byQuery.trim();
-
-    try {
-      const byStorage = localStorage.getItem("ta_student_dev_id");
-      if (byStorage && byStorage.trim()) return byStorage.trim();
-    } catch (_) {
-      // ignore localStorage access failures
-    }
-
-    return "";
-  }
-
   function buildApiUrl(path) {
     const clean = path.startsWith("/") ? path : `/${path}`;
     return `${window.location.origin}${getContextPath()}/api/student${clean}`;
   }
 
   async function requestApi(path, options) {
-    const devStudentId = getDevStudentId();
     const headers = {
       "Content-Type": "application/json"
     };
-    if (devStudentId) {
-      headers["X-STUDENT-ID"] = devStudentId;
-    }
 
     const res = await fetch(buildApiUrl(path), {
       method: options && options.method ? options.method : "GET",
@@ -375,16 +357,9 @@
       formData.append('file', file);
       formData.append('label', label);
 
-      const devStudentId = getDevStudentId();
-      const headers = {};
-      if (devStudentId) {
-        headers['X-STUDENT-ID'] = devStudentId;
-      }
-
       const res = await fetch(buildApiUrl("/attachments"), {
         method: 'POST',
         credentials: 'same-origin',
-        headers,
         body: formData
       });
 
@@ -409,16 +384,9 @@
     if (!confirm("Delete this document?")) return;
 
     try {
-      const devStudentId = getDevStudentId();
-      const headers = {};
-      if (devStudentId) {
-        headers['X-STUDENT-ID'] = devStudentId;
-      }
-
       const res = await fetch(buildApiUrl(`/attachments/${attachmentId}`), {
         method: 'DELETE',
-        credentials: 'same-origin',
-        headers
+        credentials: 'same-origin'
       });
 
       const body = await res.json();
@@ -599,7 +567,11 @@
     try {
       const updated = await requestApi("/profile", {
         method: "PUT",
-        body: { name }
+        body: {
+          name,
+          skills: profileSkillsEl.value.trim(),
+          experience: profileExperienceEl.value.trim()
+        }
       });
       state.student = {
         id: updated.userId,
@@ -608,10 +580,10 @@
         studentId: updated.studentId,
         programme: updated.programme
       };
-
-      state.profile.skills = profileSkillsEl.value.trim();
-      state.profile.experience = profileExperienceEl.value.trim();
+      state.profile.skills = updated.skills || "";
+      state.profile.experience = updated.experience || "";
       studentWelcomeEl.textContent = `Welcome, ${name}.`;
+      renderProfile();
       showNotice("Profile saved successfully.", false);
     } catch (err) {
       showNotice(err.message || "Failed to save profile.", true);
@@ -683,6 +655,8 @@
       studentId: profileData.studentId,
       programme: profileData.programme
     };
+    state.profile.skills = profileData.skills || "";
+    state.profile.experience = profileData.experience || "";
     state.attachments = Array.isArray(profileData.attachments) ? profileData.attachments : [];
 
     studentWelcomeEl.textContent = state.student.name

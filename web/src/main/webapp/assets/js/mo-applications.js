@@ -8,21 +8,6 @@ function apiBase() {
   return `${window.location.origin}${getContextPath()}/api/mo`;
 }
 
-/**
- * MO identity when dev fallback or query param is used.
- */
-function getResolvedMoId() {
-  const fromUrl = new URLSearchParams(window.location.search).get("moId");
-  if (fromUrl && fromUrl.trim()) return fromUrl.trim();
-  try {
-    const fromStorage = localStorage.getItem("ta_mo_dev_id");
-    if (fromStorage && fromStorage.trim()) return fromStorage.trim();
-  } catch (_) {
-    /* ignore */
-  }
-  return "mo001";
-}
-
 function safeText(value) {
   if (value === null || value === undefined || value === "") return "-";
   return String(value);
@@ -55,12 +40,7 @@ const state = {
 };
 
 async function getJson(url) {
-  const moId = getResolvedMoId();
-  const headers = {};
-  if (moId) {
-    headers["X-MO-ID"] = moId;
-  }
-  const res = await fetch(url, { method: "GET", headers, credentials: "same-origin" });
+  const res = await fetch(url, { method: "GET", credentials: "same-origin" });
   const body = await res.json();
   if (!res.ok || !body.success) {
     const err = new Error(body.message || "Request failed.");
@@ -73,9 +53,7 @@ async function getJson(url) {
 
 async function loadJobTitles() {
   try {
-    const moId = getResolvedMoId();
-    const q = moId ? `?moId=${encodeURIComponent(moId)}` : "";
-    const data = await getJson(`${apiBase()}/demands/list${q}`);
+    const data = await getJson(`${apiBase()}/demands/list`);
     const map = {};
     (data.items || []).forEach(it => {
       if (it.jobId) {
@@ -221,11 +199,7 @@ async function openCardDetail(card, btn) {
 
   btn.disabled = true;
   try {
-    const moId = getResolvedMoId();
-    const url = moId
-      ? `${apiBase()}/applications/detail/${encodeURIComponent(rawId)}?moId=${encodeURIComponent(moId)}`
-      : `${apiBase()}/applications/detail/${encodeURIComponent(rawId)}`;
-    const detail = await getJson(url);
+    const detail = await getJson(`${apiBase()}/applications/detail/${encodeURIComponent(rawId)}`);
     fillDetailFields(expand, detail);
     expand.classList.add("mo-open");
 
@@ -241,10 +215,8 @@ async function openCardDetail(card, btn) {
 
 async function loadList() {
   const jobId = byId("jobIdInput").value.trim();
-  const moId = getResolvedMoId();
   const params = new URLSearchParams();
   if (jobId) params.set("jobId", jobId);
-  if (moId) params.set("moId", moId);
   const query = params.toString();
   const url = query
     ? `${apiBase()}/applications?${query}`

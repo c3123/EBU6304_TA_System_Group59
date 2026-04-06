@@ -9,6 +9,8 @@ public class StudentProfile {
     private String name;
     private String email;
     private String programme;
+    private String skills;
+    private String experience;
     private List<Attachment> attachments;
 
     public StudentProfile() {
@@ -21,15 +23,19 @@ public class StudentProfile {
         this.name = name;
         this.email = email;
         this.programme = programme;
+        this.skills = "";
+        this.experience = "";
         this.attachments = new ArrayList<>();
     }
 
-    public StudentProfile(String userId, String studentId, String name, String email, String programme, List<Attachment> attachments) {
+    public StudentProfile(String userId, String studentId, String name, String email, String programme, String skills, String experience, List<Attachment> attachments) {
         this.userId = userId;
         this.studentId = studentId;
         this.name = name;
         this.email = email;
         this.programme = programme;
+        this.skills = skills;
+        this.experience = experience;
         this.attachments = attachments != null ? attachments : new ArrayList<>();
     }
 
@@ -71,6 +77,22 @@ public class StudentProfile {
 
     public void setProgramme(String programme) {
         this.programme = programme;
+    }
+
+    public String getSkills() {
+        return skills;
+    }
+
+    public void setSkills(String skills) {
+        this.skills = skills;
+    }
+
+    public String getExperience() {
+        return experience;
+    }
+
+    public void setExperience(String experience) {
+        this.experience = experience;
     }
 
     public List<Attachment> getAttachments() {
