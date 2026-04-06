@@ -15,18 +15,6 @@ import java.nio.charset.StandardCharsets;
 public abstract class MoBaseServlet extends HttpServlet {
     protected static final Gson GSON = new Gson();
 
-    /**
-     * DEV-ONLY SWITCH (remove or set false before delivery).
-     *
-     * Why this exists:
-     * - Enables quick API testing without full login/session flow.
-     *
-     * How to remove before release:
-     * 1) Set this to false, OR
-     * 2) Delete the whole "DEV-ONLY FALLBACK" block in getMoIdFromSession(...).
-     */
-    private static final boolean ENABLE_DEV_MO_ID_FALLBACK = true;
-
     protected <T> T readJson(HttpServletRequest req, Class<T> clazz) throws IOException {
         req.setCharacterEncoding(StandardCharsets.UTF_8.name());
         return GSON.fromJson(req.getReader(), clazz);
@@ -51,24 +39,6 @@ public abstract class MoBaseServlet extends HttpServlet {
                 return String.valueOf(userId);
             }
         }
-
-        // ===== DEV-ONLY FALLBACK START =====
-        // For local testing without login/session:
-        // 1) Header: X-MO-ID: mo001
-        // 2) Query param: ?moId=mo001
-        // Remove this block before production delivery.
-        if (ENABLE_DEV_MO_ID_FALLBACK) {
-            String headerMoId = req.getHeader("X-MO-ID");
-            if (headerMoId != null && !headerMoId.isBlank()) {
-                return headerMoId;
-            }
-
-            String queryMoId = req.getParameter("moId");
-            if (queryMoId != null && !queryMoId.isBlank()) {
-                return queryMoId;
-            }
-        }
-        // ===== DEV-ONLY FALLBACK END =====
 
         return null;
     }

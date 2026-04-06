@@ -11,7 +11,6 @@ import java.nio.charset.StandardCharsets;
 
 public abstract class StudentBaseServlet extends HttpServlet {
     protected static final Gson GSON = new Gson();
-    private static final boolean ENABLE_DEV_STUDENT_ID_FALLBACK = true;
 
     protected <T> T readJson(HttpServletRequest req, Class<T> clazz) throws IOException {
         req.setCharacterEncoding(StandardCharsets.UTF_8.name());
@@ -34,17 +33,6 @@ public abstract class StudentBaseServlet extends HttpServlet {
                 if (userId != null) {
                     return String.valueOf(userId);
                 }
-            }
-        }
-
-        if (ENABLE_DEV_STUDENT_ID_FALLBACK) {
-            String queryUserId = req.getParameter("userId");
-            if (queryUserId != null && !queryUserId.isBlank()) {
-                return queryUserId;
-            }
-            String headerUserId = req.getHeader("X-STUDENT-ID");
-            if (headerUserId != null && !headerUserId.isBlank()) {
-                return headerUserId;
             }
         }
 

@@ -421,7 +421,7 @@
       <section class="student-panel" id="panel-profile" aria-labelledby="Profile">
         <div class="student-panel-header">
           <h2>Profile</h2>
-          <p>Update your information locally before backend integration.</p>
+          <p>Update your information and supporting documents.</p>
         </div>
 
         <div class="module-frame">

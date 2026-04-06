@@ -11,6 +11,8 @@ public class StudentProfileResponse {
     private String email;
     private String studentId;
     private String programme;
+    private String skills;
+    private String experience;
     private List<Attachment> attachments = new ArrayList<>();
 
     public String getUserId() {
@@ -51,6 +53,22 @@ public class StudentProfileResponse {
 
     public void setProgramme(String programme) {
         this.programme = programme;
+    }
+
+    public String getSkills() {
+        return skills;
+    }
+
+    public void setSkills(String skills) {
+        this.skills = skills;
+    }
+
+    public String getExperience() {
+        return experience;
+    }
+
+    public void setExperience(String experience) {
+        this.experience = experience;
     }
 
     public List<Attachment> getAttachments() {

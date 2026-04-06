@@ -265,6 +265,8 @@ public class StudentService {
             profile.setName(student.getName());
             profile.setEmail(student.getEmail());
             profile.setStudentId(student.getStudentId());
+            profile.setSkills(trimToEmpty(request.getSkills()));
+            profile.setExperience(trimToEmpty(request.getExperience()));
             JsonUtility.saveStudents(context, profiles);
 
             return toProfileResponse(student, profile);
@@ -293,6 +295,8 @@ public class StudentService {
         response.setEmail(profile != null && !isBlank(profile.getEmail()) ? profile.getEmail() : user.getEmail());
         response.setStudentId(profile != null && !isBlank(profile.getStudentId()) ? profile.getStudentId() : user.getStudentId());
         response.setProgramme(profile != null ? profile.getProgramme() : user.getProgramme());
+        response.setSkills(profile != null ? trimToEmpty(profile.getSkills()) : "");
+        response.setExperience(profile != null ? trimToEmpty(profile.getExperience()) : "");
         response.setAttachments(profile != null && profile.getAttachments() != null ? profile.getAttachments() : new ArrayList<>());
         return response;
     }
@@ -304,6 +308,8 @@ public class StudentService {
         profile.setEmail(user.getEmail());
         profile.setStudentId(user.getStudentId());
         profile.setProgramme(user.getProgramme());
+        profile.setSkills("");
+        profile.setExperience("");
         return profile;
     }
 
@@ -358,6 +364,10 @@ public class StudentService {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private String trimToEmpty(String value) {
+        return value == null ? "" : value.trim();
     }
 
     /**
