@@ -4,7 +4,7 @@ public class StudentApplicationItemResponse {
     private String id;
     private String jobId;
     private String jobTitle;
-    private String appliedDate;
+    private String appliedAt;
     private String status;
     private String feedback;
 
@@ -32,12 +32,12 @@ public class StudentApplicationItemResponse {
         this.jobTitle = jobTitle;
     }
 
-    public String getAppliedDate() {
-        return appliedDate;
+    public String getAppliedAt() {
+        return appliedAt;
     }
 
-    public void setAppliedDate(String appliedDate) {
-        this.appliedDate = appliedDate;
+    public void setAppliedAt(String appliedAt) {
+        this.appliedAt = appliedAt;
     }
 
     public String getStatus() {

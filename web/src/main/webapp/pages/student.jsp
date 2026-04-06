@@ -373,7 +373,7 @@
         <h1 class="student-title">Student Portal</h1>
         <p class="student-subtitle" id="studentWelcome">Welcome back.</p>
       </div>
-      <a class="btn btn-outline" href="login.jsp">Logout</a>
+      <a class="btn btn-outline" href="<%= request.getContextPath() %>/logout">Logout</a>
     </header>
 
     <nav class="student-tabs" aria-label="Student modules">
