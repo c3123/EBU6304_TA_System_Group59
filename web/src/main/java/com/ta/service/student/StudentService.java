@@ -76,13 +76,13 @@ public class StudentService {
                 item.setId(record.getId());
                 item.setJobId(record.getJobId());
                 item.setJobTitle(job != null ? job.getTitle() : "Unknown Job");
-                item.setAppliedDate(extractDate(record.getAppliedAt()));
+                item.setAppliedAt(extractDate(record.getAppliedAt()));
                 item.setStatus(toStudentStatus(record.getStatus()));
                 item.setFeedback("");
                 items.add(item);
             }
 
-            items.sort(Comparator.comparing(StudentApplicationItemResponse::getAppliedDate, Comparator.nullsLast(String::compareTo)).reversed());
+            items.sort(Comparator.comparing(StudentApplicationItemResponse::getAppliedAt, Comparator.nullsLast(String::compareTo)).reversed());
 
             StudentApplicationListResponse response = new StudentApplicationListResponse();
             response.setItems(items);
@@ -196,7 +196,7 @@ public class StudentService {
             response.setId(record.getId());
             response.setJobId(record.getJobId());
             response.setJobTitle(job.getTitle());
-            response.setAppliedDate(extractDate(record.getAppliedAt()));
+            response.setAppliedAt(extractDate(record.getAppliedAt()));
             response.setStatus("pending");
             response.setFeedback("");
             return response;

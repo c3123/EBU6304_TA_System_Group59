@@ -1,6 +1,9 @@
 package com.ta.web.mo;
 
 import com.ta.constant.ErrorCodes;
+import com.ta.dto.admin.AdminDemandReviewResponse;
+import com.ta.service.admin.AdminBusinessException;
+import com.ta.service.admin.AdminDemandReviewService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,6 +21,7 @@ import java.io.IOException;
  */
 @WebServlet(name = "AdminDemandReviewServlet", urlPatterns = {"/api/admin/demands/review/*"})
 public class AdminDemandReviewServlet extends MoBaseServlet {
+    private final AdminDemandReviewService adminDemandReviewService = new AdminDemandReviewService();
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -30,8 +34,10 @@ public class AdminDemandReviewServlet extends MoBaseServlet {
                 return;
             }
 
-            // TODO approve/reject demand in jobs.json
-            writeSuccess(resp, null);
+            AdminDemandReviewResponse data = adminDemandReviewService.reviewDemand(getServletContext(), jobId, action);
+            writeSuccess(resp, data);
+        } catch (AdminBusinessException ex) {
+            writeError(resp, ex.getHttpStatus(), ex.getCode(), ex.getMessage());
         } catch (Exception ex) {
             writeError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", ex.getMessage());
         }

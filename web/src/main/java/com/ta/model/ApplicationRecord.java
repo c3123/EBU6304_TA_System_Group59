@@ -7,9 +7,10 @@ import java.util.List;
  * Application record model for MO iteration 1.
  *
  * Contract:
- * 1) status: pending | viewed
- * 2) active=true means visible in MO list; student withdraw sets active=false.
- * 3) selectedAttachmentIds: list of attachment IDs included in this application
+ * 1) appliedAt is the canonical application timestamp field.
+ * 2) status may be pending | viewed | shortlisted | hired | rejected.
+ * 3) active=true means visible in MO list; student withdraw sets active=false.
+ * 4) selectedAttachmentIds: list of attachment IDs included in this application
  */
 public class ApplicationRecord {
     private String id;

@@ -2,7 +2,6 @@
   const state = {
     activeTab: "jobs",
     loading: true,
-    backendMode: true,
     jobs: [],
     applications: [],
     student: null,
@@ -261,7 +260,7 @@
       return `
       <article class="app-item status-${statusClass}">
         <h3>${escapeHtml(app.jobTitle || "Unknown Job")}</h3>
-        <p class="app-meta">Applied on ${escapeHtml(app.appliedDate || "Unknown Date")}</p>
+        <p class="app-meta">Applied on ${escapeHtml(app.appliedAt || "Unknown Date")}</p>
         <div>${toStatusTag(app.status)}</div>
         <div class="app-feedback">${escapeHtml(app.feedback || "No feedback yet.")}</div>
       </article>
@@ -371,92 +370,67 @@
       return;
     }
 
-    if (state.backendMode) {
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('label', label);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('label', label);
 
-        const devStudentId = getDevStudentId();
-        const headers = {};
-        if (devStudentId) {
-          headers['X-STUDENT-ID'] = devStudentId;
-        }
-
-        const res = await fetch(buildApiUrl("/attachments"), {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers,
-          body: formData
-        });
-
-        const body = await res.json();
-        if (!res.ok || !body.success) {
-          throw new Error(body.message || "Upload failed.");
-        }
-
-        state.attachments.push(body.data);
-        renderAttachmentsList();
-        fileInputEl.value = '';
-        if (attachmentLabelEl) attachmentLabelEl.value = 'Resume';
-        if (attachmentCustomLabelEl) attachmentCustomLabelEl.value = '';
-        syncAttachmentLabelUi();
-        showNotice("Document uploaded successfully.", false);
-      } catch (err) {
-        showNotice(err.message || "Failed to upload file.", true);
+      const devStudentId = getDevStudentId();
+      const headers = {};
+      if (devStudentId) {
+        headers['X-STUDENT-ID'] = devStudentId;
       }
-    } else {
-      // Mock mode
-      state.attachments.push({
-        id: 'local-' + Date.now(),
-        fileName: file.name,
-        fileType: fileExtension,
-        label: label,
-        fileSize: file.size,
-        uploadedAt: new Date().toISOString()
+
+      const res = await fetch(buildApiUrl("/attachments"), {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers,
+        body: formData
       });
+
+      const body = await res.json();
+      if (!res.ok || !body.success) {
+        throw new Error(body.message || "Upload failed.");
+      }
+
+      state.attachments.push(body.data);
       renderAttachmentsList();
       fileInputEl.value = '';
       if (attachmentLabelEl) attachmentLabelEl.value = 'Resume';
       if (attachmentCustomLabelEl) attachmentCustomLabelEl.value = '';
       syncAttachmentLabelUi();
-      showNotice("Document uploaded locally (frontend demo mode).", false);
+      showNotice("Document uploaded successfully.", false);
+    } catch (err) {
+      showNotice(err.message || "Failed to upload file.", true);
     }
   }
 
   async function deleteAttachment(attachmentId) {
     if (!confirm("Delete this document?")) return;
 
-    if (state.backendMode) {
-      try {
-        const devStudentId = getDevStudentId();
-        const headers = {};
-        if (devStudentId) {
-          headers['X-STUDENT-ID'] = devStudentId;
-        }
-
-        const res = await fetch(buildApiUrl(`/attachments/${attachmentId}`), {
-          method: 'DELETE',
-          credentials: 'same-origin',
-          headers
-        });
-
-        const body = await res.json();
-        if (!res.ok || !body.success) {
-          throw new Error(body.message || "Delete failed.");
-        }
-
-        state.attachments = state.attachments.filter(a => a.id !== attachmentId);
-        renderAttachmentsList();
-        showNotice("Document deleted successfully.", false);
-      } catch (err) {
-        showNotice(err.message || "Failed to delete document.", true);
+    try {
+      const devStudentId = getDevStudentId();
+      const headers = {};
+      if (devStudentId) {
+        headers['X-STUDENT-ID'] = devStudentId;
       }
-    } else {
-      // Mock mode
+
+      const res = await fetch(buildApiUrl(`/attachments/${attachmentId}`), {
+        method: 'DELETE',
+        credentials: 'same-origin',
+        headers
+      });
+
+      const body = await res.json();
+      if (!res.ok || !body.success) {
+        throw new Error(body.message || "Delete failed.");
+      }
+
       state.attachments = state.attachments.filter(a => a.id !== attachmentId);
       renderAttachmentsList();
-      showNotice("Document deleted locally (frontend demo mode).", false);
+      showNotice("Document deleted successfully.", false);
+    } catch (err) {
+      showNotice(err.message || "Failed to delete document.", true);
     }
   }
 
@@ -553,33 +527,14 @@
       throw new Error("Please select at least one attachment.");
     }
 
-    if (state.backendMode) {
-      const created = await requestApi("/applications", {
-        method: "POST",
-        body: { jobId, selectedAttachmentIds }
-      });
-      state.applications.unshift(created);
-      renderJobs();
-      renderApplications();
-      showNotice("Application submitted successfully.", false);
-      return;
-    }
-
-    state.applications.unshift({
-      id: `local-${Date.now()}`,
-      jobId: job.id,
-      jobTitle: job.title,
-      studentId: (state.student && state.student.id) || "",
-      studentName: (state.student && state.student.name) || "",
-      appliedDate: todayIsoDate(),
-      status: "pending",
-      feedback: "",
-      selectedAttachmentIds: selectedAttachmentIds
+    const created = await requestApi("/applications", {
+      method: "POST",
+      body: { jobId, selectedAttachmentIds }
     });
-
+    state.applications.unshift(created);
     renderJobs();
     renderApplications();
-    showNotice("Application submitted locally (frontend demo mode).", false);
+    showNotice("Application submitted successfully.", false);
   }
 
   tabButtons.forEach((btn) => {
@@ -642,26 +597,22 @@
     }
 
     try {
-      if (state.backendMode) {
-        const updated = await requestApi("/profile", {
-          method: "PUT",
-          body: { name }
-        });
-        state.student = {
-          id: updated.userId,
-          name: updated.name,
-          email: updated.email,
-          studentId: updated.studentId,
-          programme: updated.programme
-        };
-      } else if (state.student) {
-        state.student.name = name;
-      }
+      const updated = await requestApi("/profile", {
+        method: "PUT",
+        body: { name }
+      });
+      state.student = {
+        id: updated.userId,
+        name: updated.name,
+        email: updated.email,
+        studentId: updated.studentId,
+        programme: updated.programme
+      };
 
       state.profile.skills = profileSkillsEl.value.trim();
       state.profile.experience = profileExperienceEl.value.trim();
       studentWelcomeEl.textContent = `Welcome, ${name}.`;
-      showNotice(state.backendMode ? "Profile saved successfully." : "Profile saved locally (frontend demo mode).", false);
+      showNotice("Profile saved successfully.", false);
     } catch (err) {
       showNotice(err.message || "Failed to save profile.", true);
     }
@@ -739,46 +690,14 @@
       : "Welcome, student.";
   }
 
-  async function loadFromMock() {
-    const data = await loadMockData();
-    const users = Array.isArray(data.users) ? data.users : [];
-    const student = users.find((user) => user.role === "student") || null;
-
-    state.jobs = Array.isArray(data.jobs) ? data.jobs : [];
-    state.student = student;
-    state.applications = Array.isArray(data.applications)
-      ? data.applications
-          .filter((app) => !student || app.studentId === student.id)
-          .map((app) => ({
-            id: app.id,
-            jobId: app.jobId,
-            jobTitle: app.jobTitle,
-            appliedDate: app.appliedDate,
-            status: app.status,
-            feedback: app.feedback || ""
-          }))
-      : [];
-
-    studentWelcomeEl.textContent = student && student.name
-      ? `Welcome, ${student.name}.`
-      : "Welcome, student.";
-  }
-
   renderJobs();
   renderApplications();
 
   try {
     await loadFromBackend();
-    state.backendMode = true;
     showNotice("Connected to backend API.", false);
   } catch (backendErr) {
-    try {
-      await loadFromMock();
-      state.backendMode = false;
-      showNotice("Backend unavailable, switched to local mock mode.", true);
-    } catch (mockErr) {
-      showNotice(mockErr.message || backendErr.message || "Failed to load data.", true);
-    }
+    showNotice(backendErr.message || "Failed to load data.", true);
   } finally {
     state.loading = false;
     renderJobs();

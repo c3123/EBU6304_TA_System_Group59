@@ -21,6 +21,9 @@
   } else if ("invalid".equals(error)) {
     message = "Invalid ID or Password.";
     messageColor = "#dc2626";
+  } else if ("registered".equals(success)) {
+    message = "Registration successful. Please sign in with your new account.";
+    messageColor = "#16a34a";
   } else if ("logout".equals(success)) {
     message = "You have logged out successfully.";
     messageColor = "#16a34a";
