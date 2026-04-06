@@ -1,4 +1,3 @@
-
 # Functional Specification: Sprint 1 - Core Recruitment Foundation
 
 ## 1. Introduction
@@ -88,6 +87,87 @@ The system ensures that applicants can smoothly complete the entire process from
   - User-specific data is retrieved based on session identity.
 
 **Assignee:** Fangyu Chu / Tianzi Xiong
+
+**Completion Date:**
+
+---
+
+### 2.3 Feature: Module Organiser Recruitment Workflow System
+
+**User Stories:**
+- **MO_01:** As a Module Organiser (MO), I want to submit a TA demand for my course, so that I can request teaching assistants for the upcoming teaching period.
+- **MO_02:** As a Module Organiser (MO), I want to view the approval progress of my submitted demands, so that I can know whether a position can be published.
+- **MO_03:** As a Module Organiser (MO), I want to publish an approved TA position, so that applicants can view and apply for it.
+- **MO_04:** As a Module Organiser (MO), I want to view active applications for my own positions, so that I can review candidates.
+- **MO_05:** As a Module Organiser (MO), I want an application to automatically change from `pending` to `viewed` when I open its detail page, so that the review progress is traceable.
+- **MO_06:** As a Module Organiser (MO), I want to withdraw a position only when there are no active applications, so that I do not invalidate positions that students are still applying for.
+
+**Description:**
+This feature provides the Sprint 1 MO-side workflow for teaching assistant recruitment. It covers two connected parts of the MO process handled by our two assignees:
+
+1. **Demand and position workflow**
+   - submit TA demand
+   - view approval progress
+   - publish approved positions
+   - withdraw positions under the required constraints
+
+2. **Applicant management workflow**
+   - list applications for the current MO's own jobs only
+   - view detailed application records
+   - automatically update application status from `pending` to `viewed`
+   - hide inactive / withdrawn application records from the visible list
+
+This completes the basic Sprint 1 MO operational flow from demand creation to applicant review.
+
+**Acceptance Criteria:**
+1. The MO can submit a TA demand with course name, planned count, and expected workload range.
+2. The system prevents duplicate submission when the same MO already has a `pending` demand for the same course.
+3. The MO can view a list of their own submitted demands with approval status, publish state, and withdraw state.
+4. Only demands with `approvalStatus = approved` can be published as visible positions.
+5. The MO can provide publication details including location, requirements, and deadline.
+6. The system rejects publishing attempts for non-approved jobs with a clear backend error.
+7. The MO can only see applications belonging to jobs they own.
+8. The applications list only displays records with `active = true`.
+9. Opening an application detail page changes its status from `pending` to `viewed`.
+10. A job cannot be withdrawn if there is any active application attached to it.
+11. A job can be withdrawn successfully when no active application exists.
+12. The MO frontend page supports direct testing in development mode and displays timestamps in a readable second-level format.
+
+**Functional Requirement Details:**
+
+- **Servlet Implementation:**
+  - `MoDemandCreateServlet` handles demand creation.
+  - `MoDemandListServlet` returns the current MO's submitted demand list.
+  - `MoJobPublishServlet` handles publishing approved jobs.
+  - `MoJobWithdrawServlet` handles job withdrawal.
+  - `MoApplicationListServlet` lists active applications for the current MO.
+  - `MoApplicationDetailServlet` returns application detail and updates status.
+  - `AdminDemandReviewServlet` supports demand approval state updates for testing / admin review flow.
+
+- **Service Layer:**
+  - `MoDemandService` implements demand creation and progress querying.
+  - `MoJobService` implements publish and withdraw rules.
+  - `MoApplicationService` implements ownership filtering, active-only listing, and status update on detail view.
+  - `MoBusinessException` standardizes MO business error handling.
+
+- **Data Management:**
+  - MO demand and job records are stored in `jobs.json`.
+  - Application records are stored in `applications.json`.
+  - New demand records include fields such as `approvalStatus`, `published`, and `withdrawn`.
+  - Application records include fields such as `jobId`, `studentId`, `status`, and `active`.
+
+- **Frontend Integration:**
+  - `teacher.jsp` is used as the MO job workflow page.
+  - `teacher.js` connects the page to the MO backend APIs for demand submission, publishing, and withdrawal.
+  - `mo-applications.jsp` and `mo-applications.js` support active applicant listing and application detail viewing.
+  - The MO page keeps an entry point to the applicant management page.
+
+- **Session / Access Control:**
+  - MO identity is resolved from session-based login in normal use.
+  - A temporary development fallback using `X-MO-ID` header or `?moId=` query parameter may be enabled only for testing.
+  - MO users can only access their own jobs and related applications.
+
+**Assignee:** Wanhe Ji / Huishun Hu
 
 **Completion Date:**
 
