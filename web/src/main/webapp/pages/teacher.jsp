@@ -11,6 +11,169 @@
       height: 16px;
       flex-shrink: 0;
     }
+    .mo-job-layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+    .mo-form-card h3,
+    .mo-feed-card h3 {
+      margin: 0 0 8px;
+    }
+    .mo-form-card p,
+    .mo-feed-card p {
+      margin-top: 0;
+    }
+    .mo-demand-meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+      margin: 12px 0;
+    }
+    .mo-demand-meta span,
+    .mo-publish-grid span {
+      display: block;
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+    .mo-demand-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .mo-publish-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .mo-status-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 96px;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: capitalize;
+    }
+    .mo-status-pending {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fcd34d;
+    }
+    .mo-status-approved,
+    .mo-status-published {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #6ee7b7;
+    }
+    .mo-status-rejected,
+    .mo-status-withdrawn {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+    .mo-job-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      background: #fff;
+      padding: 18px;
+      margin-bottom: 14px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+    }
+    .mo-job-card:last-child {
+      margin-bottom: 0;
+    }
+    .mo-job-card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .mo-job-card-head h4 {
+      margin: 0 0 6px;
+      font-size: 18px;
+    }
+    .mo-job-card-head p {
+      margin: 0;
+      color: #64748b;
+      font-size: 13px;
+    }
+    .mo-job-card .notice {
+      margin-bottom: 0;
+    }
+    .mo-inline-form {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px dashed #dbe2ee;
+      display: none;
+    }
+    .mo-inline-form.open {
+      display: block;
+    }
+    .mo-inline-form .row {
+      margin-top: 12px;
+    }
+    .mo-empty-tip {
+      text-align: center;
+      padding: 42px 24px;
+      border: 2px dashed #dbe2ee;
+      border-radius: 14px;
+      background: #fff;
+      color: #64748b;
+    }
+    .mo-notification-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .mo-notification-dot {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      background: #dc2626;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 0 6px;
+      margin-left: 6px;
+    }
+    .mo-notification-panel {
+      border: 1px solid #e5e7eb;
+      background: #fff;
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 14px;
+      display: none;
+      max-height: 260px;
+      overflow: auto;
+    }
+    .mo-notification-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px dashed #e2e8f0;
+      padding: 8px 0;
+    }
+    .mo-notification-item:last-child {
+      border-bottom: none;
+    }
+    @media (max-width: 960px) {
+      .mo-job-layout {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body class="mo-portal">
@@ -57,8 +220,12 @@
       <h2 class="mo-section-title" style="margin-bottom:4px">My Posted Jobs</h2>
       <p class="mo-section-desc" style="margin-bottom:0">Manage your teaching assistant positions (Sprint 1: job posting &amp; dashboard).</p>
     </div>
-    <a class="btn btn-primary" href="#" onclick="alert('Job creation: connect demand and publish APIs when ready.'); return false;">Post New Job</a>
+    <div class="row">
+      <button id="notificationBtn" class="btn btn-outline" type="button">Notifications <span id="notificationDot" class="mo-notification-dot" style="display:none">0</span></button>
+      <button id="reloadBtn" class="btn btn-outline" type="button">Refresh</button>
+    </div>
   </div>
+  <div id="notificationPanel" class="mo-notification-panel"></div>
 
   <div class="card">
     <h3 style="margin-top:0">Dashboard placeholder</h3>
@@ -68,5 +235,7 @@
     </div>
   </div>
 </main>
+<script src="../assets/js/common.js?v=mo3"></script>
+<script src="../assets/js/teacher.js?v=mo3"></script>
 </body>
 </html>

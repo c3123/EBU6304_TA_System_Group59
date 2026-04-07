@@ -1,6 +1,8 @@
 package com.ta.service.mo;
 
 import com.ta.constant.ErrorCodes;
+import com.ta.dto.mo.MoJobEditRequest;
+import com.ta.dto.mo.MoDemandItemResponse;
 import com.ta.dto.mo.MoJobPublishRequest;
 import com.ta.dto.mo.MoJobPublishResponse;
 import com.ta.dto.mo.MoJobWithdrawResponse;
@@ -111,6 +113,77 @@ public class MoJobService {
         }
     }
 
+    public MoDemandItemResponse editJob(ServletContext context, String moId, String jobId, MoJobEditRequest request) {
+        validateEditRequest(request);
+        try {
+            List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            JobPosting job = findOwnedJob(jobs, moId, jobId);
+            ensureEditable(job);
+            String now = Instant.now().toString();
+            job.setTitle(request.getCourseName().trim());
+            job.setModuleCode(request.getCourseName().trim());
+            job.setPositions(request.getPlannedCount());
+            job.setHourMin(request.getHourMin());
+            job.setHourMax(request.getHourMax());
+            job.setUpdatedAt(now);
+            JsonUtility.saveJobs(context, jobs);
+            return toDemandItem(job);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to edit job.", e);
+        }
+    }
+
+    public void deleteDraftJob(ServletContext context, String moId, String jobId) {
+        try {
+            List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            JobPosting job = findOwnedJob(jobs, moId, jobId);
+            if (Boolean.TRUE.equals(job.getPublished())) {
+                throw new MoBusinessException(
+                        ErrorCodes.VALIDATION_ERROR,
+                        "Published jobs cannot be deleted. Use take offline first.",
+                        HttpServletResponse.SC_BAD_REQUEST
+                );
+            }
+            if (Boolean.TRUE.equals(job.getRecruitmentClosed())) {
+                throw new MoBusinessException(
+                        ErrorCodes.JOB_RECRUITMENT_CLOSED,
+                        "Recruitment closed jobs cannot be deleted.",
+                        HttpServletResponse.SC_BAD_REQUEST
+                );
+            }
+            List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            boolean hasActive = applications.stream().anyMatch(a -> jobId.equals(a.getJobId()) && a.isActive());
+            if (hasActive) {
+                throw new MoBusinessException(
+                        ErrorCodes.HAS_APPLICATIONS_CANNOT_WITHDRAW,
+                        "Job has active applications and cannot be deleted.",
+                        HttpServletResponse.SC_BAD_REQUEST
+                );
+            }
+            jobs.removeIf(j -> jobId.equals(j.getId()));
+            JsonUtility.saveJobs(context, jobs);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to delete job.", e);
+        }
+    }
+
+    public MoJobWithdrawResponse takeOffline(ServletContext context, String moId, String jobId) {
+        try {
+            List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            JobPosting job = findOwnedJob(jobs, moId, jobId);
+            if (!Boolean.TRUE.equals(job.getPublished())) {
+                throw new MoBusinessException(
+                        ErrorCodes.VALIDATION_ERROR,
+                        "Only published jobs can be taken offline.",
+                        HttpServletResponse.SC_BAD_REQUEST
+                );
+            }
+            return withdrawJob(context, moId, jobId);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to take job offline.", e);
+        }
+    }
+
     private JobPosting findOwnedJob(List<JobPosting> jobs, String moId, String jobId) {
         JobPosting job = jobs.stream()
                 .filter(j -> jobId.equals(j.getId()))
@@ -148,6 +221,72 @@ public class MoJobService {
                     HttpServletResponse.SC_BAD_REQUEST
             );
         }
+    }
+
+    private void validateEditRequest(MoJobEditRequest request) {
+        if (request == null
+                || isBlank(request.getCourseName())
+                || request.getPlannedCount() == null
+                || request.getHourMin() == null
+                || request.getHourMax() == null) {
+            throw new MoBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    "courseName, plannedCount, hourMin, hourMax are required.",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+        if (request.getPlannedCount() <= 0 || request.getHourMin() <= 0 || request.getHourMax() <= 0 || request.getHourMin() > request.getHourMax()) {
+            throw new MoBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    "Invalid plannedCount or hour range.",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+    }
+
+    private void ensureEditable(JobPosting job) {
+        if (Boolean.TRUE.equals(job.getRecruitmentClosed())) {
+            throw new MoBusinessException(
+                    ErrorCodes.JOB_RECRUITMENT_CLOSED,
+                    "Recruitment closed jobs cannot be edited.",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+        if (Boolean.TRUE.equals(job.getPublished())) {
+            throw new MoBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    "Published jobs cannot be edited directly. Take offline first.",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+        if (Boolean.TRUE.equals(job.getWithdrawn())) {
+            throw new MoBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    "Withdrawn jobs cannot be edited.",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+    }
+
+    private MoDemandItemResponse toDemandItem(JobPosting job) {
+        MoDemandItemResponse item = new MoDemandItemResponse();
+        item.setJobId(job.getId());
+        item.setMoId(job.getTeacherId());
+        item.setCourseName(job.getTitle());
+        item.setPlannedCount(job.getPositions());
+        item.setHourMin(job.getHourMin());
+        item.setHourMax(job.getHourMax());
+        if (job.getHours() > 0) {
+            item.setHours(job.getHours());
+        }
+        item.setApprovalStatus(job.getApprovalStatus());
+        item.setPublished(job.getPublished());
+        item.setWithdrawn(job.getWithdrawn());
+        item.setRecruitmentClosed(Boolean.TRUE.equals(job.getRecruitmentClosed()));
+        item.setClosedAt(job.getClosedAt());
+        item.setCreatedAt(job.getCreatedAt());
+        item.setUpdatedAt(job.getUpdatedAt());
+        return item;
     }
 
     private boolean isBlank(String value) {

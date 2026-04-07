@@ -1,34 +1,489 @@
-document.addEventListener("DOMContentLoaded", async () => {
-  const jobsBody = byId("teacherJobsBody");
-  const applicantsBody = byId("teacherApplicantsBody");
-  try {
-    const data = await loadMockData();
-    const myJobs = data.jobs.filter(j => j.teacherId === "2");
-    const myApps = data.applications.filter(a => myJobs.some(j => j.id === a.jobId));
+function getTeacherContextPath() {
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  if (parts.length === 0) return "";
+  return "/" + parts[0];
+}
 
-    jobsBody.innerHTML = myJobs.map(j => `
-      <tr>
-        <td>${j.moduleCode}</td>
-        <td>${j.title}</td>
-        <td>${j.positions}</td>
-        <td>${j.status}</td>
-        <td><button class="btn btn-outline" onclick="alert('Demo: Edit job post')">Edit</button></td>
-      </tr>
-    `).join("");
+function teacherApiBase() {
+  return `${window.location.origin}${getTeacherContextPath()}/api/mo`;
+}
 
-    applicantsBody.innerHTML = myApps.map(a => `
-      <tr>
-        <td>${a.studentName}</td>
-        <td>${a.jobTitle}</td>
-        <td>${a.appliedDate}</td>
-        <td><span class="tag ${a.status==='hired'?'ok':a.status==='rejected'?'danger':'warn'}">${a.status}</span></td>
-        <td>
-          <button class="btn btn-success" onclick="alert('Demo: Applicant hired')">Hire</button>
-          <button class="btn btn-danger" onclick="alert('Demo: Applicant rejected')">Reject</button>
-        </td>
-      </tr>
-    `).join("");
-  } catch (err) {
-    byId("teacherNotice").textContent = err.message;
+function teacherSafeText(value) {
+  if (value === null || value === undefined || value === "") return "-";
+  return String(value);
+}
+
+function teacherFormatDateTime(value) {
+  if (value === null || value === undefined || value === "") return "-";
+  const text = String(value);
+  const match = text.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})/);
+  return match ? `${match[1]} ${match[2]}` : text;
+}
+
+function teacherEscapeHtml(value) {
+  if (value == null) return "";
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function teacherStatusTag(item) {
+  if (item.recruitmentClosed === true) {
+    return '<span class="mo-status-pill mo-status-withdrawn">recruitment closed</span>';
   }
+  if (item.withdrawn === true) {
+    return '<span class="mo-status-pill mo-status-withdrawn">withdrawn</span>';
+  }
+  if (item.published === true) {
+    return '<span class="mo-status-pill mo-status-published">published</span>';
+  }
+  const normalized = String(item.approvalStatus || "").toLowerCase();
+  if (normalized === "approved") {
+    return '<span class="mo-status-pill mo-status-approved">approved</span>';
+  }
+  if (normalized === "rejected") {
+    return '<span class="mo-status-pill mo-status-rejected">rejected</span>';
+  }
+  return '<span class="mo-status-pill mo-status-pending">pending</span>';
+}
+
+function teacherSetNotice(id, message, isError) {
+  const el = byId(id);
+  if (!el) return;
+  el.textContent = message || "";
+  el.style.color = isError ? "#dc2626" : "#475569";
+}
+
+function teacherSetButtonLoading(button, loadingText, fallbackText, isLoading) {
+  if (!button) return;
+  if (isLoading) {
+    button.dataset.label = button.textContent;
+    button.textContent = loadingText;
+    button.disabled = true;
+  } else {
+    button.textContent = button.dataset.label || fallbackText;
+    button.disabled = false;
+  }
+}
+
+const teacherState = {
+  items: [],
+  pollingTimer: null,
+  notifications: [],
+  unreadCount: 0
+};
+
+async function teacherRequest(url, options) {
+  const headers = Object.assign({}, options && options.headers ? options.headers : {});
+
+  const response = await fetch(url, {
+    method: options && options.method ? options.method : "GET",
+    headers,
+    credentials: "same-origin",
+    body: options && options.body ? options.body : undefined
+  });
+
+  const body = await response.json();
+  if (!response.ok || !body.success) {
+    const err = new Error(body.message || "Request failed.");
+    err.code = body.code || "REQUEST_ERROR";
+    err.httpStatus = response.status;
+    throw err;
+  }
+  return body.data;
+}
+
+async function loadTeacherJobs() {
+  const data = await teacherRequest(`${teacherApiBase()}/demands/list`, { method: "GET" });
+  teacherState.items = data && Array.isArray(data.items) ? data.items : [];
+  renderTeacherJobs();
+}
+
+function renderTeacherJobs() {
+  const feed = byId("jobsFeed");
+  const empty = byId("jobsEmpty");
+
+  if (!teacherState.items.length) {
+    feed.innerHTML = "";
+    empty.style.display = "block";
+    return;
+  }
+
+  empty.style.display = "none";
+  feed.innerHTML = teacherState.items.map(item => renderTeacherJobCard(item)).join("");
+}
+
+function renderTeacherJobCard(item) {
+  const isClosed = item.recruitmentClosed === true;
+  const isPublished = item.published === true;
+  const isWithdrawn = item.withdrawn === true;
+  const canPublish = String(item.approvalStatus || "").toLowerCase() === "approved" && !isPublished && !isWithdrawn && !isClosed;
+  const publishLocked = isPublished ? "Published" : "Publish job";
+  const publishDisabled = canPublish ? "" : "disabled";
+  const canEdit = !isClosed && !isWithdrawn && !isPublished;
+  const canDelete = !isClosed && !isPublished;
+  const canTakeOffline = isPublished && !isWithdrawn;
+  const detailBlock = item.published === true
+    ? `
+      <div class="mo-inline-form open" style="display:block">
+        <div class="mo-publish-grid">
+          <div><span>Published</span><div>${teacherStatusTag(item)}</div></div>
+          <div><span>Withdrawn</span><div>${teacherSafeText(item.withdrawn)}</div></div>
+          <div><span>Created At</span><div>${teacherEscapeHtml(teacherFormatDateTime(item.createdAt))}</div></div>
+          <div><span>Updated At</span><div>${teacherEscapeHtml(teacherFormatDateTime(item.updatedAt))}</div></div>
+        </div>
+      </div>
+    `
+    : `
+      <form class="mo-inline-form" data-publish-form="${teacherEscapeHtml(item.jobId)}">
+        <div class="mo-publish-grid">
+          <div class="field">
+            <label>Location</label>
+            <select name="location" required>
+              <option value="offline">Offline</option>
+              <option value="online">Online</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Deadline</label>
+            <input name="deadline" type="date" required />
+          </div>
+        </div>
+        <div class="field">
+          <label>Requirements</label>
+          <textarea name="requirements" placeholder="e.g. GPA>=3.0, Java foundation" required></textarea>
+        </div>
+        <div class="row">
+          <button type="submit" class="btn btn-primary">Confirm publish</button>
+          <button type="button" class="btn btn-outline" data-cancel-publish="${teacherEscapeHtml(item.jobId)}">Cancel</button>
+        </div>
+      </form>
+    `;
+
+  const editBlock = canEdit
+    ? `
+      <form class="mo-inline-form" data-edit-form="${teacherEscapeHtml(item.jobId)}">
+        <div class="mo-publish-grid">
+          <div class="field">
+            <label>Course Name</label>
+            <input name="courseName" type="text" required value="${teacherEscapeHtml(teacherSafeText(item.courseName))}" />
+          </div>
+          <div class="field">
+            <label>Planned Count</label>
+            <input name="plannedCount" type="number" min="1" required value="${teacherEscapeHtml(teacherSafeText(item.plannedCount))}" />
+          </div>
+          <div class="field">
+            <label>Hour Min</label>
+            <input name="hourMin" type="number" min="1" required value="${teacherEscapeHtml(teacherSafeText(item.hourMin))}" />
+          </div>
+          <div class="field">
+            <label>Hour Max</label>
+            <input name="hourMax" type="number" min="1" required value="${teacherEscapeHtml(teacherSafeText(item.hourMax))}" />
+          </div>
+        </div>
+        <div class="row">
+          <button type="submit" class="btn btn-primary">Save edit</button>
+          <button type="button" class="btn btn-outline" data-cancel-edit="${teacherEscapeHtml(item.jobId)}">Cancel</button>
+        </div>
+      </form>
+    ` : "";
+
+  return `
+    <article class="mo-job-card" data-job-id="${teacherEscapeHtml(item.jobId)}">
+      <div class="mo-job-card-head">
+        <div>
+          <h4>${teacherEscapeHtml(teacherSafeText(item.courseName))}</h4>
+          <p>Job ID: ${teacherEscapeHtml(teacherSafeText(item.jobId))}</p>
+        </div>
+        <div>${teacherStatusTag(item)}</div>
+      </div>
+
+      <div class="mo-demand-meta">
+        <div><span>Planned Count</span><strong>${teacherEscapeHtml(teacherSafeText(item.plannedCount))}</strong></div>
+        <div><span>Hours</span><strong>${teacherEscapeHtml(teacherSafeText(item.hourMin))} - ${teacherEscapeHtml(teacherSafeText(item.hourMax))}</strong></div>
+        <div><span>Created</span><strong>${teacherEscapeHtml(teacherFormatDateTime(item.createdAt))}</strong></div>
+        <div><span>Updated</span><strong>${teacherEscapeHtml(teacherFormatDateTime(item.updatedAt))}</strong></div>
+      </div>
+
+      <p class="notice">Approval status: <strong>${teacherEscapeHtml(teacherSafeText(item.approvalStatus || "pending"))}</strong>. Published: <strong>${teacherEscapeHtml(String(item.published === true))}</strong>. Withdrawn: <strong>${teacherEscapeHtml(String(item.withdrawn === true))}</strong>.</p>
+
+      <div class="mo-demand-actions">
+        <button class="btn btn-primary" type="button" data-open-publish="${teacherEscapeHtml(item.jobId)}" ${publishDisabled}>${publishLocked}</button>
+        <button class="btn btn-outline" type="button" data-open-edit="${teacherEscapeHtml(item.jobId)}" ${canEdit ? "" : "disabled"}>Edit</button>
+        <button class="btn btn-outline" type="button" data-delete-job="${teacherEscapeHtml(item.jobId)}" ${canDelete ? "" : "disabled"}>Delete</button>
+        <button class="btn btn-outline" type="button" data-offline-job="${teacherEscapeHtml(item.jobId)}" ${canTakeOffline ? "" : "disabled"}>Take offline</button>
+        <a class="btn btn-outline" href="mo-applications.jsp">Applicants</a>
+      </div>
+
+      ${detailBlock}
+      ${editBlock}
+    </article>
+  `;
+}
+
+async function submitDemandForm(event) {
+  event.preventDefault();
+  const form = event.target;
+  const button = form.querySelector('button[type="submit"]');
+  teacherSetButtonLoading(button, "Submitting...", "Submit Demand", true);
+
+  try {
+    const payload = {
+      courseName: byId("courseName").value.trim(),
+      plannedCount: Number(byId("plannedCount").value),
+      hourMin: Number(byId("hourMin").value),
+      hourMax: Number(byId("hourMax").value)
+    };
+
+    const data = await teacherRequest(`${teacherApiBase()}/demands`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=UTF-8" },
+      body: JSON.stringify(payload)
+    });
+
+    teacherSetNotice("globalNotice", `Demand submitted successfully. jobId=${data.jobId}`, false);
+    form.reset();
+    await loadTeacherJobs();
+  } catch (err) {
+    teacherSetNotice("globalNotice", `${err.code || "REQUEST_ERROR"}: ${err.message}`, true);
+  } finally {
+    teacherSetButtonLoading(button, "Submitting...", "Submit Demand", false);
+  }
+}
+
+async function submitPublishForm(form) {
+  const jobId = form.getAttribute("data-publish-form");
+  const button = form.querySelector('button[type="submit"]');
+  teacherSetButtonLoading(button, "Publishing...", "Confirm publish", true);
+
+  try {
+    const payload = {
+      location: form.location.value,
+      deadline: form.deadline.value,
+      requirements: form.requirements.value.trim()
+    };
+    await teacherRequest(`${teacherApiBase()}/jobs/publish/${encodeURIComponent(jobId)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=UTF-8" },
+      body: JSON.stringify(payload)
+    });
+    teacherSetNotice("jobsNotice", `Job ${jobId} published successfully.`, false);
+    await loadTeacherJobs();
+  } catch (err) {
+    teacherSetNotice("jobsNotice", `${err.code || "REQUEST_ERROR"}: ${err.message}`, true);
+  } finally {
+    teacherSetButtonLoading(button, "Publishing...", "Confirm publish", false);
+  }
+}
+
+async function takeOffline(jobId, button) {
+  teacherSetButtonLoading(button, "Processing...", "Take offline", true);
+  try {
+    await teacherRequest(`${teacherApiBase()}/jobs/offline/${encodeURIComponent(jobId)}`, {
+      method: "POST"
+    });
+    teacherSetNotice("jobsNotice", `Job ${jobId} taken offline.`, false);
+    await loadTeacherJobs();
+  } catch (err) {
+    teacherSetNotice("jobsNotice", `${err.code || "REQUEST_ERROR"}: ${err.message}`, true);
+  } finally {
+    teacherSetButtonLoading(button, "Processing...", "Take offline", false);
+  }
+}
+
+function openPublishForm(jobId) {
+  document.querySelectorAll(".mo-inline-form").forEach(el => el.classList.remove("open"));
+  const form = document.querySelector(`[data-publish-form="${CSS.escape(jobId)}"]`);
+  if (form) {
+    form.classList.add("open");
+  }
+}
+
+function resetPublishForm(jobId) {
+  const form = document.querySelector(`[data-publish-form="${CSS.escape(jobId)}"]`);
+  if (form) {
+    form.reset();
+    form.classList.remove("open");
+  }
+}
+
+function openEditForm(jobId) {
+  document.querySelectorAll("[data-edit-form]").forEach(el => el.classList.remove("open"));
+  const form = document.querySelector(`[data-edit-form="${CSS.escape(jobId)}"]`);
+  if (form) form.classList.add("open");
+}
+
+function resetEditForm(jobId) {
+  const form = document.querySelector(`[data-edit-form="${CSS.escape(jobId)}"]`);
+  if (form) {
+    form.reset();
+    form.classList.remove("open");
+  }
+}
+
+async function submitEditForm(form) {
+  const jobId = form.getAttribute("data-edit-form");
+  const button = form.querySelector('button[type="submit"]');
+  teacherSetButtonLoading(button, "Saving...", "Save edit", true);
+  try {
+    const payload = {
+      courseName: form.courseName.value.trim(),
+      plannedCount: Number(form.plannedCount.value),
+      hourMin: Number(form.hourMin.value),
+      hourMax: Number(form.hourMax.value)
+    };
+    await teacherRequest(`${teacherApiBase()}/jobs/edit/${encodeURIComponent(jobId)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=UTF-8" },
+      body: JSON.stringify(payload)
+    });
+    teacherSetNotice("jobsNotice", `Job ${jobId} updated successfully.`, false);
+    await loadTeacherJobs();
+  } catch (err) {
+    teacherSetNotice("jobsNotice", `${err.code || "REQUEST_ERROR"}: ${err.message}`, true);
+  } finally {
+    teacherSetButtonLoading(button, "Saving...", "Save edit", false);
+  }
+}
+
+async function deleteJob(jobId, button) {
+  teacherSetButtonLoading(button, "Deleting...", "Delete", true);
+  try {
+    await teacherRequest(`${teacherApiBase()}/jobs/delete/${encodeURIComponent(jobId)}`, { method: "POST" });
+    teacherSetNotice("jobsNotice", `Job ${jobId} deleted successfully.`, false);
+    await loadTeacherJobs();
+  } catch (err) {
+    teacherSetNotice("jobsNotice", `${err.code || "REQUEST_ERROR"}: ${err.message}`, true);
+  } finally {
+    teacherSetButtonLoading(button, "Deleting...", "Delete", false);
+  }
+}
+
+async function loadNotifications() {
+  try {
+    const data = await teacherRequest(`${teacherApiBase()}/notifications`, { method: "GET" });
+    teacherState.notifications = data && Array.isArray(data.items) ? data.items : [];
+    teacherState.unreadCount = data && Number.isFinite(Number(data.unreadCount)) ? Number(data.unreadCount) : 0;
+    renderNotifications();
+  } catch (_) {
+    teacherState.notifications = [];
+    teacherState.unreadCount = 0;
+    renderNotifications();
+  }
+}
+
+function renderNotifications() {
+  const dot = byId("notificationDot");
+  const panel = byId("notificationPanel");
+  if (teacherState.unreadCount > 0) {
+    dot.style.display = "inline-flex";
+    dot.textContent = String(teacherState.unreadCount);
+  } else {
+    dot.style.display = "none";
+  }
+  if (!teacherState.notifications.length) {
+    panel.innerHTML = '<p class="notice" style="margin:0">No notifications.</p>';
+    return;
+  }
+  panel.innerHTML = teacherState.notifications.map(n => `
+    <div class="mo-notification-item">
+      <div style="min-width:0">
+        <div><strong>${teacherEscapeHtml(teacherSafeText(n.applicantName))}</strong> applied to <strong>${teacherEscapeHtml(teacherSafeText(n.jobName || n.jobId))}</strong></div>
+        <div style="font-size:12px;color:#64748b">${teacherEscapeHtml(teacherSafeText(n.applicationTime))}</div>
+      </div>
+      <div class="row">
+        ${n.read ? '<span class="notice" style="margin:0">Read</span>' : `<button class="btn btn-outline" type="button" data-mark-read="${teacherEscapeHtml(n.notificationId)}">Mark as Read</button>`}
+      </div>
+    </div>
+  `).join("");
+}
+
+async function markNotificationRead(notificationId) {
+  await teacherRequest(`${teacherApiBase()}/notifications/read/${encodeURIComponent(notificationId)}`, { method: "POST" });
+  await loadNotifications();
+}
+
+function bindTeacherFeedActions() {
+  const feed = byId("jobsFeed");
+  feed.addEventListener("click", async event => {
+    const openBtn = event.target.closest("[data-open-publish]");
+    if (openBtn) {
+      openPublishForm(openBtn.getAttribute("data-open-publish"));
+      return;
+    }
+
+    const cancelBtn = event.target.closest("[data-cancel-publish]");
+    if (cancelBtn) {
+      resetPublishForm(cancelBtn.getAttribute("data-cancel-publish"));
+      return;
+    }
+
+    const openEditBtn = event.target.closest("[data-open-edit]");
+    if (openEditBtn) {
+      openEditForm(openEditBtn.getAttribute("data-open-edit"));
+      return;
+    }
+
+    const cancelEditBtn = event.target.closest("[data-cancel-edit]");
+    if (cancelEditBtn) {
+      resetEditForm(cancelEditBtn.getAttribute("data-cancel-edit"));
+      return;
+    }
+
+    const deleteBtn = event.target.closest("[data-delete-job]");
+    if (deleteBtn) {
+      const jobId = deleteBtn.getAttribute("data-delete-job");
+      await deleteJob(jobId, deleteBtn);
+      return;
+    }
+
+    const offlineBtn = event.target.closest("[data-offline-job]");
+    if (offlineBtn) {
+      const jobId = offlineBtn.getAttribute("data-offline-job");
+      await takeOffline(jobId, offlineBtn);
+    }
+  });
+
+  feed.addEventListener("submit", async event => {
+    const form = event.target.closest("[data-publish-form]");
+    if (form) {
+      event.preventDefault();
+      await submitPublishForm(form);
+      return;
+    }
+    const editForm = event.target.closest("[data-edit-form]");
+    if (editForm) {
+      event.preventDefault();
+      await submitEditForm(editForm);
+    }
+  });
+}
+
+async function reloadTeacherWorkflow() {
+  try {
+    teacherSetNotice("jobsNotice", "Loading demand list...", false);
+    await loadTeacherJobs();
+    teacherSetNotice("jobsNotice", `Loaded ${teacherState.items.length} job record(s).`, false);
+  } catch (err) {
+    teacherSetNotice("jobsNotice", `${err.code || "REQUEST_ERROR"}: ${err.message}`, true);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  byId("demandForm").addEventListener("submit", submitDemandForm);
+  byId("reloadBtn").addEventListener("click", reloadTeacherWorkflow);
+  byId("notificationBtn").addEventListener("click", () => {
+    const panel = byId("notificationPanel");
+    panel.style.display = panel.style.display === "block" ? "none" : "block";
+  });
+  byId("notificationPanel").addEventListener("click", async event => {
+    const markBtn = event.target.closest("[data-mark-read]");
+    if (!markBtn) return;
+    await markNotificationRead(markBtn.getAttribute("data-mark-read"));
+  });
+  bindTeacherFeedActions();
+  await reloadTeacherWorkflow();
+  await loadNotifications();
 });
