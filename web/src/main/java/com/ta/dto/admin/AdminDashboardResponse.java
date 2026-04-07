@@ -9,6 +9,7 @@ public class AdminDashboardResponse {
     private int totalApplications;
     private List<AdminDashboardUserItemResponse> users = new ArrayList<>();
     private List<AdminDashboardJobItemResponse> jobs = new ArrayList<>();
+    private List<AdminDashboardWorkloadItemResponse> workload = new ArrayList<>();
 
     public int getTotalJobs() {
         return totalJobs;
@@ -48,5 +49,13 @@ public class AdminDashboardResponse {
 
     public void setJobs(List<AdminDashboardJobItemResponse> jobs) {
         this.jobs = jobs;
+    }
+
+    public List<AdminDashboardWorkloadItemResponse> getWorkload() {
+        return workload;
+    }
+
+    public void setWorkload(List<AdminDashboardWorkloadItemResponse> workload) {
+        this.workload = workload;
     }
 }

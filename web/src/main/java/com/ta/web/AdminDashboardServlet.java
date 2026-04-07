@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.ta.dto.admin.AdminDashboardJobItemResponse;
 import com.ta.dto.admin.AdminDashboardResponse;
 import com.ta.dto.admin.AdminDashboardUserItemResponse;
+import com.ta.dto.admin.AdminDashboardWorkloadItemResponse;
 import com.ta.dto.mo.ApiResponse;
 import com.ta.model.ApplicationRecord;
 import com.ta.model.JobPosting;
@@ -17,7 +18,10 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @WebServlet(name = "AdminDashboardServlet", urlPatterns = {"/api/admin/dashboard"})
 public class AdminDashboardServlet extends HttpServlet {
@@ -36,6 +40,7 @@ public class AdminDashboardServlet extends HttpServlet {
             data.setTotalApplications((int) applications.stream().filter(ApplicationRecord::isActive).count());
             data.setUsers(toUsers(users));
             data.setJobs(toJobs(jobs));
+            data.setWorkload(toWorkload(applications, jobs));
 
             writeApi(resp, HttpServletResponse.SC_OK, true, "OK", "success", data);
         } catch (Exception ex) {
@@ -70,6 +75,42 @@ public class AdminDashboardServlet extends HttpServlet {
             item.setClosedAt(job.getClosedAt());
             items.add(item);
         }
+        return items;
+    }
+
+    private List<AdminDashboardWorkloadItemResponse> toWorkload(List<ApplicationRecord> applications, List<JobPosting> jobs) {
+        Map<String, Integer> jobHoursById = new LinkedHashMap<>();
+        for (JobPosting job : jobs) {
+            if (job.getId() != null) {
+                jobHoursById.put(job.getId(), Math.max(job.getHours(), 0));
+            }
+        }
+
+        Map<String, AdminDashboardWorkloadItemResponse> workloadByStudent = new LinkedHashMap<>();
+        for (ApplicationRecord app : applications) {
+            if (!"hired".equalsIgnoreCase(app.getStatus())) {
+                continue;
+            }
+            if (app.getStudentId() == null || app.getStudentId().isBlank()) {
+                continue;
+            }
+
+            int jobHours = jobHoursById.getOrDefault(app.getJobId(), 0);
+            AdminDashboardWorkloadItemResponse item = workloadByStudent.computeIfAbsent(app.getStudentId(), key -> {
+                AdminDashboardWorkloadItemResponse created = new AdminDashboardWorkloadItemResponse();
+                created.setStudentId(key);
+                created.setStudentName(app.getStudentName() == null ? key : app.getStudentName());
+                created.setHiredCount(0);
+                created.setWeeklyHours(0);
+                return created;
+            });
+
+            item.setHiredCount(item.getHiredCount() + 1);
+            item.setWeeklyHours(item.getWeeklyHours() + jobHours);
+        }
+
+        List<AdminDashboardWorkloadItemResponse> items = new ArrayList<>(workloadByStudent.values());
+        items.sort(Comparator.comparingInt(AdminDashboardWorkloadItemResponse::getWeeklyHours).reversed());
         return items;
     }
 
