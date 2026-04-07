@@ -121,14 +121,9 @@ public class MoDemandService {
         item.setPlannedCount(job.getPositions());
         item.setHourMin(job.getHourMin());
         item.setHourMax(job.getHourMax());
-        if (job.getHours() > 0) {
-            item.setHours(job.getHours());
-        }
         item.setApprovalStatus(job.getApprovalStatus());
         item.setPublished(job.getPublished());
         item.setWithdrawn(job.getWithdrawn());
-        item.setRecruitmentClosed(Boolean.TRUE.equals(job.getRecruitmentClosed()));
-        item.setClosedAt(job.getClosedAt());
         item.setCreatedAt(job.getCreatedAt());
         item.setUpdatedAt(job.getUpdatedAt());
         return item;

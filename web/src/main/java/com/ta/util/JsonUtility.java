@@ -4,9 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import com.ta.model.ApplicationRecord;
-import com.ta.model.HiringHistoryRecord;
 import com.ta.model.JobPosting;
-import com.ta.model.NotificationRecord;
 import com.ta.model.StudentProfile;
 import com.ta.model.User;
 import jakarta.servlet.ServletContext;
@@ -30,8 +28,6 @@ public final class JsonUtility {
     private static final Type STUDENT_LIST_TYPE = new TypeToken<List<StudentProfile>>() { }.getType();
     private static final Type JOB_LIST_TYPE = new TypeToken<List<JobPosting>>() { }.getType();
     private static final Type APPLICATION_LIST_TYPE = new TypeToken<List<ApplicationRecord>>() { }.getType();
-    private static final Type HIRING_HISTORY_LIST_TYPE = new TypeToken<List<HiringHistoryRecord>>() { }.getType();
-    private static final Type NOTIFICATION_LIST_TYPE = new TypeToken<List<NotificationRecord>>() { }.getType();
 
     private JsonUtility() {
     }
@@ -66,22 +62,6 @@ public final class JsonUtility {
 
     public static synchronized void saveApplications(ServletContext context, List<ApplicationRecord> applications) throws IOException {
         writeList(context, "applications.json", applications);
-    }
-
-    public static synchronized List<HiringHistoryRecord> loadHiringHistory(ServletContext context) throws IOException {
-        return readList(context, "hiring_history.json", HIRING_HISTORY_LIST_TYPE);
-    }
-
-    public static synchronized void saveHiringHistory(ServletContext context, List<HiringHistoryRecord> records) throws IOException {
-        writeList(context, "hiring_history.json", records);
-    }
-
-    public static synchronized List<NotificationRecord> loadNotifications(ServletContext context) throws IOException {
-        return readList(context, "notifications.json", NOTIFICATION_LIST_TYPE);
-    }
-
-    public static synchronized void saveNotifications(ServletContext context, List<NotificationRecord> records) throws IOException {
-        writeList(context, "notifications.json", records);
     }
 
     private static <T> List<T> readList(ServletContext context, String fileName, Type listType) throws IOException {

@@ -10,13 +10,9 @@ public class MoDemandItemResponse {
     private Integer plannedCount;
     private Integer hourMin;
     private Integer hourMax;
-    /** Weekly hours from legacy job.hours when hourMin/hourMax absent */
-    private Integer hours;
     private String approvalStatus;
     private Boolean published;
     private Boolean withdrawn;
-    private Boolean recruitmentClosed;
-    private String closedAt;
     private String createdAt;
     private String updatedAt;
 
@@ -68,14 +64,6 @@ public class MoDemandItemResponse {
         this.hourMax = hourMax;
     }
 
-    public Integer getHours() {
-        return hours;
-    }
-
-    public void setHours(Integer hours) {
-        this.hours = hours;
-    }
-
     public String getApprovalStatus() {
         return approvalStatus;
     }
@@ -98,22 +86,6 @@ public class MoDemandItemResponse {
 
     public void setWithdrawn(Boolean withdrawn) {
         this.withdrawn = withdrawn;
-    }
-
-    public Boolean getRecruitmentClosed() {
-        return recruitmentClosed;
-    }
-
-    public void setRecruitmentClosed(Boolean recruitmentClosed) {
-        this.recruitmentClosed = recruitmentClosed;
-    }
-
-    public String getClosedAt() {
-        return closedAt;
-    }
-
-    public void setClosedAt(String closedAt) {
-        this.closedAt = closedAt;
     }
 
     public String getCreatedAt() {

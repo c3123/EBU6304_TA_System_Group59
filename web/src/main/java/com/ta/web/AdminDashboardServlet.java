@@ -66,8 +66,6 @@ public class AdminDashboardServlet extends HttpServlet {
             item.setTeacherName(job.getTeacherName());
             item.setStatus(job.getStatus());
             item.setPositions(job.getPositions());
-            item.setRecruitmentClosed(Boolean.TRUE.equals(job.getRecruitmentClosed()));
-            item.setClosedAt(job.getClosedAt());
             items.add(item);
         }
         return items;
