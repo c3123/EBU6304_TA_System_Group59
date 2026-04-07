@@ -12,6 +12,10 @@ public class MoApplicationListItemResponse {
     private String courseGrade;
     private String appliedAt;
     private String status;
+    /** Enriched from student profile when available */
+    private String programme;
+    private String skills;
+    private String experience;
 
     public String getApplicationId() {
         return applicationId;
@@ -75,5 +79,29 @@ public class MoApplicationListItemResponse {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getProgramme() {
+        return programme;
+    }
+
+    public void setProgramme(String programme) {
+        this.programme = programme;
+    }
+
+    public String getSkills() {
+        return skills;
+    }
+
+    public void setSkills(String skills) {
+        this.skills = skills;
+    }
+
+    public String getExperience() {
+        return experience;
+    }
+
+    public void setExperience(String experience) {
+        this.experience = experience;
     }
 }

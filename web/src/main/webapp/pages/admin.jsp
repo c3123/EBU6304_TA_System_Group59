@@ -36,7 +36,7 @@
       <h3>Job Overview</h3>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Code</th><th>Position</th><th>Teacher</th><th>Status</th><th>Slots</th></tr></thead>
+          <thead><tr><th>Code</th><th>Position</th><th>Teacher</th><th>Status</th><th>Recruitment</th><th>Slots</th><th>Action</th></tr></thead>
           <tbody id="adminJobsBody"></tbody>
         </table>
       </div>

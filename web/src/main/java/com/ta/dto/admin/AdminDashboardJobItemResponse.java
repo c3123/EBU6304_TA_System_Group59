@@ -7,6 +7,8 @@ public class AdminDashboardJobItemResponse {
     private String teacherName;
     private String status;
     private Integer positions;
+    private Boolean recruitmentClosed;
+    private String closedAt;
 
     public String getId() {
         return id;
@@ -54,5 +56,21 @@ public class AdminDashboardJobItemResponse {
 
     public void setPositions(Integer positions) {
         this.positions = positions;
+    }
+
+    public Boolean getRecruitmentClosed() {
+        return recruitmentClosed;
+    }
+
+    public void setRecruitmentClosed(Boolean recruitmentClosed) {
+        this.recruitmentClosed = recruitmentClosed;
+    }
+
+    public String getClosedAt() {
+        return closedAt;
+    }
+
+    public void setClosedAt(String closedAt) {
+        this.closedAt = closedAt;
     }
 }
