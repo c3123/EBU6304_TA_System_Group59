@@ -29,6 +29,96 @@ A centralized login portal that validates credentials and directs users to their
 
 ---
 
+### 2.4 Feature: Module Organiser Sprint 2 Workflow Extension
+
+**User Stories:**
+- **MO_04 (Extension):** As a Module Organiser (MO), I want to confirm final hiring from a candidate set and lock recruitment to read-only, so that final decisions are consistent and auditable.
+- **MO_04 (Extension):** As a Module Organiser (MO), I want to view hiring history records, so that I can trace finalize/reopen operations and selected candidates.
+- **MO_06 (Extension):** As a Module Organiser (MO), I want to edit or delete jobs under lifecycle constraints, so that I can correct draft information without breaking published records.
+- **MO_06 (Extension):** As a Module Organiser (MO), I want to take published jobs offline through a controlled action, so that live posts can be closed safely.
+- **MO_07:** As a Module Organiser (MO), I want to receive notifications for new applications and mark them as read, so that I can track incoming applications efficiently.
+
+**Description:**
+This Sprint 2 extension adds an end-to-end MO-side operational workflow on top of Sprint 1.  
+It introduces final hiring confirmation with recruitment lock, auditable hiring history, stricter job lifecycle controls (edit/delete/offline), and a notification UI with read management.  
+The implementation keeps role boundaries explicit: MO executes hiring/finalization and job lifecycle operations, while admin has a dedicated reopen endpoint for closed recruitment states.
+
+**Acceptance Criteria:**
+1. The Applicants page provides a per-job **Confirm Final Hiring** entry and modal-based final selection.
+2. Final confirmation writes final statuses, switches the job to `Recruitment Closed`, and prevents further MO status changes on that job.
+3. The Applicants page can open a **View History** modal and display operation records (`finalize` / `reopen`), timestamps, and hired candidate names.
+4. The My Jobs page enforces lifecycle actions:
+   - editable in non-closed and non-published draft-like states;
+   - deletable only when not published/closed and without active applications;
+   - published jobs can be taken offline through dedicated action.
+5. The My Jobs page shows a notification entry with unread count and a list containing applicant name, job name, and application time.
+6. Notification entries support **Mark as Read** and persist read state after refresh.
+7. Admin dashboard can reopen recruitment-closed jobs via API, and reopen records are included in hiring history.
+8. Applicants detail expansion is user-controlled and does not collapse unexpectedly during periodic refresh.
+
+**Functional Requirement Details:**
+
+- **Servlet Implementation (new/extended):**
+  - `MoHiringFinalizeServlet` (`POST /api/mo/hiring/finalize`) for final confirmation submission.
+  - `MoHiringStateServlet` (`GET /api/mo/hiring/state`) for per-job recruitment lock state.
+  - `MoHiringHistoryServlet` (`GET /api/mo/hiring/history`) for job-level history records.
+  - `MoJobEditServlet` (`POST /api/mo/jobs/edit/{jobId}`) for editable lifecycle updates.
+  - `MoJobDeleteServlet` (`POST /api/mo/jobs/delete/{jobId}`) for controlled draft deletion.
+  - `MoJobOfflineServlet` (`POST /api/mo/jobs/offline/{jobId}`) for take-offline operation.
+  - `MoNotificationsServlet` (`GET /api/mo/notifications`) for MO notification retrieval.
+  - `MoNotificationReadServlet` (`POST /api/mo/notifications/read/{notificationId}`) for read-state updates.
+  - `AdminJobReopenServlet` (`POST /api/admin/jobs/reopen/{jobId}`) for admin-only reopen control.
+
+- **Service Layer (new/extended):**
+  - `MoHiringService`:
+    - finalize hiring decision set and close recruitment;
+    - expose recruitment state;
+    - aggregate history records for Applicants history modal;
+    - support admin reopen with history append.
+  - `MoJobService`:
+    - add edit/delete/offline methods with lifecycle guard checks;
+    - retain ownership and validation constraints.
+  - `MoNotificationService`:
+    - generate/merge notification records from active applications;
+    - compute unread count and map to MO-facing response;
+    - persist mark-as-read actions.
+  - `MoApplicationService`:
+    - block status update endpoint when `recruitmentClosed=true`.
+
+- **Data Model & Persistence:**
+  - `JobPosting` extended with:
+    - `recruitmentClosed` (Boolean),
+    - `closedAt` (ISO timestamp).
+  - New persistence files:
+    - `hiring_history.json` for finalize/reopen records,
+    - `notifications.json` for MO notification state.
+  - `JsonUtility` extended with load/save methods for both new datasets.
+
+- **Frontend Integration:**
+  - `mo-applications.jsp` + `mo-applications.js`:
+    - final hiring modal;
+    - history modal;
+    - recruitment closed flag in job group bar;
+    - read-only action behavior after closure;
+    - detail expand persistence (manual collapse control).
+  - `teacher.jsp` + `teacher.js`:
+    - edit/delete/take-offline controls per job;
+    - notification button, unread badge, notification panel;
+    - mark-as-read interaction.
+  - `admin.jsp` + `admin.js`:
+    - recruitment column visibility;
+    - reopen action button for closed jobs.
+
+- **Branch / Ownership Note:**
+  - Implementation branch: `dev-Huishun-hu`.
+  - Contributor signature for this Sprint 2 extension: `yeahyeah66`.
+
+**Assignee:** yeahyeah66 (Huishun Hu)  
+**Branch:** dev-Huishun-hu  
+**Completion Date:** 2026-04-07
+
+---
+
 ### 2.2 Feature: Applicant Core Recruitment Workflow System
 
 **User Stories:**
