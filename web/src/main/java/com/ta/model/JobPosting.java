@@ -31,6 +31,10 @@ public class JobPosting {
     private String requirements;
     private String createdAt;
     private String updatedAt;
+    /** MO_04: set true after final hiring confirmation. */
+    private Boolean recruitmentClosed;
+    /** ISO timestamp when recruitment is closed. */
+    private String closedAt;
 
     public JobPosting() {
     }
@@ -177,5 +181,21 @@ public class JobPosting {
 
     public void setUpdatedAt(String updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Boolean getRecruitmentClosed() {
+        return recruitmentClosed;
+    }
+
+    public void setRecruitmentClosed(Boolean recruitmentClosed) {
+        this.recruitmentClosed = recruitmentClosed;
+    }
+
+    public String getClosedAt() {
+        return closedAt;
+    }
+
+    public void setClosedAt(String closedAt) {
+        this.closedAt = closedAt;
     }
 }
