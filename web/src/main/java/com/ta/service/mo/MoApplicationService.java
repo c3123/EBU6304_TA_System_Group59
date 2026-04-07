@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -62,6 +63,11 @@ public class MoApplicationService {
             }
 
             List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            List<StudentProfile> profiles = JsonUtility.loadStudents(context);
+            Map<String, StudentProfile> profileByUserId = profiles.stream()
+                    .filter(p -> p.getUserId() != null)
+                    .collect(Collectors.toMap(StudentProfile::getUserId, Function.identity(), (a, b) -> a));
+
             List<MoApplicationListItemResponse> items = new ArrayList<>();
 
             for (ApplicationRecord a : applications) {
@@ -74,7 +80,9 @@ public class MoApplicationService {
                 if (jobIdFilter != null && !jobIdFilter.isBlank() && !jobIdFilter.equals(a.getJobId())) {
                     continue;
                 }
-                items.add(toListItem(a));
+                MoApplicationListItemResponse item = toListItem(a);
+                enrichFromProfile(item, profileByUserId.get(a.getStudentId()));
+                items.add(item);
             }
 
             MoApplicationListResponse response = new MoApplicationListResponse();
@@ -82,6 +90,111 @@ public class MoApplicationService {
             return response;
         } catch (IOException e) {
             throw new RuntimeException("Failed to list applications.", e);
+        }
+    }
+
+    /**
+     * MO sets shortlisted / hired / rejected. Persists to applications.json.
+     */
+    public MoApplicationListItemResponse updateApplicationStatus(ServletContext context,
+                                                                  String moId,
+                                                                  String applicationId,
+                                                                  String newStatus) {
+        if (applicationId == null || applicationId.isBlank()) {
+            throw new MoBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    "applicationId is required.",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+        String normalized = newStatus == null ? "" : newStatus.trim().toLowerCase();
+        if (!Set.of("shortlisted", "hired", "rejected", "viewed").contains(normalized)) {
+            throw new MoBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    "status must be shortlisted, hired, rejected, or viewed (undo reject only).",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+
+        try {
+            List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            ApplicationRecord record = applications.stream()
+                    .filter(a -> applicationId.equals(a.getId()))
+                    .findFirst()
+                    .orElseThrow(() -> new MoBusinessException(
+                            ErrorCodes.APPLICATION_NOT_FOUND,
+                            "Application not found.",
+                            HttpServletResponse.SC_NOT_FOUND
+                    ));
+
+            if (!record.isActive()) {
+                throw new MoBusinessException(
+                        ErrorCodes.APPLICATION_NOT_FOUND,
+                        "Application not found.",
+                        HttpServletResponse.SC_NOT_FOUND
+                );
+            }
+
+            List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            JobPosting job = jobs.stream()
+                    .filter(j -> record.getJobId() != null && record.getJobId().equals(j.getId()))
+                    .findFirst()
+                    .orElseThrow(() -> new MoBusinessException(
+                            ErrorCodes.JOB_NOT_FOUND,
+                            "Job not found.",
+                            HttpServletResponse.SC_NOT_FOUND
+                    ));
+
+            if (!moId.equals(job.getTeacherId())) {
+                throw new MoBusinessException(
+                        ErrorCodes.FORBIDDEN_NOT_OWNER,
+                        "You can only update applications for your own jobs.",
+                        HttpServletResponse.SC_FORBIDDEN
+                );
+            }
+            if (Boolean.TRUE.equals(job.getRecruitmentClosed())) {
+                throw new MoBusinessException(
+                        ErrorCodes.JOB_RECRUITMENT_CLOSED,
+                        "Recruitment is closed for this job (read-only).",
+                        HttpServletResponse.SC_BAD_REQUEST
+                );
+            }
+
+            String current = record.getStatus() == null ? "" : record.getStatus().trim().toLowerCase();
+
+            if ("viewed".equals(normalized)) {
+                if (!"rejected".equals(current)) {
+                    throw new MoBusinessException(
+                            ErrorCodes.VALIDATION_ERROR,
+                            "Only rejected applications can be restored to viewed (undo reject).",
+                            HttpServletResponse.SC_BAD_REQUEST
+                    );
+                }
+                record.setStatus("viewed");
+                JsonUtility.saveApplications(context, applications);
+            } else {
+                if ("hired".equals(current) || "rejected".equals(current)) {
+                    throw new MoBusinessException(
+                            ErrorCodes.VALIDATION_ERROR,
+                            "Application status is final and cannot be changed.",
+                            HttpServletResponse.SC_BAD_REQUEST
+                    );
+                }
+
+                record.setStatus(normalized);
+                JsonUtility.saveApplications(context, applications);
+            }
+
+            MoApplicationListItemResponse item = toListItem(record);
+            List<StudentProfile> profiles = JsonUtility.loadStudents(context);
+            StudentProfile profile = profiles.stream()
+                    .filter(p -> record.getStudentId() != null && record.getStudentId().equals(p.getUserId()))
+                    .findFirst()
+                    .orElse(null);
+            enrichFromProfile(item, profile);
+            return item;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to update application status.", e);
         }
     }
 
@@ -150,6 +263,15 @@ public class MoApplicationService {
         item.setAppliedAt(a.getAppliedAt());
         item.setStatus(a.getStatus());
         return item;
+    }
+
+    private static void enrichFromProfile(MoApplicationListItemResponse item, StudentProfile p) {
+        if (p == null || item == null) {
+            return;
+        }
+        item.setProgramme(p.getProgramme());
+        item.setSkills(p.getSkills());
+        item.setExperience(p.getExperience());
     }
 
     private static MoApplicationDetailResponse toDetail(ApplicationRecord a) {

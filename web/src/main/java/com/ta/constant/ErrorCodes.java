@@ -20,4 +20,6 @@ public final class ErrorCodes {
     public static final String JOB_ALREADY_PUBLISHED = "JOB_ALREADY_PUBLISHED";
     public static final String DEADLINE_LOCKED = "DEADLINE_LOCKED";
     public static final String HAS_APPLICATIONS_CANNOT_WITHDRAW = "HAS_APPLICATIONS_CANNOT_WITHDRAW";
+    public static final String JOB_RECRUITMENT_CLOSED = "JOB_RECRUITMENT_CLOSED";
+    public static final String FORBIDDEN_ADMIN_ONLY = "FORBIDDEN_ADMIN_ONLY";
 }
