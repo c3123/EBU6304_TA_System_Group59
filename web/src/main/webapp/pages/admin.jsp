@@ -42,6 +42,16 @@
       </div>
       <p id="adminNotice" class="notice"></p>
     </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>Workload Monitoring (Weekly Hours)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Student ID</th><th>Name</th><th>Hired Jobs</th><th>Weekly Hours</th></tr></thead>
+          <tbody id="adminWorkloadBody"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 <script src="../assets/js/common.js"></script>
