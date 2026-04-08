@@ -28,7 +28,6 @@ public class MoApplicationListServlet extends MoBaseServlet {
             }
 
             String jobId = req.getParameter("jobId");
-
             Object data = moApplicationService.listApplications(getServletContext(), moId, jobId);
             writeSuccess(resp, data);
         } catch (MoBusinessException ex) {

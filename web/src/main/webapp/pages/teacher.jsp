@@ -127,6 +127,8 @@
       background: #fff;
       color: #64748b;
     }
+<<<<<<< HEAD
+=======
     .mo-notification-row {
       display: flex;
       justify-content: space-between;
@@ -169,6 +171,7 @@
     .mo-notification-item:last-child {
       border-bottom: none;
     }
+>>>>>>> dev-Huishun-Hu
     @media (max-width: 960px) {
       .mo-job-layout {
         grid-template-columns: 1fr;
@@ -188,10 +191,10 @@
       </div>
       <div>
         <h1>Module Organiser Portal</h1>
-        <p>Welcome</p>
+        <p>Demand submission, publishing and withdrawal</p>
       </div>
     </div>
-    <a class="mo-btn-logout" href="login.jsp">Logout</a>
+    <a class="mo-btn-logout" href="<%= request.getContextPath() %>/logout">Logout</a>
   </div>
 </header>
 
@@ -215,27 +218,75 @@
     </a>
   </nav>
 
-  <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px;">
+  <div class="mo-applicants-head">
     <div>
-      <h2 class="mo-section-title" style="margin-bottom:4px">My Posted Jobs</h2>
-      <p class="mo-section-desc" style="margin-bottom:0">Manage your teaching assistant positions (Sprint 1: job posting &amp; dashboard).</p>
+      <h2 class="mo-section-title">My Job Workflow</h2>
+      <p class="mo-section-desc">Use the A-side backend workflow here: submit a demand, wait for approval, then complete publishing details or withdraw when there are no active applications.</p>
     </div>
+<<<<<<< HEAD
+    <button id="reloadBtn" class="btn btn-outline" type="button">Refresh</button>
+=======
     <div class="row">
       <button id="notificationBtn" class="btn btn-outline" type="button">Notifications <span id="notificationDot" class="mo-notification-dot" style="display:none">0</span></button>
       <button id="reloadBtn" class="btn btn-outline" type="button">Refresh</button>
     </div>
+>>>>>>> dev-Huishun-Hu
   </div>
   <div id="notificationPanel" class="mo-notification-panel"></div>
 
-  <div class="card">
-    <h3 style="margin-top:0">Dashboard placeholder</h3>
-    <p class="desc">This page matches the prototype shell (tabs + section header). Wire job cards here to list only your posted jobs and status toggles (Open / Paused) when backend endpoints are ready.</p>
-    <div class="row" style="margin-top:12px;">
-      <a class="btn btn-outline" href="mo-applications.jsp">View Applicants</a>
-    </div>
+  <div class="mo-scope-note" role="note">
+    <strong>Iteration 1 scope.</strong>
+    This page covers the backend functions completed by A side: demand creation, approval progress viewing, approved-job publishing, and withdraw restrictions.
   </div>
+
+  <div id="globalNotice" class="notice" style="margin-bottom:16px"></div>
+
+  <section class="mo-job-layout">
+    <div class="card mo-form-card">
+      <h3>Submit New Demand</h3>
+      <p class="desc">Create a new teaching assistant demand. Repeated pending requests for the same course are blocked by the backend.</p>
+
+      <form id="demandForm">
+        <div class="field">
+          <label for="courseName">Course Name</label>
+          <input id="courseName" type="text" placeholder="e.g. EBU6304 Software Engineering" required />
+        </div>
+        <div class="field">
+          <label for="plannedCount">Planned TA Count</label>
+          <input id="plannedCount" type="number" min="1" placeholder="e.g. 2" required />
+        </div>
+        <div class="mo-publish-grid">
+          <div class="field">
+            <label for="hourMin">Expected Hours (Min)</label>
+            <input id="hourMin" type="number" min="1" placeholder="e.g. 8" required />
+          </div>
+          <div class="field">
+            <label for="hourMax">Expected Hours (Max)</label>
+            <input id="hourMax" type="number" min="1" placeholder="e.g. 12" required />
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button class="btn btn-primary" type="submit">Submit Demand</button>
+          <button class="btn btn-outline" type="reset">Clear</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card mo-feed-card">
+      <h3>My Demand Progress</h3>
+      <p class="desc">Approved jobs can be published here. Withdraw is only allowed when there are no active applications.</p>
+      <div id="jobsNotice" class="notice"></div>
+      <div id="jobsEmpty" class="mo-empty-tip" style="display:none;">No MO jobs found yet. Submit your first demand from the panel on the left.</div>
+      <div id="jobsFeed"></div>
+    </div>
+  </section>
 </main>
+<<<<<<< HEAD
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/teacher.js"></script>
+=======
 <script src="../assets/js/common.js?v=mo3"></script>
 <script src="../assets/js/teacher.js?v=mo3"></script>
+>>>>>>> dev-Huishun-Hu
 </body>
 </html>

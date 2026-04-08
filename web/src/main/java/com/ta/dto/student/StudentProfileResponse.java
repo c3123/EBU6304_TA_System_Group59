@@ -1,43 +1,19 @@
-package com.ta.model;
+package com.ta.dto.student;
+
+import com.ta.model.Attachment;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class StudentProfile {
+public class StudentProfileResponse {
     private String userId;
-    private String studentId;
     private String name;
     private String email;
+    private String studentId;
     private String programme;
     private String skills;
     private String experience;
-    private List<Attachment> attachments;
-
-    public StudentProfile() {
-        this.attachments = new ArrayList<>();
-    }
-
-    public StudentProfile(String userId, String studentId, String name, String email, String programme) {
-        this.userId = userId;
-        this.studentId = studentId;
-        this.name = name;
-        this.email = email;
-        this.programme = programme;
-        this.skills = "";
-        this.experience = "";
-        this.attachments = new ArrayList<>();
-    }
-
-    public StudentProfile(String userId, String studentId, String name, String email, String programme, String skills, String experience, List<Attachment> attachments) {
-        this.userId = userId;
-        this.studentId = studentId;
-        this.name = name;
-        this.email = email;
-        this.programme = programme;
-        this.skills = skills;
-        this.experience = experience;
-        this.attachments = attachments != null ? attachments : new ArrayList<>();
-    }
+    private List<Attachment> attachments = new ArrayList<>();
 
     public String getUserId() {
         return userId;
@@ -45,14 +21,6 @@ public class StudentProfile {
 
     public void setUserId(String userId) {
         this.userId = userId;
-    }
-
-    public String getStudentId() {
-        return studentId;
-    }
-
-    public void setStudentId(String studentId) {
-        this.studentId = studentId;
     }
 
     public String getName() {
@@ -69,6 +37,14 @@ public class StudentProfile {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getStudentId() {
+        return studentId;
+    }
+
+    public void setStudentId(String studentId) {
+        this.studentId = studentId;
     }
 
     public String getProgramme() {

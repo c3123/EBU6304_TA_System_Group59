@@ -12,7 +12,7 @@
     <div class="topbar">
       <strong>Admin Dashboard</strong>
       <div class="row">
-        <a href="login.jsp">Logout</a>
+        <a href="<%= request.getContextPath() %>/logout">Logout</a>
       </div>
     </div>
 
@@ -41,6 +41,16 @@
         </table>
       </div>
       <p id="adminNotice" class="notice"></p>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>Workload Monitoring (Weekly Hours)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Student ID</th><th>Name</th><th>Hired Jobs</th><th>Weekly Hours</th></tr></thead>
+          <tbody id="adminWorkloadBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>

@@ -1,4 +1,4 @@
-package com.ta.web.mo;
+package com.ta.web.student;
 
 import com.google.gson.Gson;
 import com.ta.dto.mo.ApiResponse;
@@ -9,10 +9,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
-/**
- * Common JSON helpers for MO API servlets.
- */
-public abstract class MoBaseServlet extends HttpServlet {
+public abstract class StudentBaseServlet extends HttpServlet {
     protected static final Gson GSON = new Gson();
 
     protected <T> T readJson(HttpServletRequest req, Class<T> clazz) throws IOException {
@@ -28,29 +25,18 @@ public abstract class MoBaseServlet extends HttpServlet {
         writeApi(resp, status, false, code, message, null);
     }
 
-    protected String getMoIdFromSession(HttpServletRequest req) {
+    protected String getStudentUserId(HttpServletRequest req) {
         if (req.getSession(false) != null) {
-            Object moId = req.getSession(false).getAttribute("moId");
-            if (moId != null) {
-                return String.valueOf(moId);
-            }
-            Object userId = req.getSession(false).getAttribute("userId");
-            if (userId != null) {
-                return String.valueOf(userId);
+            Object role = req.getSession(false).getAttribute("userRole");
+            if (role != null && "student".equalsIgnoreCase(String.valueOf(role))) {
+                Object userId = req.getSession(false).getAttribute("userId");
+                if (userId != null) {
+                    return String.valueOf(userId);
+                }
             }
         }
 
         return null;
-    }
-
-    protected String getLastPathSegment(HttpServletRequest req) {
-        String pathInfo = req.getPathInfo();
-        if (pathInfo == null || pathInfo.isBlank() || "/".equals(pathInfo)) {
-            return null;
-        }
-        String normalized = pathInfo.startsWith("/") ? pathInfo.substring(1) : pathInfo;
-        int idx = normalized.lastIndexOf('/');
-        return idx >= 0 ? normalized.substring(idx + 1) : normalized;
     }
 
     private void writeApi(HttpServletResponse resp,

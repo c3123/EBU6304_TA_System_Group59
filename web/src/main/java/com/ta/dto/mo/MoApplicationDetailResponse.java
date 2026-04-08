@@ -1,5 +1,8 @@
 package com.ta.dto.mo;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * GET /api/mo/applications/{applicationId} response body.
  *
@@ -16,6 +19,7 @@ public class MoApplicationDetailResponse {
     private String appliedAt;
     private String status;
     private String updatedAt;
+    private List<MoApplicationAttachmentResponse> attachments = new ArrayList<>();
 
     public String getApplicationId() {
         return applicationId;
@@ -87,5 +91,13 @@ public class MoApplicationDetailResponse {
 
     public void setUpdatedAt(String updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public List<MoApplicationAttachmentResponse> getAttachments() {
+        return attachments;
+    }
+
+    public void setAttachments(List<MoApplicationAttachmentResponse> attachments) {
+        this.attachments = attachments != null ? attachments : new ArrayList<>();
     }
 }
