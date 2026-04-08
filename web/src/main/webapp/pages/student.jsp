@@ -159,6 +159,12 @@
       gap: 14px;
     }
 
+    .apps-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 14px;
+    }
+
     .job-card,
     .app-item,
     .profile-wrap {
@@ -182,6 +188,10 @@
     .app-item h3 {
       margin: 0;
       font-size: 17px;
+    }
+
+    .app-item h3 {
+      padding-right: 80px;
     }
 
     .job-meta,
@@ -242,6 +252,33 @@
 
     .app-item.status-rejected {
       border-left: 5px solid #dc2626;
+    }
+
+    .app-item {
+      position: relative;
+      overflow: visible;
+    }
+
+    .withdraw-app-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      padding: 6px 10px;
+      background-color: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+      z-index: 10;
+    }
+
+    .withdraw-app-btn:hover {
+      background-color: #fecaca;
+      border-color: #fca5a5;
+      box-shadow: 0 2px 4px rgba(220, 38, 38, 0.15);
     }
 
     .profile-grid {

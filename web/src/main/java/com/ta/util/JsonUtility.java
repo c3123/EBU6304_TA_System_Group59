@@ -100,31 +100,32 @@ public final class JsonUtility {
     }
 
     private static File resolveDataFile(ServletContext context, String fileName) throws IOException {
+        File externalDir = new File(System.getProperty("user.home"), ".ta-recruitment-data");
+        File externalFile = new File(externalDir, fileName);
         String realPath = context.getRealPath(DATA_ROOT + fileName);
-        File targetFile;
+        File runtimeFile = realPath != null ? new File(realPath) : null;
 
-        if (realPath != null) {
-            targetFile = new File(realPath);
-        } else {
-            File fallbackDir = new File(System.getProperty("user.home"), ".ta-recruitment-data");
-            targetFile = new File(fallbackDir, fileName);
+        if (!externalDir.exists()) {
+            Files.createDirectories(externalDir.toPath());
         }
 
-        File parent = targetFile.getParentFile();
-        if (parent != null && !parent.exists()) {
-            Files.createDirectories(parent.toPath());
+        if (externalFile.exists()) {
+            return externalFile;
         }
 
-        if (!targetFile.exists()) {
-            try (InputStream inputStream = context.getResourceAsStream(DATA_ROOT + fileName)) {
-                if (inputStream != null) {
-                    Files.copy(inputStream, targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                } else {
-                    Files.writeString(targetFile.toPath(), "[]", StandardCharsets.UTF_8);
-                }
+        if (runtimeFile != null && runtimeFile.exists()) {
+            Files.copy(runtimeFile.toPath(), externalFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            return externalFile;
+        }
+
+        try (InputStream inputStream = context.getResourceAsStream(DATA_ROOT + fileName)) {
+            if (inputStream != null) {
+                Files.copy(inputStream, externalFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            } else {
+                Files.writeString(externalFile.toPath(), "[]", StandardCharsets.UTF_8);
             }
         }
 
-        return targetFile;
+        return externalFile;
     }
 }
