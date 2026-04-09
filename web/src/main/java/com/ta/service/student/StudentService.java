@@ -397,14 +397,14 @@ public class StudentService {
 
             String studentId = student.getStudentId();
 
-            // Validate file
+
             FileStorageUtil.validateFile(fileName, fileSizeBytes);
             FileStorageUtil.validateTotalSize(context, studentId, fileSizeBytes);
 
             // Save file
             String storageFileName = FileStorageUtil.saveFile(context, studentId, fileStream, fileName);
 
-            // Create attachment metadata
+
             Attachment attachment = new Attachment();
             attachment.setId("attach_" + Instant.now().toEpochMilli());
             attachment.setFileName(fileName);
@@ -413,11 +413,9 @@ public class StudentService {
             attachment.setFileSize(fileSizeBytes);
             attachment.setUploadedAt(FileStorageUtil.getCurrentTimestamp());
 
-            // Store mapping (storageFileName -> attachmentId) so we can link them
-            // For now, we'll use the attachment ID as a reference to storageFileName
-            attachment.setId(storageFileName); // Use actual storage filename as ID
+        
+            attachment.setId(storageFileName); 
 
-            // Update student profile with attachment
             List<StudentProfile> profiles = JsonUtility.loadStudents(context);
             StudentProfile profile = profiles.stream()
                     .filter(p -> studentUserId.equals(p.getUserId()))
@@ -443,9 +441,7 @@ public class StudentService {
         }
     }
 
-    /**
-     * Delete an attachment for the student
-     */
+
     public void deleteAttachment(ServletContext context, String studentUserId, String attachmentId) throws IOException {
         try {
             List<User> users = JsonUtility.loadUsers(context);
@@ -460,7 +456,7 @@ public class StudentService {
 
             String studentId = student.getStudentId();
 
-            // Update student profile - remove attachment
+
             List<StudentProfile> profiles = JsonUtility.loadStudents(context);
             StudentProfile profile = profiles.stream()
                     .filter(p -> studentUserId.equals(p.getUserId()))
