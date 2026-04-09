@@ -102,12 +102,50 @@
           <p class="admin-section-desc">Review account roles and perform admin actions.</p>
         </div>
       </div>
+      <div class="card" style="margin-bottom:16px;">
+        <h3 class="admin-subtitle">Create User</h3>
+        <form id="adminCreateUserForm">
+          <div class="profile-grid">
+            <div class="field">
+              <label for="adminCreateRole">Role</label>
+              <select id="adminCreateRole" name="role" required>
+                <option value="student">Student</option>
+                <option value="teacher">Teacher</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="adminCreateName">Name</label>
+              <input id="adminCreateName" name="name" type="text" required />
+            </div>
+            <div class="field">
+              <label for="adminCreateEmail">Email</label>
+              <input id="adminCreateEmail" name="email" type="email" required />
+            </div>
+            <div class="field">
+              <label for="adminCreatePassword">Password</label>
+              <input id="adminCreatePassword" name="password" type="password" required />
+            </div>
+            <div class="field" id="adminStudentIdField">
+              <label for="adminCreateStudentId">Student ID</label>
+              <input id="adminCreateStudentId" name="studentId" type="text" />
+            </div>
+            <div class="field" id="adminProgrammeField">
+              <label for="adminCreateProgramme">Programme</label>
+              <input id="adminCreateProgramme" name="programme" type="text" />
+            </div>
+          </div>
+          <div class="row" style="margin-top:16px;">
+            <button id="adminCreateUserBtn" type="submit" class="btn btn-primary">Create User</button>
+          </div>
+        </form>
+      </div>
       <div id="adminUsersGrouped" class="admin-feed"></div>
       <div class="card">
         <h3 class="admin-subtitle">User Management (Table)</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Action</th></tr></thead>
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>ID</th><th>Action</th></tr></thead>
             <tbody id="adminUsersBody"></tbody>
           </table>
         </div>
