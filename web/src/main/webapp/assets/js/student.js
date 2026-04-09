@@ -125,8 +125,14 @@
       body: options && options.body ? JSON.stringify(options.body) : undefined
     });
 
-    const body = await res.json();
-    if (!res.ok || !body.success) {
+    const contentType = res.headers.get("content-type") || "";
+    const text = await res.text();
+    if (!contentType.includes("application/json")) {
+      throw new Error(`Unexpected response format: ${text.substring(0, 200)}`);
+    }
+
+    const body = text ? JSON.parse(text) : null;
+    if (!res.ok || !body || !body.success) {
       const message = body && body.message ? body.message : "Request failed.";
       throw new Error(message);
     }
@@ -239,8 +245,13 @@
 
     appsListEl.innerHTML = apps.map((app) => {
       const statusClass = normalizeStatus(app.status);
+      const canWithdraw = normalizeStatus(app.status) !== "hired";
+      const withdrawBtn = canWithdraw
+        ? `<button class="withdraw-app-btn" data-app-id="${escapeHtml(app.id)}">Withdraw</button>`
+        : '';
       return `
       <article class="app-item status-${statusClass}">
+        ${withdrawBtn}
         <h3>${escapeHtml(app.jobTitle || "Unknown Job")}</h3>
         <p class="app-meta">Applied on ${escapeHtml(app.appliedAt || "Unknown Date")}</p>
         <div>${toStatusTag(app.status)}</div>
@@ -248,6 +259,15 @@
       </article>
     `;
     }).join("");
+
+    // Attach withdraw event listeners
+    appsListEl.querySelectorAll('.withdraw-app-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const appId = btn.dataset.appId;
+        await withdrawApplication(appId);
+      });
+    });
   }
 
   function renderProfile() {
@@ -399,6 +419,31 @@
       showNotice("Document deleted successfully.", false);
     } catch (err) {
       showNotice(err.message || "Failed to delete document.", true);
+    }
+  }
+
+  async function fetchApplications() {
+    try {
+      const appData = await requestApi("/applications");
+      state.applications = Array.isArray(appData.items) ? appData.items : [];
+      renderApplications();
+    } catch (err) {
+      showNotice(err.message || "Failed to refresh applications.", true);
+    }
+  }
+
+  async function withdrawApplication(applicationId) {
+    if (!confirm("Are you sure you want to withdraw this application?")) return;
+
+    try {
+      await requestApi(`/applications?applicationId=${encodeURIComponent(applicationId)}`, {
+        method: "DELETE"
+      });
+      await fetchApplications();
+      renderJobs(); // Refresh jobs to update apply button status
+      showNotice("Application withdrawn successfully.", false);
+    } catch (err) {
+      showNotice(err.message || "Failed to withdraw application.", true);
     }
   }
 

@@ -11,7 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 
-@WebServlet(name = "StudentApplicationsServlet", urlPatterns = {"/api/student/applications"})
+@WebServlet(name = "StudentApplicationsServlet", urlPatterns = {"/api/student/applications", "/api/student/applications/*"})
 public class StudentApplicationsServlet extends StudentBaseServlet {
     private final StudentService studentService = new StudentService();
 
@@ -43,6 +43,37 @@ public class StudentApplicationsServlet extends StudentBaseServlet {
 
             StudentApplicationCreateRequest request = readJson(req, StudentApplicationCreateRequest.class);
             writeSuccess(resp, studentService.applyForJob(getServletContext(), studentUserId, request));
+        } catch (StudentBusinessException ex) {
+            writeError(resp, ex.getHttpStatus(), ex.getCode(), ex.getMessage());
+        } catch (Exception ex) {
+            writeError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", ex.getMessage());
+        }
+    }
+
+    @Override
+    protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        try {
+            String studentUserId = getStudentUserId(req);
+            if (studentUserId == null || studentUserId.isBlank()) {
+                writeError(resp, HttpServletResponse.SC_UNAUTHORIZED, ErrorCodes.UNAUTHORIZED, "Student login required.");
+                return;
+            }
+
+            String applicationId = req.getParameter("applicationId");
+            if ((applicationId == null || applicationId.isBlank()) && req.getPathInfo() != null) {
+                String pathInfo = req.getPathInfo();
+                if (pathInfo.startsWith("/")) {
+                    applicationId = pathInfo.substring(1);
+                }
+            }
+
+            if (applicationId == null || applicationId.isBlank()) {
+                writeError(resp, HttpServletResponse.SC_BAD_REQUEST, ErrorCodes.VALIDATION_ERROR, "applicationId is required.");
+                return;
+            }
+
+            studentService.withdrawApplication(getServletContext(), studentUserId, applicationId);
+            writeSuccess(resp, null);
         } catch (StudentBusinessException ex) {
             writeError(resp, ex.getHttpStatus(), ex.getCode(), ex.getMessage());
         } catch (Exception ex) {

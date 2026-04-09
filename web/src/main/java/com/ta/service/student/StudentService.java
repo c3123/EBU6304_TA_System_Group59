@@ -495,6 +495,49 @@ public class StudentService {
         }
     }
 
+    /**
+     * Withdraw an application (set active = false)
+     */
+    public void withdrawApplication(ServletContext context, String studentUserId, String applicationId) throws IOException {
+        try {
+            List<User> users = JsonUtility.loadUsers(context);
+            User student = users.stream()
+                    .filter(u -> studentUserId.equals(u.getId()))
+                    .findFirst()
+                    .orElseThrow(() -> new StudentBusinessException(
+                            ErrorCodes.UNAUTHORIZED,
+                            "Student login required.",
+                            HttpServletResponse.SC_UNAUTHORIZED
+                    ));
+
+            List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            ApplicationRecord record = applications.stream()
+                    .filter(a -> applicationId.equals(a.getId()) && studentUserId.equals(a.getStudentId()))
+                    .findFirst()
+                    .orElseThrow(() -> new StudentBusinessException(
+                            ErrorCodes.VALIDATION_ERROR,
+                            "Application not found.",
+                            HttpServletResponse.SC_NOT_FOUND
+                    ));
+
+            // Cannot withdraw if already hired
+            if ("hired".equalsIgnoreCase(record.getStatus())) {
+                throw new StudentBusinessException(
+                        ErrorCodes.VALIDATION_ERROR,
+                        "Cannot withdraw an application that has been accepted.",
+                        HttpServletResponse.SC_BAD_REQUEST
+                );
+            }
+
+            record.setActive(false);
+            JsonUtility.saveApplications(context, applications);
+        } catch (StudentBusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to withdraw application.", e);
+        }
+    }
+
     private String getFileExtension(String fileName) {
         int lastDot = fileName.lastIndexOf('.');
         return lastDot > 0 ? fileName.substring(lastDot + 1) : "";
