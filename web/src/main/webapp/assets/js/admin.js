@@ -1,4 +1,5 @@
 document.addEventListener("DOMContentLoaded", async () => {
+  const portal = document.querySelector(".admin-portal");
   const usersBody = byId("adminUsersBody");
   const jobsBody = byId("adminJobsBody");
   const workloadBody = byId("adminWorkloadBody");
@@ -19,6 +20,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const createButton = byId("adminCreateUserBtn");
   const studentIdField = byId("adminStudentIdField");
   const programmeField = byId("adminProgrammeField");
+  const currentUserId = portal?.getAttribute("data-current-user-id") || "";
+  const currentUserName = portal?.getAttribute("data-current-user-name") || "Admin User";
 
   let latestData = null;
 
@@ -49,7 +52,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (tabName === "workload") title.textContent = "TA Workload Statistics";
     if (tabName === "users") title.textContent = "User Management";
     if (tabName === "jobs") title.textContent = "Job Management";
-    if (tabName === "overview") title.textContent = "Welcome, Admin User";
+    if (tabName === "overview") title.textContent = `Welcome, ${currentUserName}`;
   }
 
   function syncCreateRoleFields() {
@@ -102,16 +105,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     byId("overviewHiredCount").textContent = totalHired;
   }
 
-  function buildUserActions(user) {
+  function buildUserActions(user, adminCount) {
+    const isSelf = currentUserId && user.id === currentUserId;
+    const isLastAdmin = user.role === "admin" && adminCount <= 1;
+    const deleteDisabled = isSelf || isLastAdmin;
+    const deleteTitle = isSelf
+      ? "You cannot delete your own account."
+      : (isLastAdmin ? "You cannot delete the last admin account." : "Delete this user.");
+
     return `
       <div class="row" style="gap:8px;flex-wrap:wrap;">
         <button class="btn btn-outline" type="button" data-reset-user-id="${user.id}" data-user-name="${escapeHtml(user.name)}">Reset Password</button>
-        <button class="btn btn-outline" type="button" data-delete-user-id="${user.id}" data-user-name="${escapeHtml(user.name)}" style="color:#b91c1c;border-color:#fecaca;">Delete</button>
+        <button class="btn btn-outline" type="button" data-delete-user-id="${user.id}" data-user-name="${escapeHtml(user.name)}" style="color:#b91c1c;border-color:#fecaca;" ${deleteDisabled ? "disabled" : ""} title="${escapeHtml(deleteTitle)}">Delete</button>
       </div>
     `;
   }
 
   function renderUsers(users) {
+    const adminCount = users.filter(user => user.role === "admin").length;
     const roleGroups = {
       student: { title: "Students", items: [] },
       teacher: { title: "Teachers", items: [] },
@@ -130,9 +141,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             <div class="admin-list-item">
               <div>
                 <p class="admin-list-name">${escapeHtml(user.name)}</p>
-                <p class="admin-list-meta">${escapeHtml(user.email)} · ${escapeHtml(user.id)}</p>
+                <p class="admin-list-meta">${escapeHtml(user.email)} | ${escapeHtml(user.id)}</p>
               </div>
-              ${buildUserActions(user)}
+              ${buildUserActions(user, adminCount)}
             </div>
           `).join("") || `<p class="admin-empty-text">No users found.</p>`}
         </div>
@@ -145,7 +156,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         <td>${escapeHtml(user.email)}</td>
         <td>${escapeHtml(formatRole(user.role))}</td>
         <td>${escapeHtml(user.id)}</td>
-        <td>${buildUserActions(user)}</td>
+        <td>${buildUserActions(user, adminCount)}</td>
       </tr>
     `).join("");
   }
