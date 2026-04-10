@@ -134,14 +134,21 @@
     .student-search {
       display: flex;
       gap: 10px;
-      justify-content: center;
+      justify-content: space-between;
+      align-items: center;
       flex-wrap: wrap;
       margin-bottom: 18px;
     }
 
-    .student-search input,
+    .student-search input {
+      flex: 1 1 320px;
+      min-width: 240px;
+      background: #ffffff;
+    }
+
     .student-search select {
-      width: min(420px, 100%);
+      flex: 0 1 180px;
+      min-width: 150px;
       background: #ffffff;
     }
 
@@ -433,6 +440,11 @@
               <option value="all">All Status</option>
               <option value="open">Open</option>
               <option value="closed">Closed</option>
+            </select>
+            <select id="jobHoursFilter">
+              <option value="all">All Hours</option>
+              <option value="<=10">&lt;=10h</option>
+              <option value=">10">&gt;10h</option>
             </select>
           </div>
 

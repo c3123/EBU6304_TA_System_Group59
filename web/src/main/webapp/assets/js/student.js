@@ -7,6 +7,7 @@
     student: null,
     search: "",
     statusFilter: "all",
+    hoursFilter: "all",
     profile: {
       skills: "",
       experience: ""
@@ -34,6 +35,7 @@
 
   const jobSearchInput = byId("jobSearchInput");
   const jobStatusFilter = byId("jobStatusFilter");
+  const jobHoursFilter = byId("jobHoursFilter");
 
   const profileNameEl = byId("profileName");
   const profileEmailEl = byId("profileEmail");
@@ -181,7 +183,12 @@
       const matchesStatus =
         state.statusFilter === "all" || String(job.status || "").toLowerCase() === state.statusFilter;
 
-      return matchesSearch && matchesStatus;
+      const matchesHours =
+        state.hoursFilter === "all" ||
+        (state.hoursFilter === "<=10" && (job.hours || 0) <= 10) ||
+        (state.hoursFilter === ">10" && (job.hours || 0) > 10);
+
+      return matchesSearch && matchesStatus && matchesHours;
     });
 
     jobsLoadingEl.classList.add("hidden");
@@ -563,6 +570,11 @@
 
   jobStatusFilter.addEventListener("change", (event) => {
     state.statusFilter = event.target.value || "all";
+    renderJobs();
+  });
+
+  jobHoursFilter.addEventListener("change", (event) => {
+    state.hoursFilter = event.target.value || "all";
     renderJobs();
   });
 
