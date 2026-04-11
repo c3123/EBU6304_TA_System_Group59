@@ -15,7 +15,7 @@ import java.util.Map;
 
 /**
  * Route contract: POST /api/mo/demands
- * Responsibility: create MO demand with pending approval status.
+ * Responsibility: create MO demand that can be published directly.
  *
  * Input JSON:
  * - courseName

@@ -8,6 +8,8 @@ import com.ta.dto.mo.MoHiringStateResponse;
 import com.ta.model.ApplicationRecord;
 import com.ta.model.HiringHistoryRecord;
 import com.ta.model.JobPosting;
+import com.ta.model.NotificationRecord;
+import com.ta.model.User;
 import com.ta.util.JsonUtility;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletResponse;
@@ -93,6 +95,7 @@ public class MoHiringService {
             Set<String> selected = new HashSet<>(hiredApplicationIds == null ? List.of() : hiredApplicationIds);
             List<String> hiredNames = new ArrayList<>();
             List<String> hiredIds = new ArrayList<>();
+            List<NotificationRecord> notifications = JsonUtility.loadNotifications(context);
 
             for (ApplicationRecord app : applications) {
                 if (!app.isActive() || !jobId.equals(app.getJobId())) {
@@ -104,16 +107,45 @@ public class MoHiringService {
                 if (selected.contains(app.getId())) {
                     app.setStatus("hired");
                     hiredIds.add(app.getId());
-                    hiredNames.add(app.getStudentName() == null ? app.getStudentId() : app.getStudentName());
+                    String studentName = app.getStudentName() == null ? app.getStudentId() : app.getStudentName();
+                    hiredNames.add(studentName);
+                    notifications.add(buildNotification(
+                            "noti_hired_" + app.getId(),
+                            app.getStudentId(),
+                            "student",
+                            jobId,
+                            app.getId(),
+                            studentName,
+                            app.getAppliedAt(),
+                            "You have been hired for " + safeJobName(job) + "."
+                    ));
                 } else {
                     app.setStatus("rejected");
                 }
+            }
+
+            List<User> users = JsonUtility.loadUsers(context);
+            for (User user : users) {
+                if (!"admin".equalsIgnoreCase(user.getRole())) {
+                    continue;
+                }
+                notifications.add(buildNotification(
+                        "noti_admin_finalize_" + jobId + "_" + user.getId(),
+                        user.getId(),
+                        "admin",
+                        jobId,
+                        null,
+                        null,
+                        nowIso(),
+                        "Final hiring submitted for " + safeJobName(job) + "."
+                ));
             }
 
             String now = Instant.now().toString();
             job.setRecruitmentClosed(true);
             job.setClosedAt(now);
             job.setStatus("closed");
+            job.setPublished(false);
             job.setUpdatedAt(now);
 
             List<HiringHistoryRecord> history = JsonUtility.loadHiringHistory(context);
@@ -130,6 +162,7 @@ public class MoHiringService {
             JsonUtility.saveApplications(context, applications);
             JsonUtility.saveJobs(context, jobs);
             JsonUtility.saveHiringHistory(context, history);
+            JsonUtility.saveNotifications(context, notifications);
 
             MoHiringHistoryItemResponse response = new MoHiringHistoryItemResponse();
             response.setAction(record.getAction());
@@ -158,6 +191,7 @@ public class MoHiringService {
             job.setRecruitmentClosed(false);
             job.setClosedAt(null);
             job.setStatus("open");
+            job.setPublished(true);
             job.setUpdatedAt(now);
 
             List<HiringHistoryRecord> history = JsonUtility.loadHiringHistory(context);
@@ -174,6 +208,39 @@ public class MoHiringService {
         } catch (IOException e) {
             throw new RuntimeException("Failed to reopen hiring.", e);
         }
+    }
+
+    private NotificationRecord buildNotification(String id,
+                                                 String recipientId,
+                                                 String recipientRole,
+                                                 String jobId,
+                                                 String applicationId,
+                                                 String applicantName,
+                                                 String applicationTime,
+                                                 String message) {
+        NotificationRecord record = new NotificationRecord();
+        record.setId(id);
+        record.setRecipientId(recipientId);
+        record.setRecipientRole(recipientRole);
+        record.setJobId(jobId);
+        record.setApplicationId(applicationId);
+        record.setApplicantName(applicantName);
+        record.setApplicationTime(applicationTime);
+        record.setMessage(message);
+        record.setCreatedAt(nowIso());
+        record.setRead(false);
+        return record;
+    }
+
+    private String safeJobName(JobPosting job) {
+        if (job == null || job.getTitle() == null || job.getTitle().isBlank()) {
+            return "the TA job";
+        }
+        return job.getTitle();
+    }
+
+    private String nowIso() {
+        return Instant.now().toString();
     }
 
     private JobPosting findOwnedJob(List<JobPosting> jobs, String moId, String jobId) {

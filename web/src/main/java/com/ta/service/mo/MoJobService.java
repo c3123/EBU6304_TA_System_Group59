@@ -1,8 +1,8 @@
 package com.ta.service.mo;
 
 import com.ta.constant.ErrorCodes;
-import com.ta.dto.mo.MoJobEditRequest;
 import com.ta.dto.mo.MoDemandItemResponse;
+import com.ta.dto.mo.MoJobEditRequest;
 import com.ta.dto.mo.MoJobPublishRequest;
 import com.ta.dto.mo.MoJobPublishResponse;
 import com.ta.dto.mo.MoJobWithdrawResponse;
@@ -21,9 +21,9 @@ import java.util.List;
  *
  * Ownership: A side (publish/withdraw rules).
  * Rules:
- * 1) Only approved demand can be published.
+ * 1) MO can publish a demand directly without admin approval.
  * 2) Deadline cannot be modified after publish.
- * 3) Job can be withdrawn only when no active applications exist.
+ * 3) Published jobs can be taken offline and republished later.
  */
 public class MoJobService {
 
@@ -50,10 +50,10 @@ public class MoJobService {
                 );
             }
 
-            if (Boolean.TRUE.equals(job.getWithdrawn())) {
+            if (Boolean.TRUE.equals(job.getRecruitmentClosed())) {
                 throw new MoBusinessException(
-                        ErrorCodes.VALIDATION_ERROR,
-                        "Withdrawn job cannot be published.",
+                        ErrorCodes.JOB_RECRUITMENT_CLOSED,
+                        "Recruitment closed jobs cannot be published.",
                         HttpServletResponse.SC_BAD_REQUEST
                 );
             }
@@ -63,6 +63,8 @@ public class MoJobService {
             job.setRequirements(request.getRequirements());
             job.setDeadline(request.getDeadline());
             job.setPublished(true);
+            job.setWithdrawn(false);
+            job.setStatus("open");
             job.setUpdatedAt(now);
 
             JsonUtility.saveJobs(context, jobs);
@@ -85,20 +87,10 @@ public class MoJobService {
             List<JobPosting> jobs = JsonUtility.loadJobs(context);
             JobPosting job = findOwnedJob(jobs, moId, jobId);
 
-            List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
-            boolean hasActiveApplications = applications.stream()
-                    .anyMatch(a -> jobId.equals(a.getJobId()) && a.isActive());
-
-            if (hasActiveApplications) {
-                throw new MoBusinessException(
-                        ErrorCodes.HAS_APPLICATIONS_CANNOT_WITHDRAW,
-                        "Job has active applications and cannot be withdrawn.",
-                        HttpServletResponse.SC_BAD_REQUEST
-                );
-            }
-
             String now = Instant.now().toString();
             job.setWithdrawn(true);
+            job.setPublished(false);
+            job.setStatus("offline");
             job.setUpdatedAt(now);
 
             JsonUtility.saveJobs(context, jobs);
@@ -125,6 +117,9 @@ public class MoJobService {
             job.setPositions(request.getPlannedCount());
             job.setHourMin(request.getHourMin());
             job.setHourMax(request.getHourMax());
+            job.setPublished(false);
+            job.setWithdrawn(false);
+            job.setStatus("draft");
             job.setUpdatedAt(now);
             JsonUtility.saveJobs(context, jobs);
             return toDemandItem(job);
@@ -151,17 +146,24 @@ public class MoJobService {
                         HttpServletResponse.SC_BAD_REQUEST
                 );
             }
+
             List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
-            boolean hasActive = applications.stream().anyMatch(a -> jobId.equals(a.getJobId()) && a.isActive());
-            if (hasActive) {
-                throw new MoBusinessException(
-                        ErrorCodes.HAS_APPLICATIONS_CANNOT_WITHDRAW,
-                        "Job has active applications and cannot be deleted.",
-                        HttpServletResponse.SC_BAD_REQUEST
-                );
+            boolean applicationsChanged = false;
+            for (ApplicationRecord application : applications) {
+                if (!jobId.equals(application.getJobId())) {
+                    continue;
+                }
+                if (application.isActive()) {
+                    application.setActive(false);
+                    applicationsChanged = true;
+                }
             }
+
             jobs.removeIf(j -> jobId.equals(j.getId()));
             JsonUtility.saveJobs(context, jobs);
+            if (applicationsChanged) {
+                JsonUtility.saveApplications(context, applications);
+            }
         } catch (IOException e) {
             throw new RuntimeException("Failed to delete job.", e);
         }
@@ -175,6 +177,13 @@ public class MoJobService {
                 throw new MoBusinessException(
                         ErrorCodes.VALIDATION_ERROR,
                         "Only published jobs can be taken offline.",
+                        HttpServletResponse.SC_BAD_REQUEST
+                );
+            }
+            if (Boolean.TRUE.equals(job.getRecruitmentClosed())) {
+                throw new MoBusinessException(
+                        ErrorCodes.JOB_RECRUITMENT_CLOSED,
+                        "Recruitment closed jobs cannot be taken offline.",
                         HttpServletResponse.SC_BAD_REQUEST
                 );
             }
@@ -259,13 +268,6 @@ public class MoJobService {
                     HttpServletResponse.SC_BAD_REQUEST
             );
         }
-        if (Boolean.TRUE.equals(job.getWithdrawn())) {
-            throw new MoBusinessException(
-                    ErrorCodes.VALIDATION_ERROR,
-                    "Withdrawn jobs cannot be edited.",
-                    HttpServletResponse.SC_BAD_REQUEST
-            );
-        }
     }
 
     private MoDemandItemResponse toDemandItem(JobPosting job) {
@@ -280,6 +282,7 @@ public class MoJobService {
             item.setHours(job.getHours());
         }
         item.setApprovalStatus(job.getApprovalStatus());
+        item.setStatus(job.getStatus());
         item.setPublished(job.getPublished());
         item.setWithdrawn(job.getWithdrawn());
         item.setRecruitmentClosed(Boolean.TRUE.equals(job.getRecruitmentClosed()));

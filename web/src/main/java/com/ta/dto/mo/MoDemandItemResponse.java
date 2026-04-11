@@ -13,6 +13,7 @@ public class MoDemandItemResponse {
     /** Weekly hours from legacy job.hours when hourMin/hourMax absent */
     private Integer hours;
     private String approvalStatus;
+    private String status;
     private Boolean published;
     private Boolean withdrawn;
     private Boolean recruitmentClosed;
@@ -82,6 +83,14 @@ public class MoDemandItemResponse {
 
     public void setApprovalStatus(String approvalStatus) {
         this.approvalStatus = approvalStatus;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public Boolean getPublished() {
