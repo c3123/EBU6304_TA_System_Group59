@@ -15,7 +15,7 @@ import java.io.IOException;
 /**
  * Route contract: POST /api/mo/jobs/{jobId}/publish
  * Temporary mapping in this scaffold: POST /api/mo/jobs/publish/{jobId}
- * Responsibility: publish approved demand and lock deadline afterward.
+ * Responsibility: publish demand directly and lock deadline afterward.
  */
 @WebServlet(name = "MoJobPublishServlet", urlPatterns = {"/api/mo/jobs/publish/*"})
 public class MoJobPublishServlet extends MoBaseServlet {

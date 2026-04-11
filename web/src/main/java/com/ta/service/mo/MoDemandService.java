@@ -21,7 +21,7 @@ import java.util.UUID;
  * Ownership: A side (demand and publish chain).
  * Rules:
  * 1) One MO cannot submit same course when pending demand exists.
- * 2) New demand starts with approvalStatus=pending.
+ * 2) New demand is created as approved so it can be published directly.
  */
 public class MoDemandService {
 
@@ -73,9 +73,10 @@ public class MoDemandService {
             job.setHourMin(request.getHourMin());
             job.setHourMax(request.getHourMax());
 
-            job.setApprovalStatus("pending");
+            job.setApprovalStatus("approved");
             job.setPublished(false);
             job.setWithdrawn(false);
+            job.setStatus("draft");
             job.setLocation(null);
             job.setRequirements(null);
             job.setDeadline(null);
@@ -125,6 +126,7 @@ public class MoDemandService {
             item.setHours(job.getHours());
         }
         item.setApprovalStatus(job.getApprovalStatus());
+        item.setStatus(job.getStatus());
         item.setPublished(job.getPublished());
         item.setWithdrawn(job.getWithdrawn());
         item.setRecruitmentClosed(Boolean.TRUE.equals(job.getRecruitmentClosed()));

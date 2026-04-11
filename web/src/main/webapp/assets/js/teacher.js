@@ -119,12 +119,12 @@ function renderTeacherJobCard(item) {
   const isClosed = item.recruitmentClosed === true;
   const isPublished = item.published === true;
   const isWithdrawn = item.withdrawn === true;
-  const canPublish = String(item.approvalStatus || "").toLowerCase() === "approved" && !isPublished && !isWithdrawn && !isClosed;
+  const canPublish = String(item.approvalStatus || "").toLowerCase() === "approved" && !isPublished && !isClosed;
   const publishLocked = isPublished ? "Published" : "Publish job";
   const publishDisabled = canPublish ? "" : "disabled";
-  const canEdit = !isClosed && !isWithdrawn && !isPublished;
+  const canEdit = !isClosed && !isPublished;
   const canDelete = !isClosed && !isPublished;
-  const canTakeOffline = isPublished && !isWithdrawn;
+  const canTakeOffline = isPublished && !isClosed;
   const detailBlock = item.published === true
     ? `
       <div class="mo-inline-form open" style="display:block">
@@ -206,7 +206,7 @@ function renderTeacherJobCard(item) {
         <div><span>Updated</span><strong>${teacherEscapeHtml(teacherFormatDateTime(item.updatedAt))}</strong></div>
       </div>
 
-      <p class="notice">Approval status: <strong>${teacherEscapeHtml(teacherSafeText(item.approvalStatus || "pending"))}</strong>. Published: <strong>${teacherEscapeHtml(String(item.published === true))}</strong>. Withdrawn: <strong>${teacherEscapeHtml(String(item.withdrawn === true))}</strong>.</p>
+      <p class="notice">Approval status: <strong>${teacherEscapeHtml(teacherSafeText(item.approvalStatus || "pending"))}</strong>. Job status: <strong>${teacherEscapeHtml(teacherSafeText(item.status || "-"))}</strong>. Published: <strong>${teacherEscapeHtml(String(item.published === true))}</strong>. Withdrawn: <strong>${teacherEscapeHtml(String(item.withdrawn === true))}</strong>.</p>
 
       <div class="mo-demand-actions">
         <button class="btn btn-primary" type="button" data-open-publish="${teacherEscapeHtml(item.jobId)}" ${publishDisabled}>${publishLocked}</button>
@@ -338,7 +338,7 @@ async function submitEditForm(form) {
       headers: { "Content-Type": "application/json; charset=UTF-8" },
       body: JSON.stringify(payload)
     });
-    teacherSetNotice("jobsNotice", `Job ${jobId} updated successfully.`, false);
+    teacherSetNotice("jobsNotice", `Job ${jobId} updated successfully. Please publish it again to make the changes live.`, false);
     await loadTeacherJobs();
   } catch (err) {
     teacherSetNotice("jobsNotice", `${err.code || "REQUEST_ERROR"}: ${err.message}`, true);

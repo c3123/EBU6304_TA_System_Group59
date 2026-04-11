@@ -1,7 +1,7 @@
 package com.ta.model;
 
 /**
- * Simple MO notification persisted in notifications.json.
+ * Notification record persisted in notifications.json.
  */
 public class NotificationRecord {
     private String id;
@@ -12,6 +12,9 @@ public class NotificationRecord {
     private String applicationTime;
     private String createdAt;
     private boolean read;
+    private String recipientId;
+    private String recipientRole;
+    private String message;
 
     public String getId() {
         return id;
@@ -75,5 +78,29 @@ public class NotificationRecord {
 
     public void setRead(boolean read) {
         this.read = read;
+    }
+
+    public String getRecipientId() {
+        return recipientId;
+    }
+
+    public void setRecipientId(String recipientId) {
+        this.recipientId = recipientId;
+    }
+
+    public String getRecipientRole() {
+        return recipientRole;
+    }
+
+    public void setRecipientRole(String recipientRole) {
+        this.recipientRole = recipientRole;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
     }
 }
