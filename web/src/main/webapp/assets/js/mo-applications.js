@@ -52,22 +52,6 @@ async function getJson(url) {
   return body.data;
 }
 
-<<<<<<< HEAD
-async function loadJobTitles() {
-  try {
-    const data = await getJson(`${apiBase()}/demands/list`);
-    const map = {};
-    (data.items || []).forEach(it => {
-      if (it.jobId) {
-        map[it.jobId] = it.courseName && String(it.courseName).trim()
-          ? it.courseName
-          : it.jobId;
-      }
-    });
-    state.jobTitles = map;
-  } catch (_) {
-    state.jobTitles = state.jobTitles || {};
-=======
 async function postJson(url, payload) {
   const res = await fetch(url, {
     method: "POST",
@@ -81,7 +65,6 @@ async function postJson(url, payload) {
     err.code = body.code || "REQUEST_ERROR";
     err.httpStatus = res.status;
     throw err;
->>>>>>> dev-Huishun-Hu
   }
   return body.data;
 }
@@ -287,11 +270,7 @@ function fillDetailFields(expandEl, detail) {
     const k = el.getAttribute("data-field");
     if (k === "attachments") {
       const list = Array.isArray(detail.attachments) ? detail.attachments : [];
-<<<<<<< HEAD
-      if (list.length === 0) {
-=======
       if (!list.length) {
->>>>>>> dev-Huishun-Hu
         el.innerHTML = '<span style="color:#64748b;">No attachments submitted.</span>';
         return;
       }
@@ -299,24 +278,9 @@ function fillDetailFields(expandEl, detail) {
       el.innerHTML = list.map(att => {
         const href = `${window.location.origin}${contextPath}${att.downloadUrl}`;
         const sizeText = Number(att.fileSize || 0) > 0 ? ` (${Math.round((att.fileSize / 1024) * 10) / 10} KB)` : "";
-<<<<<<< HEAD
-        return `<div style="margin:6px 0;display:flex;justify-content:space-between;gap:12px;align-items:center;">`
-          + `<span>${escapeHtml(safeText(att.label || "Attachment"))}: ${escapeHtml(safeText(att.fileName || "file"))}${escapeHtml(sizeText)}</span>`
-          + `<a class="btn btn-outline" style="padding:4px 10px;font-size:12px;" href="${encodeURI(href)}" target="_blank" rel="noopener">Download</a>`
-          + `</div>`;
-      }).join("");
-      return;
-    }
-    const val = detail[k];
-    if (k === "status") {
-      el.innerHTML = statusTag(val);
-    } else {
-      el.textContent = safeText(val);
-=======
         return `<div style="margin:6px 0;display:flex;justify-content:space-between;gap:12px;align-items:center;"><span>${escapeHtml(safeText(att.label || "Attachment"))}: ${escapeHtml(safeText(att.fileName || "file"))}${escapeHtml(sizeText)}</span><a class="btn btn-outline" style="padding:4px 10px;font-size:12px;" href="${encodeURI(href)}" target="_blank" rel="noopener">Download</a></div>`;
       }).join("");
       return;
->>>>>>> dev-Huishun-Hu
     }
     const val = detail[k];
     if (k === "status") el.innerHTML = statusPill(val);
@@ -342,7 +306,6 @@ async function openCardDetail(card, btn) {
   }
 }
 
-<<<<<<< HEAD
 async function loadList() {
   const jobId = byId("jobIdInput").value.trim();
   const params = new URLSearchParams();
@@ -351,7 +314,11 @@ async function loadList() {
   const url = query
     ? `${apiBase()}/applications?${query}`
     : `${apiBase()}/applications`;
-=======
+  const data = await getJson(url);
+  state.items = data && Array.isArray(data.items) ? data.items : [];
+  renderApplicantFeed(state.items);
+}
+
 async function openFinalHiringModal(jobId) {
   state.finalModalJobId = jobId;
   const modal = byId("finalHiringModal");
@@ -373,7 +340,6 @@ async function openFinalHiringModal(jobId) {
   }
   modal.classList.add("open");
 }
->>>>>>> dev-Huishun-Hu
 
 function closeFinalHiringModal() {
   byId("finalHiringModal").classList.remove("open");
