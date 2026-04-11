@@ -127,8 +127,6 @@
       background: #fff;
       color: #64748b;
     }
-<<<<<<< HEAD
-=======
     .mo-notification-row {
       display: flex;
       justify-content: space-between;
@@ -171,7 +169,6 @@
     .mo-notification-item:last-child {
       border-bottom: none;
     }
->>>>>>> dev-Huishun-Hu
     @media (max-width: 960px) {
       .mo-job-layout {
         grid-template-columns: 1fr;
@@ -223,14 +220,10 @@
       <h2 class="mo-section-title">My Job Workflow</h2>
       <p class="mo-section-desc">Use the A-side backend workflow here: submit a demand, wait for approval, then complete publishing details or withdraw when there are no active applications.</p>
     </div>
-<<<<<<< HEAD
-    <button id="reloadBtn" class="btn btn-outline" type="button">Refresh</button>
-=======
     <div class="row">
       <button id="notificationBtn" class="btn btn-outline" type="button">Notifications <span id="notificationDot" class="mo-notification-dot" style="display:none">0</span></button>
       <button id="reloadBtn" class="btn btn-outline" type="button">Refresh</button>
     </div>
->>>>>>> dev-Huishun-Hu
   </div>
   <div id="notificationPanel" class="mo-notification-panel"></div>
 
@@ -281,12 +274,7 @@
     </div>
   </section>
 </main>
-<<<<<<< HEAD
-<script src="../assets/js/common.js"></script>
-<script src="../assets/js/teacher.js"></script>
-=======
 <script src="../assets/js/common.js?v=mo3"></script>
 <script src="../assets/js/teacher.js?v=mo3"></script>
->>>>>>> dev-Huishun-Hu
 </body>
 </html>
