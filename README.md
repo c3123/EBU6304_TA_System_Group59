@@ -43,6 +43,29 @@ Deploy `web/target/web.war` to Tomcat 10.1+ and open:
 http://localhost:8080/web/
 ```
 
+## Demo Accounts
+
+Use the following accounts for demonstration:
+
+| Role | Login | Password |
+| --- | --- | --- |
+| Student | `student@demo.com` | `demo123` |
+| Teacher / MO | `teacher@demo.com` | `demo123` |
+| Admin | `admin@demo.com` | `demo123` |
+
+## Current Version Notes
+
+- Sprint 1 release tag: `v1.0-sprint1`
+- Current repository state includes Sprint 2 intermediate development on top of the Sprint 1 foundation
+
+## Current Features
+
+- Session-based login and logout with role-based redirection
+- JSON-based persistence for users, students, jobs, applications, notifications, and hiring history
+- Student workflow for profile management, supporting document upload, job browsing, application submission, and application tracking
+- MO workflow for demand creation, approval tracking, job publishing, applicant review, hiring actions, and recruitment lifecycle control
+- Admin workflow for dashboard overview, workload monitoring, demand review, recruitment reopen, and user management
+
 ## 1. Project Introduction 
 ### Project Overview
 The **International School Teaching Assistant Recruitment System** is developed for BUPT International School to streamline their current manual, Excel-based TA recruitment process\. This project follows **Agile methodologies**, delivering functional software increments through multiple sprints. 
@@ -54,6 +77,16 @@ The **International School Teaching Assistant Recruitment System** is developed 
 
 ### Sprint 1 Goal
 To establish the system's foundational architecture and implement core functions including user authentication, TA profile management, and basic job posting for Module Organisers.
+
+### Sprint 2 Progress
+Sprint 2 extends the system with administrator-side control and more complete recruitment operations.
+
+The current intermediate version includes:
+- administrator dashboard and workload monitoring
+- administrator demand review
+- administrator user creation, deletion, and password reset
+- expanded MO workflow for applicant review, hiring decisions, and job lifecycle control
+- expanded student workflow for profile persistence, attachments, and application management
 
 ---
 
