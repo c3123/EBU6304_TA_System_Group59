@@ -30,18 +30,12 @@ function teacherEscapeHtml(value) {
 }
 
 function teacherStatusTag(item) {
-<<<<<<< HEAD
-  if (item.withdrawn === true) {
-    return '<span class="mo-status-pill mo-status-withdrawn">withdrawn</span>';
-  }
-=======
   if (item.recruitmentClosed === true) {
     return '<span class="mo-status-pill mo-status-withdrawn">recruitment closed</span>';
   }
   if (item.withdrawn === true) {
     return '<span class="mo-status-pill mo-status-withdrawn">withdrawn</span>';
   }
->>>>>>> dev-Huishun-Hu
   if (item.published === true) {
     return '<span class="mo-status-pill mo-status-published">published</span>';
   }
@@ -76,13 +70,9 @@ function teacherSetButtonLoading(button, loadingText, fallbackText, isLoading) {
 
 const teacherState = {
   items: [],
-<<<<<<< HEAD
-  pollingTimer: null
-=======
   pollingTimer: null,
   notifications: [],
   unreadCount: 0
->>>>>>> dev-Huishun-Hu
 };
 
 async function teacherRequest(url, options) {
@@ -126,12 +116,6 @@ function renderTeacherJobs() {
 }
 
 function renderTeacherJobCard(item) {
-<<<<<<< HEAD
-  const canPublish = String(item.approvalStatus || "").toLowerCase() === "approved" && item.published !== true && item.withdrawn !== true;
-  const publishLocked = item.published === true ? "Published" : "Publish job";
-  const withdrawDisabled = item.withdrawn === true ? "disabled" : "";
-  const publishDisabled = canPublish ? "" : "disabled";
-=======
   const isClosed = item.recruitmentClosed === true;
   const isPublished = item.published === true;
   const isWithdrawn = item.withdrawn === true;
@@ -141,7 +125,6 @@ function renderTeacherJobCard(item) {
   const canEdit = !isClosed && !isWithdrawn && !isPublished;
   const canDelete = !isClosed && !isPublished;
   const canTakeOffline = isPublished && !isWithdrawn;
->>>>>>> dev-Huishun-Hu
   const detailBlock = item.published === true
     ? `
       <div class="mo-inline-form open" style="display:block">
@@ -179,8 +162,6 @@ function renderTeacherJobCard(item) {
       </form>
     `;
 
-<<<<<<< HEAD
-=======
   const editBlock = canEdit
     ? `
       <form class="mo-inline-form" data-edit-form="${teacherEscapeHtml(item.jobId)}">
@@ -208,8 +189,6 @@ function renderTeacherJobCard(item) {
         </div>
       </form>
     ` : "";
-
->>>>>>> dev-Huishun-Hu
   return `
     <article class="mo-job-card" data-job-id="${teacherEscapeHtml(item.jobId)}">
       <div class="mo-job-card-head">
@@ -231,21 +210,14 @@ function renderTeacherJobCard(item) {
 
       <div class="mo-demand-actions">
         <button class="btn btn-primary" type="button" data-open-publish="${teacherEscapeHtml(item.jobId)}" ${publishDisabled}>${publishLocked}</button>
-<<<<<<< HEAD
-        <button class="btn btn-outline" type="button" data-withdraw-job="${teacherEscapeHtml(item.jobId)}" ${withdrawDisabled}>Withdraw job</button>
-=======
         <button class="btn btn-outline" type="button" data-open-edit="${teacherEscapeHtml(item.jobId)}" ${canEdit ? "" : "disabled"}>Edit</button>
         <button class="btn btn-outline" type="button" data-delete-job="${teacherEscapeHtml(item.jobId)}" ${canDelete ? "" : "disabled"}>Delete</button>
         <button class="btn btn-outline" type="button" data-offline-job="${teacherEscapeHtml(item.jobId)}" ${canTakeOffline ? "" : "disabled"}>Take offline</button>
->>>>>>> dev-Huishun-Hu
         <a class="btn btn-outline" href="mo-applications.jsp">Applicants</a>
       </div>
 
       ${detailBlock}
-<<<<<<< HEAD
-=======
       ${editBlock}
->>>>>>> dev-Huishun-Hu
     </article>
   `;
 }
@@ -305,15 +277,6 @@ async function submitPublishForm(form) {
   }
 }
 
-<<<<<<< HEAD
-async function withdrawJob(jobId, button) {
-  teacherSetButtonLoading(button, "Withdrawing...", "Withdraw job", true);
-  try {
-    await teacherRequest(`${teacherApiBase()}/jobs/withdraw/${encodeURIComponent(jobId)}`, {
-      method: "POST"
-    });
-    teacherSetNotice("jobsNotice", `Job ${jobId} withdrawn successfully.`, false);
-=======
 async function takeOffline(jobId, button) {
   teacherSetButtonLoading(button, "Processing...", "Take offline", true);
   try {
@@ -321,16 +284,11 @@ async function takeOffline(jobId, button) {
       method: "POST"
     });
     teacherSetNotice("jobsNotice", `Job ${jobId} taken offline.`, false);
->>>>>>> dev-Huishun-Hu
     await loadTeacherJobs();
   } catch (err) {
     teacherSetNotice("jobsNotice", `${err.code || "REQUEST_ERROR"}: ${err.message}`, true);
   } finally {
-<<<<<<< HEAD
-    teacherSetButtonLoading(button, "Withdrawing...", "Withdraw job", false);
-=======
     teacherSetButtonLoading(button, "Processing...", "Take offline", false);
->>>>>>> dev-Huishun-Hu
   }
 }
 
@@ -350,8 +308,6 @@ function resetPublishForm(jobId) {
   }
 }
 
-<<<<<<< HEAD
-=======
 function openEditForm(jobId) {
   document.querySelectorAll("[data-edit-form]").forEach(el => el.classList.remove("open"));
   const form = document.querySelector(`[data-edit-form="${CSS.escape(jobId)}"]`);
@@ -448,7 +404,6 @@ async function markNotificationRead(notificationId) {
   await loadNotifications();
 }
 
->>>>>>> dev-Huishun-Hu
 function bindTeacherFeedActions() {
   const feed = byId("jobsFeed");
   feed.addEventListener("click", async event => {
@@ -464,12 +419,6 @@ function bindTeacherFeedActions() {
       return;
     }
 
-<<<<<<< HEAD
-    const withdrawBtn = event.target.closest("[data-withdraw-job]");
-    if (withdrawBtn) {
-      const jobId = withdrawBtn.getAttribute("data-withdraw-job");
-      await withdrawJob(jobId, withdrawBtn);
-=======
     const openEditBtn = event.target.closest("[data-open-edit]");
     if (openEditBtn) {
       openEditForm(openEditBtn.getAttribute("data-open-edit"));
@@ -493,17 +442,11 @@ function bindTeacherFeedActions() {
     if (offlineBtn) {
       const jobId = offlineBtn.getAttribute("data-offline-job");
       await takeOffline(jobId, offlineBtn);
->>>>>>> dev-Huishun-Hu
     }
   });
 
   feed.addEventListener("submit", async event => {
     const form = event.target.closest("[data-publish-form]");
-<<<<<<< HEAD
-    if (!form) return;
-    event.preventDefault();
-    await submitPublishForm(form);
-=======
     if (form) {
       event.preventDefault();
       await submitPublishForm(form);
@@ -514,7 +457,6 @@ function bindTeacherFeedActions() {
       event.preventDefault();
       await submitEditForm(editForm);
     }
->>>>>>> dev-Huishun-Hu
   });
 }
 
@@ -531,10 +473,6 @@ async function reloadTeacherWorkflow() {
 document.addEventListener("DOMContentLoaded", async () => {
   byId("demandForm").addEventListener("submit", submitDemandForm);
   byId("reloadBtn").addEventListener("click", reloadTeacherWorkflow);
-<<<<<<< HEAD
-  bindTeacherFeedActions();
-  await reloadTeacherWorkflow();
-=======
   byId("notificationBtn").addEventListener("click", () => {
     const panel = byId("notificationPanel");
     panel.style.display = panel.style.display === "block" ? "none" : "block";
@@ -547,5 +485,4 @@ document.addEventListener("DOMContentLoaded", async () => {
   bindTeacherFeedActions();
   await reloadTeacherWorkflow();
   await loadNotifications();
->>>>>>> dev-Huishun-Hu
 });
