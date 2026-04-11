@@ -55,8 +55,8 @@ The system ensures that applicants can smoothly complete the entire process from
 4. The system displays a list of available TA jobs with essential information.
 5. The applicant can view detailed job descriptions including requirements, workload, and duration.
 6. The applicant can check application status with clear labels:
-   - Submitted
-   - Under Review
+   - Submitted / Pending Review
+   - Shortlisted
    - Accepted
    - Rejected
 
@@ -72,11 +72,13 @@ The system ensures that applicants can smoothly complete the entire process from
 - **Data Management:**
   - Applicant data (profile + CV path) is stored in a structured format (e.g., JSON).
   - Job data includes module name, requirements, workload, and schedule.
-  - Application records store status values:
-    - Submitted
-    - Under Review
-    - Accepted
-    - Rejected
+  - Application records are persisted with backend status values such as:
+    - `pending`
+    - `viewed`
+    - `shortlisted`
+    - `hired`
+    - `rejected`
+  - The applicant UI maps these backend status values into user-facing labels for status tracking.
 
 - **File Handling:**
   - The system must validate file format and total upload size before upload.
@@ -287,7 +289,7 @@ The scope of this iteration contains two coordinated parts:
    - reset user passwords through admin-only APIs;
    - keep `users.json` and `students.json` synchronized for student accounts.
 
-This provides the shared admin-side control layer needed before later Sprint 2 UI completion. The backend management APIs are implemented in this iteration, while the richer admin UI controls can connect to these APIs in the next frontend completion step.
+This provides the shared admin-side control layer for Sprint 2. In this iteration, both the backend management APIs and the core admin UI integration are implemented, including dashboard loading, workload display, user creation, account deletion, password reset, and recruitment reopen interaction.
 
 **Acceptance Criteria:**
 1. The admin dashboard displays system-level statistics:
@@ -331,7 +333,8 @@ This provides the shared admin-side control layer needed before later Sprint 2 U
 - **Frontend Integration:**
   - `admin.jsp` provides the admin dashboard page shell.
   - `admin.js` loads dashboard statistics, user list, job list, and workload data from `/api/admin/dashboard`.
-  - Frontend create/delete/reset-password forms and buttons can connect directly to the newly added admin APIs in the next UI completion step.
+  - `admin.jsp` and `admin.js` provide create-user form handling and connect delete/reset-password buttons directly to the admin management APIs.
+  - The admin UI refreshes dashboard data after successful management actions and blocks invalid delete actions for the current admin account and the last remaining admin.
 
 - **Validation / Business Rules:**
   - `role` for account creation must be one of: `student`, `teacher`, `admin`.
