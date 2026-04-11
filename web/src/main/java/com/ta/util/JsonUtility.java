@@ -13,13 +13,11 @@ import jakarta.servlet.ServletContext;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.Reader;
 import java.io.Writer;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -100,32 +98,27 @@ public final class JsonUtility {
     }
 
     private static File resolveDataFile(ServletContext context, String fileName) throws IOException {
-        File externalDir = new File(System.getProperty("user.home"), ".ta-recruitment-data");
-        File externalFile = new File(externalDir, fileName);
         String realPath = context.getRealPath(DATA_ROOT + fileName);
-        File runtimeFile = realPath != null ? new File(realPath) : null;
-
-        if (!externalDir.exists()) {
-            Files.createDirectories(externalDir.toPath());
-        }
-
-        if (externalFile.exists()) {
-            return externalFile;
-        }
-
-        if (runtimeFile != null && runtimeFile.exists()) {
-            Files.copy(runtimeFile.toPath(), externalFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            return externalFile;
-        }
-
-        try (InputStream inputStream = context.getResourceAsStream(DATA_ROOT + fileName)) {
-            if (inputStream != null) {
-                Files.copy(inputStream, externalFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            } else {
-                Files.writeString(externalFile.toPath(), "[]", StandardCharsets.UTF_8);
+        if (realPath == null) {
+            // 如果getRealPath返回null，尝试构造路径
+            String contextPath = context.getRealPath("/");
+            if (contextPath != null) {
+                realPath = contextPath + DATA_ROOT.substring(1) + fileName;
             }
         }
+        File dataFile = new File(realPath);
+        File dataDir = dataFile.getParentFile();
 
-        return externalFile;
+        // 确保数据目录存在
+        if (!dataDir.exists()) {
+            Files.createDirectories(dataDir.toPath());
+        }
+
+        // 如果文件不存在，创建空的 JSON 数组文件
+        if (!dataFile.exists()) {
+            Files.writeString(dataFile.toPath(), "[]", StandardCharsets.UTF_8);
+        }
+
+        return dataFile;
     }
 }

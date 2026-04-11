@@ -213,7 +213,7 @@ function renderTeacherJobCard(item) {
         <button class="btn btn-outline" type="button" data-open-edit="${teacherEscapeHtml(item.jobId)}" ${canEdit ? "" : "disabled"}>Edit</button>
         <button class="btn btn-outline" type="button" data-delete-job="${teacherEscapeHtml(item.jobId)}" ${canDelete ? "" : "disabled"}>Delete</button>
         <button class="btn btn-outline" type="button" data-offline-job="${teacherEscapeHtml(item.jobId)}" ${canTakeOffline ? "" : "disabled"}>Take offline</button>
-        <a class="btn btn-outline" href="mo-applications.jsp">Applicants</a>
+        <a class="btn btn-outline" href="mo-applications.jsp?jobId=${teacherEscapeHtml(item.jobId)}">Applicants</a>
       </div>
 
       ${detailBlock}

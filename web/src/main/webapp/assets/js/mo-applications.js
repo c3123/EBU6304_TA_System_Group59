@@ -486,6 +486,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   byId("exportCsvBtn").addEventListener("click", exportCsv);
 
+  // Check URL parameters for jobId filter
+  const urlParams = new URLSearchParams(window.location.search);
+  const jobIdFromUrl = urlParams.get("jobId");
+  if (jobIdFromUrl) {
+    byId("jobIdInput").value = jobIdFromUrl;
+  }
+
   await queryWithFeedback();
   startPolling();
 });
