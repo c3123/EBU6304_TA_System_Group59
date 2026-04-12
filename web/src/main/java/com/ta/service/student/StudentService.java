@@ -285,6 +285,7 @@ public class StudentService {
         item.setStatus(job.getStatus());
         item.setDeadline(job.getDeadline());
         item.setTeacherName(job.getTeacherName());
+        item.setRequirements(job.getRequirements());
         return item;
     }
 

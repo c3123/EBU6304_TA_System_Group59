@@ -1,5 +1,7 @@
 package com.ta.model;
 
+import com.google.gson.annotations.SerializedName;
+
 /**
  * Job posting / demand model used by MO iteration 1.
  *
@@ -28,6 +30,7 @@ public class JobPosting {
     private Boolean published;
     private Boolean withdrawn;
     private String location;
+    @SerializedName(value = "requirements", alternate = {"requirement"})
     private String requirements;
     private String createdAt;
     private String updatedAt;
