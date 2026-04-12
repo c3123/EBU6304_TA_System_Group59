@@ -9,6 +9,7 @@ public class StudentJobItemResponse {
     private String status;
     private String deadline;
     private String teacherName;
+    private String requirements;
 
     public String getId() {
         return id;
@@ -72,5 +73,13 @@ public class StudentJobItemResponse {
 
     public void setTeacherName(String teacherName) {
         this.teacherName = teacherName;
+    }
+
+    public String getRequirements() {
+        return requirements;
+    }
+
+    public void setRequirements(String requirements) {
+        this.requirements = requirements;
     }
 }

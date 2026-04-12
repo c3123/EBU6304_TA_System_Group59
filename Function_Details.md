@@ -354,3 +354,78 @@ This provides the shared admin-side control layer for Sprint 2. In this iteratio
 **Completion Date:** 2026-04-08
 
 ---
+### 3.3 Feature: Applicant Job Application and Management System
+
+**User Stories:**
+
+-**TA_04:** Update CV
+-**TA_06:** Filter Jobs
+-**TA_08:** Apply for Job
+-**TA_10:** Withdraw Application
+-**TA_11:** View Assigned TA Jobs
+
+**Functional Requirement Details**
+
+-**Servlet Implementation**
+
+  -ApplicantCVUpdateServlet (POST /api/applicant/cv/update)
+    Allows applicants to upload a new CV and replace the existing CV file.
+  -ApplicantJobFilterServlet (GET /api/applicant/jobs/filter)
+    Retrieves job listings based on filter criteria such as module name, time, or requirements.
+  -ApplicationSubmitServlet (POST /api/applicant/apply/{jobId})
+    Handles submission of job applications and records them in the system.
+  -ApplicationWithdrawServlet (POST /api/applicant/withdraw/{applicationId})
+    Allows applicants to withdraw submitted applications before acceptance.
+  -ApplicantAssignedJobsServlet (GET /api/applicant/my-jobs)
+    Returns the list of accepted jobs assigned to the applicant.
+
+-**Service Layer**
+
+  -ApplicantProfileService
+    Handles CV updating and validation.
+  -JobFilterService
+    Implements filtering logic based on module name, time, or skills.
+  -ApplicationService
+    Handles application submission, withdrawal, and retrieval of assigned jobs.
+
+-**Data Management**
+  -students.json
+    Stores applicant profile data and CV file paths.
+  -jobs.json
+    Stores job details including module name, schedule, and requirements.
+  -applications.json
+    Stores application records and status values (Submitted, Accepted, Rejected, Withdrawn).
+  -Updating a CV replaces the existing CV path.
+  -Submitting an application creates a new application record.
+  -Withdrawn applications update their status to Withdrawn.
+  -Accepted applications are displayed in My TA Jobs.
+
+-**Frontend Integration**
+
+  -applicantProfile.jsp
+    Provides CV upload and replacement interface.
+  -jobList.jsp
+    Displays available jobs and filtering options.
+  -application.jsp
+    Allows applicants to submit job applications.
+  -myApplications.jsp
+    Displays submitted applications with withdrawal options.
+  -myTAJobs.jsp
+    Displays accepted TA job assignments.
+
+-**Validation / Business Rules**
+
+  -Only PDF files are allowed for CV uploads.
+  -Applicants can apply only once per job.
+  -Applications can only be withdrawn before acceptance.
+  -Multiple filtering criteria can be applied simultaneously.
+  -Only applications with status Accepted appear in My TA Jobs.
+
+-**Session / Access Control**
+
+  -All /api/applicant/* endpoints require an authenticated applicant session.
+  -Non-authenticated users cannot access applicant APIs.
+  -Each operation validates the applicant identity before processing.
+
+**Assignee:** Tianzi Xiong / Fangyu Chu  
+**Completion Date:** 2026-04-11
