@@ -133,3 +133,47 @@ The current intermediate version includes:
 | **TA** | Profile Setup, Job List Viewing | Tianzi Xiong, Fangyu Chu | Must Have |
 | **MO** | Job Posting Form, My Jobs Dashboard | Wanhe Ji, Huishun Hu | Must Have |
 
+---
+
+## 3. Sprint 2 Member Task Allocation
+### **Group A: Administrator Module & Shared Backend Integration**
+**Members:** Sihan Chen & Tianxiao Ma
+
+* **Administrator Dashboard & Monitoring:**
+    * Extend the administrator module from a basic dashboard into a system-wide management interface.
+    * Display overview statistics, workload monitoring, user lists, and job lists based on the shared backend JSON data.
+* **Administrator Workflow & Data Control:**
+    * Implement administrator-side demand review and recruitment reopen workflow.
+    * Implement admin user management features including create user, delete user, and reset password.
+    * Keep `users.json`, `students.json`, `jobs.json`, and `applications.json` consistent across shared backend flows.
+
+### **Group B: TA (Applicant) Workflow Extension**
+**Members:** Tianzi Xiong & Fangyu Chu
+
+* **Applicant Profile & Supporting Documents:**
+    * Extend the applicant profile workflow with persistent profile updates and supporting document management.
+    * Implement attachment upload, deletion, and application-time document selection.
+* **Application Workflow Extension:**
+    * Extend the student-side recruitment workflow with job application submission, withdrawal, and status tracking.
+    * Improve the applicant UI so that students can browse jobs, manage applications, and review recruitment progress more clearly.
+
+### **Group C: MO (Module Organiser) Workflow Extension**
+**Members:** Wanhe Ji & Huishun Hu
+
+* **Demand / Job Lifecycle Control:**
+    * Extend MO-side recruitment management with demand submission, approval tracking, job publishing, editing, withdrawal, and controlled offline flow.
+    * Maintain lifecycle constraints for published jobs and active-application cases.
+* **Applicant Review & Hiring Operations:**
+    * Extend the applicants workflow with detail viewing, status updates, final hiring confirmation, and recruitment closure.
+    * Add MO notifications and hiring-history-related workflow support for more complete recruitment operation.
+
+---
+
+### **Summary Table for Sprint 2**
+
+| Category | Tasks | Assignees | Priority |
+| :--- | :--- | :--- | :--- |
+| **Admin / Shared** | Admin dashboard, workload, demand review, user management, shared data integration | Sihan Chen, Tianxiao Ma | Must Have |
+| **TA Extension** | Profile persistence, attachments, job application, withdrawal, status tracking | Tianzi Xiong, Fangyu Chu | Must Have |
+| **MO Extension** | Demand lifecycle, applicant review, hiring confirmation, notifications | Wanhe Ji, Huishun Hu | Must Have |
+
