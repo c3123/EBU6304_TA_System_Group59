@@ -1,11 +1,13 @@
-# Functional Specification: Sprint 1 and Sprint 2
+# Functional Specification: Sprint 1, Sprint 2 and Sprint 3
 
 ## 1. Introduction
-This document specifies the detailed functional requirements for Sprint 1 and Sprint 2 of the BUPT International School TA Recruitment System.
+This document specifies the detailed functional requirements for Sprint 1, Sprint 2 and Sprint 3 of the BUPT International School TA Recruitment System.
 
 Sprint 1 focuses on the core recruitment foundation, including authentication, applicant profile management, and the basic Module Organiser recruitment workflow.
 
 Sprint 2 extends the system with administrator-side management and the advanced Module Organiser operational workflow built on top of the Sprint 1 foundation.
+
+Sprint 3 focuses on workflow optimization, reporting, self-service account maintenance, historical visibility, and non-functional improvement for final product delivery.
 
 ## 2. Sprint 1 Detailed Feature Specifications
 
@@ -429,3 +431,320 @@ This provides the shared admin-side control layer for Sprint 2. In this iteratio
 
 **Assignee:** Tianzi Xiong / Fangyu Chu  
 **Completion Date:** 2026-04-11
+
+---
+
+## 4. Sprint 3 Detailed Feature Specifications
+
+### 4.1 Feature: Administrator Sprint 3 Monitoring and Reporting Extension
+
+**User Stories:**
+- **ADM_04:** As an Admin, I want to compare each TA's actual workload with a configurable maximum threshold and mark overloaded TAs with a warning label, so that I can identify risk cases immediately.
+- **ADM_05:** As an Admin, I want to generate and export a weekly recruitment summary report, so that I can report hiring progress to school management.
+- **ADM_07:** As an Admin, I want to filter jobs by department or status, so that I can review targeted vacancy groups more efficiently.
+
+**Description:**
+This Sprint 3 administrator extension improves operational visibility and reporting on top of the Sprint 2 dashboard foundation.
+
+The scope of this iteration contains three connected capabilities:
+
+1. **Configurable workload warning control**
+   - define and save a global weekly workload threshold;
+   - compare hired workload totals against the threshold in real time;
+   - highlight overloaded TAs clearly in the workload view.
+
+2. **Recruitment summary reporting**
+   - generate weekly summary output from current jobs and hiring data;
+   - export report content in plain-text-compatible file formats;
+   - support management-facing recruitment progress review.
+
+3. **Focused job filtering**
+   - filter job records by department and recruitment status;
+   - narrow dashboard tables/cards to a target subset;
+   - make large job lists easier to manage during final delivery.
+
+**Acceptance Criteria:**
+1. The admin can define a global workload threshold value and save it persistently.
+2. The workload page compares each TA's current weekly hours against the saved threshold.
+3. TAs whose workload exceeds the threshold are marked with a visible warning label.
+4. The admin can trigger export of a weekly recruitment report in `.txt` or `.csv` format.
+5. The exported report includes job title, organiser, hiring status, filled slots, and unfilled slots.
+6. The admin can filter job records by department and status without reloading the whole page manually.
+7. Filter results refresh both summary and detailed job views consistently.
+
+**Functional Requirement Details:**
+
+- **Servlet Implementation (new/extended):**
+  - `AdminWorkloadSettingsServlet` (`GET/POST /api/admin/settings/workload-threshold`) for loading and saving the global workload threshold.
+  - `AdminRecruitmentReportExportServlet` (`GET /api/admin/reports/weekly`) for generating downloadable weekly recruitment summaries.
+  - `AdminDashboardServlet` (`GET /api/admin/dashboard`) extended to support optional filter parameters such as `department` and `status`.
+
+- **Service Layer (new/extended):**
+  - `AdminDashboardService`:
+    - load dashboard data with filter-aware job aggregation;
+    - compare workload totals against the configured threshold;
+    - map workload records into normal / warning states.
+  - `AdminReportService`:
+    - collect weekly recruitment statistics;
+    - format export content as text or CSV;
+    - ensure exported output stays compatible with file-based submission rules.
+
+- **Data Management:**
+  - `applications.json` and `jobs.json` remain the primary source for workload and hiring statistics.
+  - A new lightweight settings file such as `system_settings.json` stores the workload threshold persistently.
+  - Exported report files are generated from current runtime data and do not require database support.
+  - Department metadata, when used for filtering, must be stored in the job record structure consistently.
+
+- **Frontend Integration:**
+  - `admin.jsp` adds:
+    - threshold setting input;
+    - report export entry;
+    - job filter controls.
+  - `admin.js` adds:
+    - threshold save/load interaction;
+    - filter-driven dashboard refresh;
+    - export trigger and success/failure feedback.
+
+- **Validation / Business Rules:**
+  - The workload threshold must be a positive numeric value.
+  - Export requests must only include jobs and hiring records visible to administrators.
+  - Filter values must be validated against supported department and status options.
+  - Empty filter results must still return a successful response with an empty dataset.
+
+- **Session / Access Control:**
+  - All `/api/admin/*` routes remain admin-only.
+  - Non-admin users must not be able to read or modify threshold settings or export reports.
+
+**Assignee:**
+**Completion Date:**
+
+---
+
+### 4.2 Feature: User Self-Service Password Change System
+
+**User Stories:**
+- **ALL_03:** As a user, I want to change my password, so that I can keep my account secure without relying on an administrator.
+
+**Description:**
+This Sprint 3 shared feature adds self-service credential maintenance for authenticated users.
+
+The feature allows users from different roles to update their own password through a common account endpoint while preserving current session-based access control. It complements the administrator reset capability from Sprint 2 by adding a normal user-owned password management flow.
+
+**Acceptance Criteria:**
+1. An authenticated user can submit their current password and a new password.
+2. The system validates the current password before making any change.
+3. The new password is written back to `users.json` successfully.
+4. The user receives a clear success or failure message after submission.
+5. Invalid old passwords are rejected without changing stored credentials.
+
+**Functional Requirement Details:**
+
+- **Servlet Implementation (new):**
+  - `ChangePasswordServlet` (`POST /api/account/change-password`) for authenticated self-service password updates.
+
+- **Service Layer (new):**
+  - `AccountService`:
+    - verify current user identity from session;
+    - validate old password;
+    - apply the password update to the matching user record.
+
+- **Data Management:**
+  - `users.json` remains the source of truth for credential records.
+  - Password changes update the current user's existing record only.
+  - No extra persistence file is required for this feature.
+
+- **Frontend Integration:**
+  - Each role portal may expose a common account settings entry or inline password-change form.
+  - Shared frontend logic should submit old/new password values to the common account API and show validation feedback.
+
+- **Validation / Business Rules:**
+  - `oldPassword`, `newPassword`, and confirmation input are required.
+  - The new password must be different from the old password.
+  - Blank or invalid password changes must be rejected with a specific error message.
+
+- **Session / Access Control:**
+  - Only authenticated users can call `/api/account/change-password`.
+  - Users can only change their own password and cannot modify another account through this endpoint.
+
+**Assignee:**
+**Completion Date:**
+
+---
+
+### 4.3 Feature: Performance and Loading Experience Enhancement
+
+**User Stories:**
+- **NFR_01:** As a stakeholder, I want the system to load file-based data quickly and provide loading feedback, so that users do not experience noticeable lag during normal operation.
+
+**Description:**
+This Sprint 3 non-functional feature improves system responsiveness and user feedback for file-based workflows.
+
+The goal is to keep the application usable under realistic project data volume while making loading, refresh, and export operations visibly understandable to users. The improvement should support the final demonstration, testing tasks, and day-to-day use of the file-based architecture.
+
+**Acceptance Criteria:**
+1. Normal dashboard and list-loading operations complete within an acceptable short delay under demonstration-scale data volume.
+2. Long-running file reads or exports show a clear loading or progress state on the frontend.
+3. Large or empty datasets do not cause the interface to freeze or become unresponsive.
+4. Performance-related improvements are documented and can be demonstrated during final delivery.
+
+**Functional Requirement Details:**
+
+- **Backend Optimization Scope:**
+  - reduce repeated file reads where safe within a single request flow;
+  - keep JSON parsing and response mapping simple and predictable;
+  - avoid unnecessary duplicate aggregation passes on jobs, users, and applications.
+
+- **Frontend Integration:**
+  - key pages such as `student.jsp`, `teacher.jsp`, `mo-applications.jsp`, and `admin.jsp` must display loading, empty, and error states clearly.
+  - export and report actions must show in-progress feedback until the operation completes.
+  - periodic refresh logic must avoid disruptive re-rendering of user-expanded content where possible.
+
+- **Testing / Verification:**
+  - manual response-time checks should be performed for login, dashboard loading, job browsing, application listing, and export flows.
+  - regression checks should confirm that optimization changes do not alter business logic or access control.
+  - test evidence should be recorded for the final report and demonstration preparation.
+
+- **Data Management:**
+  - optimization must remain compatible with the required plain-text / JSON persistence approach.
+  - no database, cache server, or heavyweight framework dependency may be introduced.
+
+**Assignee:**
+**Completion Date:**
+
+---
+
+### 4.4 Feature: Module Organiser Sprint 3 Productivity and Review Enhancement
+
+**User Stories:**
+- **MO_05:** As a Module Organiser (MO), I want to mark applicants as shortlisted, rejected, or pending and add evaluation notes, so that I can track review decisions consistently.
+- **MO_08:** As a Module Organiser (MO), I want to view a history list of all posted TA jobs, so that I can trace past recruitment and reuse job information later.
+- **MO_09:** As a Module Organiser (MO), I want to export my applicant list as a CSV/JSON file, so that I can review candidate information offline.
+
+**Description:**
+This Sprint 3 MO feature set focuses on review productivity, historical visibility, and offline analysis support.
+
+The scope of this iteration contains three coordinated parts:
+
+1. **Application review enhancement**
+   - support richer review-state management;
+   - store organiser-side evaluation notes;
+   - allow status-based filtering and batch-oriented review workflow.
+
+2. **Posted job history**
+   - show current and past job records in a unified history view;
+   - expose status, applicant count, hire count, publish time, and deadline;
+   - support quick reuse of historical job information for future recruitment cycles.
+
+3. **Applicant data export**
+   - export current or filtered applicant lists;
+   - support plain-text-compatible output formats such as CSV / JSON;
+   - improve offline review and evidence preparation.
+
+**Acceptance Criteria:**
+1. The MO can mark applicant status as shortlisted, rejected, or pending/viewed through the application page.
+2. The MO can save a private evaluation note for each applicant, and the note persists after refresh.
+3. The application list can be filtered by review status.
+4. The MO can open a history list of posted jobs sorted by release time and see summary metadata for each job.
+5. The MO can open historical job details and review related applicant/hiring summary data.
+6. The MO can export all applicants or a filtered subset in CSV or JSON format.
+7. Exported files include applicant name, applicant ID, major/programme, application time, status, and skills.
+
+**Functional Requirement Details:**
+
+- **Servlet Implementation (new/extended):**
+  - `MoApplicationStatusServlet` (`POST /api/mo/applications/status`) extended to support note persistence and batch review operations.
+  - `MoJobHistoryServlet` (`GET /api/mo/jobs/history`) for posted-job history list and summary retrieval.
+  - `MoApplicantExportServlet` (`GET /api/mo/applications/export`) for CSV / JSON export generation.
+
+- **Service Layer (new/extended):**
+  - `MoApplicationService`:
+    - persist organiser-side review notes;
+    - filter and group application records by status;
+    - support consistent review-state updates.
+  - `MoJobService`:
+    - provide history-oriented job summaries;
+    - prepare reusable job metadata for future reposting.
+  - `MoExportService`:
+    - transform visible applicant data into downloadable CSV / JSON output;
+    - keep export content aligned with current MO ownership rules.
+
+- **Data Management:**
+  - `applications.json` is extended to store MO-side evaluation note fields and review timestamps where needed.
+  - `jobs.json` remains the source of truth for current and historical job metadata.
+  - Exported files are generated dynamically and do not replace source JSON data.
+
+- **Frontend Integration:**
+  - `mo-applications.jsp` + `mo-applications.js` add:
+    - status filter controls;
+    - note entry / autosave or save action;
+    - export trigger for current applicant scope.
+  - `teacher.jsp` + `teacher.js` or a dedicated history page add:
+    - posted-job history list;
+    - job summary view;
+    - quick reuse / copy entry for historical jobs.
+
+- **Validation / Business Rules:**
+  - Evaluation notes are organiser-visible and admin-visible only; they are not shown to applicants.
+  - Export results must include only jobs owned by the current MO.
+  - Batch review actions must preserve ownership checks and recruitment-closed rules.
+  - Historical records must remain readable even after recruitment is closed.
+
+- **Session / Access Control:**
+  - All `/api/mo/*` endpoints require authenticated MO identity.
+  - MOs can only review, export, and access history for their own jobs and applications.
+
+**Assignee:**
+**Completion Date:**
+
+---
+
+### 4.5 Feature: Applicant Sprint 3 Assignment and Schedule Visibility
+
+**User Stories:**
+- **TA_12:** As an Applicant (TA), I want to view my assigned TA jobs and schedule, so that I can understand workload and avoid conflicts with my classes.
+
+**Description:**
+This Sprint 3 applicant feature extends the student-side workflow beyond application tracking into post-hiring visibility.
+
+The feature provides a dedicated view of accepted jobs, associated schedule information, and workload-related summary so that hired students can understand their confirmed commitments clearly after recruitment decisions are finalized.
+
+**Acceptance Criteria:**
+1. Accepted jobs are displayed in a dedicated applicant-side view.
+2. Each accepted job shows key schedule/workload information such as module, organiser, weekly hours, and time arrangement.
+3. Only applications with a final accepted/hired state appear in the assigned-jobs view.
+4. The assigned-jobs page updates correctly after hiring results change.
+
+**Functional Requirement Details:**
+
+- **Servlet Implementation (new/extended):**
+  - `StudentAssignedJobsServlet` (`GET /api/student/my-jobs`) for retrieving hired job assignments and schedule-related data.
+  - `StudentApplicationsServlet` may be extended to expose a clearer separation between active applications and accepted assignments if needed.
+
+- **Service Layer (new/extended):**
+  - `StudentService`:
+    - collect applications whose status is `hired`;
+    - join hired application records with corresponding job metadata;
+    - map schedule, module, organiser, and weekly-hour information into a student-facing response.
+
+- **Data Management:**
+  - `applications.json` provides the hiring outcome through final application status.
+  - `jobs.json` provides module, organiser, workload, and schedule/time-slot information for assigned jobs.
+  - Schedule-related fields must remain consistent across job posting and assigned-job display.
+
+- **Frontend Integration:**
+  - `student.jsp` + `student.js` add a dedicated assigned-jobs or schedule panel.
+  - The applicant UI should distinguish clearly between:
+    - active applications still under review;
+    - confirmed TA assignments already accepted.
+
+- **Validation / Business Rules:**
+  - Only final hired assignments are shown in the assigned-jobs view.
+  - Withdrawn, rejected, or pending applications must not appear in the assigned-jobs list.
+  - If no hired jobs exist, the UI should show a clear empty state instead of a broken table or panel.
+
+- **Session / Access Control:**
+  - All `/api/student/*` routes require authenticated student identity.
+  - Students can only view their own assigned jobs and schedule data.
+
+**Assignee:**
+**Completion Date:**
