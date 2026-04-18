@@ -1,6 +1,7 @@
 package com.ta.web.mo;
 
 import com.ta.constant.ErrorCodes;
+import com.ta.dto.mo.MoApplicationBatchStatusRequest;
 import com.ta.service.mo.MoApplicationService;
 import com.ta.service.mo.MoBusinessException;
 import jakarta.servlet.ServletException;
@@ -11,15 +12,14 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 /**
- * Route contract: GET /api/mo/applications?jobId={optional}
- * Responsibility: list applications for current MO's own jobs only.
+ * POST /api/mo/applications/batch/status — batch update status (transactional single save).
  */
-@WebServlet(name = "MoApplicationListServlet", urlPatterns = {"/api/mo/applications"})
-public class MoApplicationListServlet extends MoBaseServlet {
+@WebServlet(name = "MoApplicationBatchStatusServlet", urlPatterns = {"/api/mo/applications/batch/status"})
+public class MoApplicationBatchStatusServlet extends MoBaseServlet {
     private final MoApplicationService moApplicationService = new MoApplicationService();
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         try {
             String moId = getMoIdFromSession(req);
             if (moId == null || moId.isBlank()) {
@@ -27,9 +27,18 @@ public class MoApplicationListServlet extends MoBaseServlet {
                 return;
             }
 
-            String jobId = req.getParameter("jobId");
-            String status = req.getParameter("status");
-            Object data = moApplicationService.listApplications(getServletContext(), moId, jobId, status);
+            MoApplicationBatchStatusRequest body = readJson(req, MoApplicationBatchStatusRequest.class);
+            if (body == null || body.getIds() == null || body.getIds().isEmpty()) {
+                writeError(resp, HttpServletResponse.SC_BAD_REQUEST, ErrorCodes.VALIDATION_ERROR, "ids must be a non-empty array.");
+                return;
+            }
+
+            Object data = moApplicationService.batchUpdateApplicationStatus(
+                    getServletContext(),
+                    moId,
+                    body.getIds(),
+                    body.getStatus()
+            );
             writeSuccess(resp, data);
         } catch (MoBusinessException ex) {
             writeError(resp, ex.getHttpStatus(), ex.getCode(), ex.getMessage());
