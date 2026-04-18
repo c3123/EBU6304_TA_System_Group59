@@ -227,11 +227,6 @@
   </div>
   <div id="notificationPanel" class="mo-notification-panel"></div>
 
-  <div class="mo-scope-note" role="note">
-    <strong>Iteration 1 scope.</strong>
-    This page covers the backend functions completed by A side: demand creation, approval progress viewing, approved-job publishing, and withdraw restrictions.
-  </div>
-
   <div id="globalNotice" class="notice" style="margin-bottom:16px"></div>
 
   <section class="mo-job-layout">
