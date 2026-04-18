@@ -1,0 +1,9 @@
+[
+  {
+    "userId": "stu001",
+    "studentId": "201234567",
+    "name": "Alex Chen",
+    "email": "student@demo.com",
+    "programme": "MSc Computer Science"
+  }
+]

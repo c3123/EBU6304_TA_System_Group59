@@ -1,0 +1,43 @@
+[
+  {
+    "id": "101",
+    "teacherId": "mo001",
+    "teacherName": "Dr. Smith",
+    "moduleCode": "EBU6304",
+    "title": "Software Engineering Teaching Assistant",
+    "hours": 10,
+    "positions": 2,
+    "status": "open",
+    "deadline": "2026-04-20"
+  },
+  {
+    "id": "102",
+    "teacherId": "mo001",
+    "teacherName": "Dr. Smith",
+    "moduleCode": "Machine Learning Teaching Assistant",
+    "title": "Machine Learning Teaching Assistant",
+    "hours": 12,
+    "positions": 2,
+    "status": "open",
+    "deadline": "2026-04-25",
+    "hourMin": 8,
+    "hourMax": 12,
+    "updatedAt": "2026-04-11T05:57:36.930699700Z"
+  },
+  {
+    "id": "103",
+    "teacherId": "mo001",
+    "teacherName": "Dr. Smith",
+    "moduleCode": "Database Systems Teaching Assistant",
+    "title": "Database Systems Teaching Assistant",
+    "hours": 8,
+    "positions": 2,
+    "hourMin": 6,
+    "hourMax": 9,
+    "approvalStatus": "approved",
+    "published": false,
+    "withdrawn": false,
+    "createdAt": "2026-04-11T08:49:37.510252700Z",
+    "updatedAt": "2026-04-11T08:49:51.834125Z"
+  }
+]

@@ -1,0 +1,234 @@
+# EBU6304_TA_System_Group59
+
+| GitHub Username | QMID |
+| --- | --- |
+| Chudadi-cfy | 231226613 |
+| J-3469 | 231226598 |
+| yeahyeah66 | 231226288 |
+| qiaolezi2006-rgb | 231226299 |
+| MA0204 | 231226587 |
+| c3123 | 231226624 |
+
+---
+
+## Quick Start
+This project uses a standard Maven Servlet/JSP web module under `web/`.
+
+Project structure:
+
+```text
+web/
+|- pom.xml
+`- src/
+   `- main/
+      |- java/
+      `- webapp/
+```
+
+Build the project:
+
+```powershell
+mvn -f web/pom.xml clean package
+```
+
+The WAR file will be generated at:
+
+```text
+web/target/web.war
+```
+
+Deploy `web/target/web.war` to Tomcat 10.1+ and open:
+
+```text
+http://localhost:8080/web/
+```
+
+## Demo Accounts
+
+Use the following accounts for demonstration:
+
+| Role | Login | Password |
+| --- | --- | --- |
+| Student | `student@demo.com` | `demo123` |
+| Teacher / MO | `teacher@demo.com` | `demo123` |
+| Admin | `admin@demo.com` | `demo123` |
+
+## Current Version Notes
+
+- Sprint 1 release tag: `v1.0-sprint1`
+- Current repository state is `Sprint 3 development in progress`
+- Sprint 1 and Sprint 2 core workflows are already implemented and remain the current functional baseline
+- Sprint 3 work now focuses on workflow optimization, JSON data design, reporting, and final acceptance preparation
+
+## Current Features
+
+- Session-based login and logout with role-based redirection
+- JSON-based persistence for users, students, jobs, applications, notifications, and hiring history
+- Student workflow for profile management, supporting document upload, job browsing, application submission, and application tracking
+- MO workflow for demand creation, approval tracking, job publishing, applicant review, hiring actions, and recruitment lifecycle control
+- Admin workflow for dashboard overview, workload monitoring, demand review, recruitment reopen, and user management
+
+## Sprint 3 Focus
+
+- Admin: workload threshold setting, weekly report export, and job filtering
+- Shared: self-service password change
+- MO: applicant review notes, posted-job history, and applicant export
+- TA: assigned jobs and schedule visibility
+- Non-functional: performance, loading-state polish, and acceptance-test preparation
+
+## Runtime Data Storage
+
+The application uses a single JSON-file storage location under `web/src/main/webapp/WEB-INF/data`.
+
+- Source of truth:
+  - `web/src/main/webapp/WEB-INF/data/users.json`
+  - `web/src/main/webapp/WEB-INF/data/students.json`
+  - `web/src/main/webapp/WEB-INF/data/jobs.json`
+  - `web/src/main/webapp/WEB-INF/data/applications.json`
+  - `web/src/main/webapp/WEB-INF/data/notifications.json`
+  - `web/src/main/webapp/WEB-INF/data/hiring_history.json`
+  - `web/src/main/webapp/WEB-INF/data/system_settings.json`
+- The backend reads and writes these files directly through `JsonUtility`.
+- No external runtime copy and no database are used.
+
+Initialization rules:
+
+- Existing files under `WEB-INF/data` are used directly.
+- If a required JSON file is missing, the application creates it automatically.
+- List-based files are initialized as `[]`.
+- `system_settings.json` is initialized as:
+
+```json
+{
+  "workloadThresholdHours": 20,
+  "updatedAt": "ISO-8601"
+}
+```
+
+- To reset demo data, edit or restore the files under `web/src/main/webapp/WEB-INF/data` directly.
+
+## Project Docs
+
+- Sprint 3 minimal interface and data design: [docs/Sprint3_Minimal_Design.md](docs/Sprint3_Minimal_Design.md)
+- Acceptance checklist for hand test and demo rehearsal: [docs/Acceptance_Test_Checklist.md](docs/Acceptance_Test_Checklist.md)
+
+## 1. Project Introduction 
+### Project Overview
+The **International School Teaching Assistant Recruitment System** is developed for BUPT International School to streamline their current manual, Excel-based TA recruitment process\. This project follows **Agile methodologies**, delivering functional software increments through multiple sprints. 
+
+### Technical Stack
+- **Backend:** Lightweight Java Servlet and JSP.
+- **Data Persistence:** Plain text and JSON file storage (No database allowed).
+- **Methodology:** Scrum/Agile development with continuous feedback.
+
+### Sprint 1 Goal
+To establish the system's foundational architecture and implement core functions including user authentication, TA profile management, and basic job posting for Module Organisers.
+
+### Sprint 2 Progress
+Sprint 2 extends the system with administrator-side control and more complete recruitment operations.
+
+The current intermediate version includes:
+- administrator dashboard and workload monitoring
+- administrator demand review
+- administrator user creation, deletion, and password reset
+- expanded MO workflow for applicant review, hiring decisions, and job lifecycle control
+- expanded student workflow for profile persistence, attachments, and application management
+
+### Sprint 3 Development Status
+Sprint 3 extends the current baseline toward final delivery readiness.
+
+The current Sprint 3 development scope includes:
+- documentation synchronization for runtime storage and interface planning
+- single-location JSON persistence under `WEB-INF/data`
+- minimal interface and data design for the remaining Sprint 3 stories
+- acceptance test checklist preparation for final demo rehearsal and regression checking
+
+---
+
+## 2. Sprint 1 Member Task Allocation
+### **Group A: Core Architecture & Authentication**
+**Members:** Sihan Chen & Tianxiao Ma
+
+* **System Architecture Setup:**
+    * Design and implement the project directory structure following the MVC pattern for a Java Servlet application.
+    * Configure the deployment environment (e.g., Tomcat server setup).
+* **JSON Data Utility:**
+    * Develop a centralized `JSONUtility` class to handle all file I/O operations for `users.json`, `students.json`, and `jobs.json`.
+* **Authentication Functionality:**
+    * Implement `LoginServlet` and `LogoutServlet` to verify user credentials against the JSON data.
+    * Create the **Login Page (JSP)** with role-based redirection logic (TA, MO, or Admin).
+
+### **Group B: TA (Applicant) Module**
+**Members:** Tianzi Xiong & Fangyu Chu
+
+* **TA Profile Management:**
+    * Design the **Applicant Profile Page** where students can enter and edit their basic information (Name, Student ID, Major, etc.).
+    * Implement the backend logic to save and update student profiles in `students.json`.
+* **Job Browsing (Basic):**
+    * Develop the **Available Jobs Page** for TAs to view a list of open recruitment positions.
+    * Implement the data retrieval logic to read open job vacancies from `jobs.json`.
+
+### **Group C: MO (Module Organiser) Module**
+**Members:** Wanhe Ji & Huishun Hu
+
+* **Job Posting Functionality:**
+    * Design the **Job Creation Form** for MOs to input module details, required skills, workload, and deadlines.
+    * Implement the backend logic to validate inputs and append new job records to `jobs.json`.
+* **MO Job Dashboard (Basic):**
+    * Create a **Job Management Page** specifically for MOs to view and track the jobs they have personally posted.
+    * Develop basic job status toggling (e.g., setting a job to "Open" or "Paused").
+
+---
+
+### **Summary Table for Sprint 1**
+
+| Category | Tasks | Assignees | Priority |
+| :--- | :--- | :--- | :--- |
+| **Core** | Architecture, JSON Utility, Login/Logout | Sihan Chen, Tianxiao Ma | Must Have |
+| **TA** | Profile Setup, Job List Viewing | Tianzi Xiong, Fangyu Chu | Must Have |
+| **MO** | Job Posting Form, My Jobs Dashboard | Wanhe Ji, Huishun Hu | Must Have |
+
+---
+
+## 3. Sprint 2 Member Task Allocation
+### **Group A: Administrator Module & Shared Backend Integration**
+**Members:** Sihan Chen & Tianxiao Ma
+
+* **Administrator Dashboard & Monitoring:**
+    * Extend the administrator module from a basic dashboard into a system-wide management interface.
+    * Display overview statistics, workload monitoring, user lists, and job lists based on the shared backend JSON data.
+* **Administrator Workflow & Data Control:**
+    * Implement administrator-side demand review and recruitment reopen workflow.
+    * Implement admin user management features including create user, delete user, and reset password.
+    * Keep `users.json`, `students.json`, `jobs.json`, and `applications.json` consistent across shared backend flows.
+
+### **Group B: TA (Applicant) Workflow Extension**
+**Members:** Tianzi Xiong & Fangyu Chu
+
+* **Applicant Profile & Supporting Documents:**
+    * Extend the applicant profile workflow with persistent profile updates and supporting document management.
+    * Implement attachment upload, deletion, and application-time document selection.
+* **Application Workflow Extension:**
+    * Extend the student-side recruitment workflow with job application submission, withdrawal, and status tracking.
+    * Improve the applicant UI so that students can browse jobs, manage applications, and review recruitment progress more clearly.
+
+### **Group C: MO (Module Organiser) Workflow Extension**
+**Members:** Wanhe Ji & Huishun Hu
+
+* **Demand / Job Lifecycle Control:**
+    * Extend MO-side recruitment management with demand submission, approval tracking, job publishing, editing, withdrawal, and controlled offline flow.
+    * Maintain lifecycle constraints for published jobs and active-application cases.
+* **Applicant Review & Hiring Operations:**
+    * Extend the applicants workflow with detail viewing, status updates, final hiring confirmation, and recruitment closure.
+    * Add MO notifications and hiring-history-related workflow support for more complete recruitment operation.
+
+---
+
+### **Summary Table for Sprint 2**
+
+| Category | Tasks | Assignees | Priority |
+| :--- | :--- | :--- | :--- |
+| **Admin / Shared** | Admin dashboard, workload, demand review, user management, shared data integration | Sihan Chen, Tianxiao Ma | Must Have |
+| **TA Extension** | Profile persistence, attachments, job application, withdrawal, status tracking | Tianzi Xiong, Fangyu Chu | Must Have |
+| **MO Extension** | Demand lifecycle, applicant review, hiring confirmation, notifications | Wanhe Ji, Huishun Hu | Must Have |
+
