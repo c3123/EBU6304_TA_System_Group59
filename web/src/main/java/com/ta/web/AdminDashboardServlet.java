@@ -82,13 +82,13 @@ public class AdminDashboardServlet extends HttpServlet {
         Map<String, Integer> jobHoursById = new LinkedHashMap<>();
         for (JobPosting job : jobs) {
             if (job.getId() != null) {
-                jobHoursById.put(job.getId(), Math.max(job.getHours(), 0));
+                jobHoursById.put(job.getId(), estimateWeeklyHours(job));
             }
         }
 
         Map<String, AdminDashboardWorkloadItemResponse> workloadByStudent = new LinkedHashMap<>();
         for (ApplicationRecord app : applications) {
-            if (!"hired".equalsIgnoreCase(app.getStatus())) {
+            if (!isCountedApplication(app)) {
                 continue;
             }
             if (app.getStudentId() == null || app.getStudentId().isBlank()) {
@@ -112,6 +112,39 @@ public class AdminDashboardServlet extends HttpServlet {
         List<AdminDashboardWorkloadItemResponse> items = new ArrayList<>(workloadByStudent.values());
         items.sort(Comparator.comparingInt(AdminDashboardWorkloadItemResponse::getWeeklyHours).reversed());
         return items;
+    }
+
+    /**
+     * Count active applications that still represent future workload.
+     * Rejected applications are excluded.
+     */
+    private boolean isCountedApplication(ApplicationRecord app) {
+        if (app == null || !app.isActive()) {
+            return false;
+        }
+        return !"rejected".equalsIgnoreCase(app.getStatus());
+    }
+
+    /**
+     * For ranged hours, use the midpoint value.
+     */
+    private int estimateWeeklyHours(JobPosting job) {
+        if (job == null) {
+            return 0;
+        }
+
+        Integer hourMin = job.getHourMin();
+        Integer hourMax = job.getHourMax();
+        if (hourMin != null && hourMax != null) {
+            return Math.max(Math.round((hourMin + hourMax) / 2.0f), 0);
+        }
+        if (hourMin != null) {
+            return Math.max(hourMin, 0);
+        }
+        if (hourMax != null) {
+            return Math.max(hourMax, 0);
+        }
+        return Math.max(job.getHours(), 0);
     }
 
     private void writeApi(HttpServletResponse resp,

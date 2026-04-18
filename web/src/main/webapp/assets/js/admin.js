@@ -213,7 +213,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               <em class="tag ${tag.cls}">${tag.label}</em>
             </div>
           </div>
-          <p class="admin-list-meta">Hired Jobs: ${escapeHtml(String(item.hiredCount))}</p>
+          <p class="admin-list-meta">Active Applications: ${escapeHtml(String(item.hiredCount))}</p>
         </article>
       `;
     }).join("") || `<div class="card"><p class="admin-empty-text">No hired records yet.</p></div>`;

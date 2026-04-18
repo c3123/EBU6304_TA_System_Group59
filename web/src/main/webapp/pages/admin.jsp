@@ -94,7 +94,7 @@
         <h3 class="admin-subtitle">Workload Monitoring (Table)</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Student ID</th><th>Name</th><th>Hired Jobs</th><th>Weekly Hours</th></tr></thead>
+            <thead><tr><th>Student ID</th><th>Name</th><th>Active Applications</th><th>Weekly Hours</th></tr></thead>
             <tbody id="adminWorkloadBody"></tbody>
           </table>
         </div>
