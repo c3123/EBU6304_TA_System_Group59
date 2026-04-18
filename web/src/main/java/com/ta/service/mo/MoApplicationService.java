@@ -7,6 +7,7 @@ import com.ta.dto.mo.MoApplicationListItemResponse;
 import com.ta.dto.mo.MoApplicationListResponse;
 import com.ta.model.ApplicationRecord;
 import com.ta.model.Attachment;
+import com.ta.model.HiringHistoryRecord;
 import com.ta.model.JobPosting;
 import com.ta.model.StudentProfile;
 import com.ta.util.JsonUtility;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -249,6 +251,9 @@ public class MoApplicationService {
             }
 
             applyMoApplicationStatusTransition(record, job, normalized);
+            if ("hired".equals(normalized)) {
+                appendManualHireHistory(context, moId, record);
+            }
             JsonUtility.saveApplications(context, applications);
 
             MoApplicationListItemResponse item = toListItem(record);
@@ -529,6 +534,21 @@ public class MoApplicationService {
         }
 
         record.setStatus(normalized);
+    }
+
+    private void appendManualHireHistory(ServletContext context, String moId, ApplicationRecord hiredRecord) throws IOException {
+        List<HiringHistoryRecord> history = JsonUtility.loadHiringHistory(context);
+        HiringHistoryRecord record = new HiringHistoryRecord();
+        record.setId("hist_" + UUID.randomUUID().toString().replace("-", ""));
+        record.setAction("manual_hire");
+        record.setJobId(hiredRecord.getJobId());
+        record.setMoId(moId);
+        record.setSubmittedAt(Instant.now().toString());
+        record.setHiredApplicationIds(List.of(hiredRecord.getId()));
+        String studentName = hiredRecord.getStudentName() == null ? hiredRecord.getStudentId() : hiredRecord.getStudentName();
+        record.setHiredStudentNames(List.of(studentName));
+        history.add(record);
+        JsonUtility.saveHiringHistory(context, history);
     }
 
     public MoApplicationDetailResponse getDetailAndMarkViewed(ServletContext context, String moId, String applicationId) {

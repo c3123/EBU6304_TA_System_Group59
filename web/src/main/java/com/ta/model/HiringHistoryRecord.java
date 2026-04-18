@@ -10,7 +10,7 @@ public class HiringHistoryRecord {
     private String id;
     private String jobId;
     private String moId;
-    /** finalize | reopen */
+    /** finalize | reopen | manual_hire */
     private String action;
     private String submittedAt;
     private List<String> hiredApplicationIds = new ArrayList<>();

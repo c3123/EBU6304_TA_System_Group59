@@ -254,6 +254,9 @@ function renderNotesAndFeedback(item, closed) {
   const fbBlock = fbAllowed
     ? `<input type="text" maxlength="200" style="flex:1;min-width:140px;" data-mo-feedback data-app-id="${id}" placeholder="Reason (max 200 chars)" value="${fbVal}" ${closed ? "disabled" : ""}/>`
     : `<span style="color:#94a3b8;">—</span>`;
+  const fbSaveBtn = fbAllowed
+    ? `<button type="button" class="btn btn-outline" data-fb-save data-app-id="${id}" ${closed ? "disabled" : ""}>Save</button>`
+    : "";
   const cnt = fbAllowed ? `<span class="mo-fb-count" data-fb-count data-app-id="${id}">${fbLen}/200</span>` : "";
   return `
     <div class="mo-field-inline" data-notes-wrap>
@@ -267,6 +270,7 @@ function renderNotesAndFeedback(item, closed) {
       <label>Decision feedback</label>
       <div style="flex:1;display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
         ${fbBlock}
+        ${fbSaveBtn}
         <span class="mo-save-indicator" data-fb-ind data-app-id="${id}"></span>
         ${cnt}
       </div>
@@ -536,6 +540,23 @@ async function saveFeedback(applicationId, text) {
   if (it) it.decisionFeedback = text;
 }
 
+async function persistFeedbackFromInput(feed, fbEl) {
+  const appId = fbEl.getAttribute("data-app-id");
+  const ind = feed.querySelector(`[data-fb-ind][data-app-id="${appId}"]`);
+  const wrap = fbEl.closest("[data-fb-wrap]");
+  wrap.classList.remove("mo-field-error");
+  setIndicator(ind, "loading");
+  try {
+    await saveFeedback(appId, fbEl.value);
+    setIndicator(ind, "ok");
+    setNotice("Decision feedback saved.", false);
+  } catch (err) {
+    wrap.classList.add("mo-field-error");
+    setIndicator(ind, "err", err.message || "Save failed");
+    setNotice(`${err.code || "ERROR"}: ${err.message || "Save failed"}`, true);
+  }
+}
+
 async function runBatchStatus(status, label) {
   const ids = Array.from(state.selectedIds);
   if (!ids.length) return;
@@ -675,18 +696,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       const fbEl = e.target.closest("[data-mo-feedback]");
       if (fbEl && !fbEl.disabled) {
-        const appId = fbEl.getAttribute("data-app-id");
-        const ind = feed.querySelector(`[data-fb-ind][data-app-id="${appId}"]`);
-        const wrap = fbEl.closest("[data-fb-wrap]");
-        wrap.classList.remove("mo-field-error");
-        setIndicator(ind, "loading");
-        try {
-          await saveFeedback(appId, fbEl.value);
-          setIndicator(ind, "ok");
-        } catch (err) {
-          wrap.classList.add("mo-field-error");
-          setIndicator(ind, "err", err.message || "Save failed");
-        }
+        await persistFeedbackFromInput(feed, fbEl);
       }
     },
     true
@@ -728,6 +738,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       } finally {
         actionBtn.disabled = false;
       }
+      return;
+    }
+    const saveBtn = e.target.closest("[data-fb-save]");
+    if (saveBtn && !saveBtn.disabled) {
+      const appId = saveBtn.getAttribute("data-app-id");
+      const fbEl = feed.querySelector(`[data-mo-feedback][data-app-id="${appId}"]`);
+      if (!fbEl || fbEl.disabled) return;
+      saveBtn.disabled = true;
+      await persistFeedbackFromInput(feed, fbEl);
+      saveBtn.disabled = false;
       return;
     }
     const btn = e.target.closest(".mo-app-detail-btn");
