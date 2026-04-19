@@ -728,8 +728,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         setNotice("Saving status...", false);
         await submitDecision(appId, v);
         statusSel.setAttribute("data-prev", v);
-        renderApplicantFeed(state.items);
-        updateBatchBar();
+        await loadList();
         setNotice("Saved. Status is stored on the server.", false);
       } catch (err) {
         statusSel.value = prev;
@@ -795,8 +794,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       try {
         setNotice("Saving...", false);
         await submitDecision(appId, action);
-        renderApplicantFeed(state.items);
-        updateBatchBar();
+        await loadList();
         setNotice("Saved. Status is stored on the server.", false);
       } catch (err) {
         setNotice(`${err.code || "ERROR"}: ${err.message}`, true);
