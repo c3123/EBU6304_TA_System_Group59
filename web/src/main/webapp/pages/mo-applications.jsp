@@ -429,6 +429,6 @@
   </div>
 </main>
 <script src="../assets/js/common.js?v=mo6"></script>
-<script src="../assets/js/mo-applications.js?v=mo8"></script>
+<script src="../assets/js/mo-applications.js?v=mo9"></script>
 </body>
 </html>
