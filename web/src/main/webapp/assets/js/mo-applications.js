@@ -87,14 +87,62 @@ function buildStatusQueryParam() {
   const s = byId("filterShortlisted").checked;
   const r = byId("filterRejected").checked;
   const h = byId("filterHired").checked;
-  if (p && s && r && h) return null;
+  if (p && s && r && h) {
+    // #region agent log
+    fetch("http://127.0.0.1:7553/ingest/5e55b3f4-868b-425c-8b63-3dc520885d6a", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7b80e4" },
+      body: JSON.stringify({
+        sessionId: "7b80e4",
+        hypothesisId: "H2",
+        location: "mo-applications.js:buildStatusQueryParam",
+        message: "all four checked -> null param",
+        data: { p, s, r, h },
+        timestamp: Date.now()
+      })
+    }).catch(() => {});
+    // #endregion
+    return null;
+  }
   const parts = [];
   if (p) parts.push("pending");
   if (s) parts.push("shortlisted");
   if (r) parts.push("rejected");
   if (h) parts.push("hired");
-  if (parts.length === 0) return null;
-  return parts.join(",");
+  if (parts.length === 0) {
+    // #region agent log
+    fetch("http://127.0.0.1:7553/ingest/5e55b3f4-868b-425c-8b63-3dc520885d6a", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7b80e4" },
+      body: JSON.stringify({
+        sessionId: "7b80e4",
+        runId: "post-fix",
+        hypothesisId: "H2",
+        location: "mo-applications.js:buildStatusQueryParam",
+        message: "zero checked -> status=__none__ (show no applicants)",
+        data: { p, s, r, h },
+        timestamp: Date.now()
+      })
+    }).catch(() => {});
+    // #endregion
+    return "__none__";
+  }
+  const joined = parts.join(",");
+  // #region agent log
+  fetch("http://127.0.0.1:7553/ingest/5e55b3f4-868b-425c-8b63-3dc520885d6a", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7b80e4" },
+    body: JSON.stringify({
+      sessionId: "7b80e4",
+      hypothesisId: "H2",
+      location: "mo-applications.js:buildStatusQueryParam",
+      message: "partial filter",
+      data: { p, s, r, h, joined },
+      timestamp: Date.now()
+    })
+  }).catch(() => {});
+  // #endregion
+  return joined;
 }
 
 function updateBatchBar() {
@@ -220,8 +268,25 @@ async function loadList() {
   const params = new URLSearchParams();
   if (jobId) params.set("jobId", jobId);
   const st = buildStatusQueryParam();
-  if (st) params.set("status", st);
+  if (st != null) {
+    params.set("status", st);
+  }
   const url = params.toString() ? `${apiBase()}/applications?${params}` : `${apiBase()}/applications`;
+  // #region agent log
+  fetch("http://127.0.0.1:7553/ingest/5e55b3f4-868b-425c-8b63-3dc520885d6a", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7b80e4" },
+    body: JSON.stringify({
+      sessionId: "7b80e4",
+      runId: "post-fix",
+      hypothesisId: "H3",
+      location: "mo-applications.js:loadList",
+      message: "applications request url",
+      data: { url, statusParam: st },
+      timestamp: Date.now()
+    })
+  }).catch(() => {});
+  // #endregion
   const data = await getJson(url);
   state.items = data && Array.isArray(data.items) ? data.items : [];
   pruneSelectionToItems();

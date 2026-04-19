@@ -15,8 +15,14 @@ import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -40,6 +46,8 @@ import java.util.stream.Collectors;
 public class MoApplicationService {
 
     private static final int MAX_DECISION_FEEDBACK_CHARS = 200;
+    /** Query param value: show no applicants (all status checkboxes off in MO UI). */
+    static final String STATUS_FILTER_NONE_SENTINEL = "__none__";
 
     public MoApplicationListResponse listApplications(ServletContext context, String moId, String jobIdFilter, String statusFilterCsv) {
         try {
@@ -75,6 +83,12 @@ public class MoApplicationService {
                     .collect(Collectors.toMap(StudentProfile::getUserId, Function.identity(), (a, b) -> a));
 
             Set<String> statusTokens = parseStatusFilter(statusFilterCsv);
+            // #region agent log
+            agentDebugLog("post-fix", "listApplications parsed status tokens",
+                    "{\"nullTokens\":" + (statusTokens == null)
+                            + ",\"emptyTokens\":" + (statusTokens != null && statusTokens.isEmpty())
+                            + ",\"size\":" + (statusTokens == null ? -1 : statusTokens.size()) + "}");
+            // #endregion
 
             List<MoApplicationListItemResponse> items = new ArrayList<>();
 
@@ -141,11 +155,25 @@ public class MoApplicationService {
     /**
      * @param statusFilterCsv comma-separated tokens: pending, shortlisted, rejected, hired.
      *                        Token "pending" matches records in pending or viewed.
-     *                        If exactly {pending, shortlisted, rejected} (all three MO filters), no status filter (includes hired).
+     *                        Special value "__none__": match no records (UI: zero checkboxes).
+     *                        Omit param or all four tokens: no status filter (show all).
      */
     static Set<String> parseStatusFilter(String statusFilterCsv) {
+        // #region agent log
+        agentDebugLog("H1", "parseStatusFilter entry", "{\"input\":\"" + jsonEscape(String.valueOf(statusFilterCsv)) + "\"}");
+        // #endregion
         if (statusFilterCsv == null || statusFilterCsv.isBlank()) {
+            // #region agent log
+            agentDebugLog("H3", "parseStatusFilter blank input -> null (no filter)", "{}");
+            // #endregion
             return null;
+        }
+        String trimmedIn = statusFilterCsv.trim();
+        if (STATUS_FILTER_NONE_SENTINEL.equalsIgnoreCase(trimmedIn)) {
+            // #region agent log
+            agentDebugLog("H2-fix", "parseStatusFilter __none__ -> empty set (show no applicants)", "{}");
+            // #endregion
+            return Collections.emptySet();
         }
         Set<String> raw = new LinkedHashSet<>();
         for (String part : statusFilterCsv.split(",")) {
@@ -162,18 +190,44 @@ public class MoApplicationService {
         }
         Set<String> allFour = Set.of("pending", "shortlisted", "rejected", "hired");
         if (raw.size() == 4 && raw.containsAll(allFour)) {
+            // #region agent log
+            agentDebugLog("H1", "parseStatusFilter allFour -> null (no filter)", "{}");
+            // #endregion
             return null;
         }
-        Set<String> legacyThree = Set.of("pending", "shortlisted", "rejected");
-        if (raw.size() == 3 && raw.containsAll(legacyThree) && !raw.contains("hired")) {
-            return null;
-        }
+        // #region agent log
+        agentDebugLog("H1", "parseStatusFilter explicit tokens", "{\"raw\":\"" + jsonEscape(raw.toString()) + "\"}");
+        // #endregion
         return raw;
     }
+
+    // #region agent log
+    private static void agentDebugLog(String hypothesisId, String message, String dataJson) {
+        try {
+            Path p = Paths.get(System.getProperty("user.dir"), "debug-7b80e4.log");
+            String line = "{\"sessionId\":\"7b80e4\",\"hypothesisId\":\"" + jsonEscape(hypothesisId) + "\",\"message\":\"" + jsonEscape(message)
+                    + "\",\"data\":" + (dataJson == null || dataJson.isBlank() ? "{}" : dataJson)
+                    + ",\"timestamp\":" + System.currentTimeMillis() + "}\n";
+            Files.writeString(p, line, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        } catch (Exception ignored) {
+            /* debug ingest */
+        }
+    }
+
+    private static String jsonEscape(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+    // #endregion
 
     static boolean matchesStatusFilter(String normalizedRecordStatus, Set<String> filterTokens) {
         if (filterTokens == null) {
             return true;
+        }
+        if (filterTokens.isEmpty()) {
+            return false;
         }
         for (String token : filterTokens) {
             if ("pending".equals(token) && ("pending".equals(normalizedRecordStatus) || "viewed".equals(normalizedRecordStatus))) {
