@@ -15,11 +15,6 @@ import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -83,12 +78,6 @@ public class MoApplicationService {
                     .collect(Collectors.toMap(StudentProfile::getUserId, Function.identity(), (a, b) -> a));
 
             Set<String> statusTokens = parseStatusFilter(statusFilterCsv);
-            // #region agent log
-            agentDebugLog("post-fix", "listApplications parsed status tokens",
-                    "{\"nullTokens\":" + (statusTokens == null)
-                            + ",\"emptyTokens\":" + (statusTokens != null && statusTokens.isEmpty())
-                            + ",\"size\":" + (statusTokens == null ? -1 : statusTokens.size()) + "}");
-            // #endregion
 
             List<MoApplicationListItemResponse> items = new ArrayList<>();
 
@@ -159,20 +148,11 @@ public class MoApplicationService {
      *                        Omit param or all four tokens: no status filter (show all).
      */
     static Set<String> parseStatusFilter(String statusFilterCsv) {
-        // #region agent log
-        agentDebugLog("H1", "parseStatusFilter entry", "{\"input\":\"" + jsonEscape(String.valueOf(statusFilterCsv)) + "\"}");
-        // #endregion
         if (statusFilterCsv == null || statusFilterCsv.isBlank()) {
-            // #region agent log
-            agentDebugLog("H3", "parseStatusFilter blank input -> null (no filter)", "{}");
-            // #endregion
             return null;
         }
         String trimmedIn = statusFilterCsv.trim();
         if (STATUS_FILTER_NONE_SENTINEL.equalsIgnoreCase(trimmedIn)) {
-            // #region agent log
-            agentDebugLog("H2-fix", "parseStatusFilter __none__ -> empty set (show no applicants)", "{}");
-            // #endregion
             return Collections.emptySet();
         }
         Set<String> raw = new LinkedHashSet<>();
@@ -190,37 +170,10 @@ public class MoApplicationService {
         }
         Set<String> allFour = Set.of("pending", "shortlisted", "rejected", "hired");
         if (raw.size() == 4 && raw.containsAll(allFour)) {
-            // #region agent log
-            agentDebugLog("H1", "parseStatusFilter allFour -> null (no filter)", "{}");
-            // #endregion
             return null;
         }
-        // #region agent log
-        agentDebugLog("H1", "parseStatusFilter explicit tokens", "{\"raw\":\"" + jsonEscape(raw.toString()) + "\"}");
-        // #endregion
         return raw;
     }
-
-    // #region agent log
-    private static void agentDebugLog(String hypothesisId, String message, String dataJson) {
-        try {
-            Path p = Paths.get(System.getProperty("user.dir"), "debug-7b80e4.log");
-            String line = "{\"sessionId\":\"7b80e4\",\"hypothesisId\":\"" + jsonEscape(hypothesisId) + "\",\"message\":\"" + jsonEscape(message)
-                    + "\",\"data\":" + (dataJson == null || dataJson.isBlank() ? "{}" : dataJson)
-                    + ",\"timestamp\":" + System.currentTimeMillis() + "}\n";
-            Files.writeString(p, line, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-        } catch (Exception ignored) {
-            /* debug ingest */
-        }
-    }
-
-    private static String jsonEscape(String s) {
-        if (s == null) {
-            return "";
-        }
-        return s.replace("\\", "\\\\").replace("\"", "\\\"");
-    }
-    // #endregion
 
     static boolean matchesStatusFilter(String normalizedRecordStatus, Set<String> filterTokens) {
         if (filterTokens == null) {
