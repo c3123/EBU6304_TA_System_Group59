@@ -1,13 +1,17 @@
-# Functional Specification: Sprint 1, Sprint 2 and Sprint 3
+# Functional Specification: Sprint 1, Sprint 2, Sprint 3 and Sprint 4
 
 ## 1. Introduction
-This document specifies the detailed functional requirements for Sprint 1, Sprint 2 and Sprint 3 of the BUPT International School TA Recruitment System.
+This document specifies the detailed functional requirements for Sprint 1, Sprint 2, Sprint 3 and Sprint 4 of the BUPT International School TA Recruitment System.
 
 Sprint 1 focuses on the core recruitment foundation, including authentication, applicant profile management, and the basic Module Organiser recruitment workflow.
 
 Sprint 2 extends the system with administrator-side management and the advanced Module Organiser operational workflow built on top of the Sprint 1 foundation.
 
 Sprint 3 focuses on workflow optimization, reporting, self-service account maintenance, historical visibility, and non-functional improvement for final product delivery.
+
+Sprint 4 covers remaining Module Organiser backlog items scheduled after Sprint 3 (for example internal hiring/rejection reasons) and small follow-up enhancements that were not listed in the original Sprint 3 screenshot backlog.
+
+**Module Organiser (MO) consolidated documentation:** All MO backlog items from Sprint 1 through Sprint 4 are also described in one place in **Section 6 — Module Organiser (MO) Consolidated Specification**, so the MO subsystem can be read end-to-end without following multiple scattered subsections.
 
 ## 2. Sprint 1 Detailed Feature Specifications
 
@@ -97,79 +101,11 @@ The system ensures that applicants can smoothly complete the entire process from
 
 ### 2.3 Feature: Module Organiser Recruitment Workflow System
 
-**User Stories:**
-- **MO_01:** As a Module Organiser (MO), I want to submit a TA demand for my course, so that I can request teaching assistants for the upcoming teaching period.
-- **MO_02:** As a Module Organiser (MO), I want to view the approval progress of my submitted demands, so that I can know whether a position can be published.
-- **MO_03:** As a Module Organiser (MO), I want to publish an approved TA position, so that applicants can view and apply for it.
-- **MO_04:** As a Module Organiser (MO), I want to view active applications for my own positions, so that I can review candidates.
-- **MO_05:** As a Module Organiser (MO), I want an application to automatically change from `pending` to `viewed` when I open its detail page, so that the review progress is traceable.
-- **MO_06:** As a Module Organiser (MO), I want to withdraw a position only when there are no active applications, so that I do not invalidate positions that students are still applying for.
+**User Stories (Sprint 1 baseline):** **MO_01**–**MO_06** — demand submission, approval visibility, publish, application listing, `pending`→`viewed` on detail open, and constrained withdrawal.
 
-**Description:**
-This feature provides the Sprint 1 MO-side workflow for teaching assistant recruitment. It covers two connected parts of the MO process handled by our two assignees:
+**Full specification:** See **Section 6 — Module Organiser (MO) Consolidated Specification**, **6.2 Sprint 1 — Demand, Publish, and Application Review Baseline**, for complete description, acceptance criteria, servlets, services, persistence, and UI files.
 
-1. **Demand and position workflow**
-   - submit TA demand
-   - view approval progress
-   - publish approved positions
-   - withdraw positions under the required constraints
-
-2. **Applicant management workflow**
-   - list applications for the current MO's own jobs only
-   - view detailed application records
-   - automatically update application status from `pending` to `viewed`
-   - hide inactive / withdrawn application records from the visible list
-
-This completes the basic Sprint 1 MO operational flow from demand creation to applicant review.
-
-**Acceptance Criteria:**
-1. The MO can submit a TA demand with course name, planned count, and expected workload range.
-2. The system prevents duplicate submission when the same MO already has a `pending` demand for the same course.
-3. The MO can view a list of their own submitted demands with approval status, publish state, and withdraw state.
-4. Only demands with `approvalStatus = approved` can be published as visible positions.
-5. The MO can provide publication details including location, requirements, and deadline.
-6. The system rejects publishing attempts for non-approved jobs with a clear backend error.
-7. The MO can only see applications belonging to jobs they own.
-8. The applications list only displays records with `active = true`.
-9. Opening an application detail page changes its status from `pending` to `viewed`.
-10. A job cannot be withdrawn if there is any active application attached to it.
-11. A job can be withdrawn successfully when no active application exists.
-12. The MO frontend page supports direct testing in development mode and displays timestamps in a readable second-level format.
-
-**Functional Requirement Details:**
-
-- **Servlet Implementation:**
-  - `MoDemandCreateServlet` handles demand creation.
-  - `MoDemandListServlet` returns the current MO's submitted demand list.
-  - `MoJobPublishServlet` handles publishing approved jobs.
-  - `MoJobWithdrawServlet` handles job withdrawal.
-  - `MoApplicationListServlet` lists active applications for the current MO.
-  - `MoApplicationDetailServlet` returns application detail and updates status.
-  - `AdminDemandReviewServlet` supports demand approval state updates for testing / admin review flow.
-
-- **Service Layer:**
-  - `MoDemandService` implements demand creation and progress querying.
-  - `MoJobService` implements publish and withdraw rules.
-  - `MoApplicationService` implements ownership filtering, active-only listing, and status update on detail view.
-  - `MoBusinessException` standardizes MO business error handling.
-
-- **Data Management:**
-  - MO demand and job records are stored in `jobs.json`.
-  - Application records are stored in `applications.json`.
-  - New demand records include fields such as `approvalStatus`, `published`, and `withdrawn`.
-  - Application records include fields such as `jobId`, `studentId`, `status`, and `active`.
-
-- **Frontend Integration:**
-  - `teacher.jsp` is used as the MO job workflow page.
-  - `teacher.js` connects the page to the MO backend APIs for demand submission, publishing, and withdrawal.
-  - `mo-applications.jsp` and `mo-applications.js` support active applicant listing and application detail viewing.
-  - The MO page keeps an entry point to the applicant management page.
-
-- **Session / Access Control:**
-  - MO identity is resolved from session-based login in normal use.
-  - MO users can only access their own jobs and related applications.
-
-**Assignee:** Wanhe Ji / Huishun Hu
+**Assignee:** Wanhe Ji / Huishun Hu  
 **Completion Date:**
 
 ---
@@ -178,90 +114,12 @@ This completes the basic Sprint 1 MO operational flow from demand creation to ap
 
 ### 3.1 Feature: Module Organiser Sprint 2 Workflow Extension
 
-**User Stories:**
-- **MO_04 (Extension):** As a Module Organiser (MO), I want to confirm final hiring from a candidate set and lock recruitment to read-only, so that final decisions are consistent and auditable.
-- **MO_04 (Extension):** As a Module Organiser (MO), I want to view hiring history records, so that I can trace finalize/reopen operations and selected candidates.
-- **MO_06 (Extension):** As a Module Organiser (MO), I want to edit or delete jobs under lifecycle constraints, so that I can correct draft information without breaking published records.
-- **MO_06 (Extension):** As a Module Organiser (MO), I want to take published jobs offline through a controlled action, so that live posts can be closed safely.
-- **MO_07:** As a Module Organiser (MO), I want to receive notifications for new applications and mark them as read, so that I can track incoming applications efficiently.
+**User Stories (summary):** Final hiring confirmation and recruitment lock, hiring history (`finalize` / `reopen`), job edit/delete/offline under lifecycle rules, MO notifications with read state (**MO_07**), and admin reopen of closed recruitment.
 
-**Description:**
-This Sprint 2 extension adds an end-to-end MO-side operational workflow on top of Sprint 1.  
-It introduces final hiring confirmation with recruitment lock, auditable hiring history, stricter job lifecycle controls (edit/delete/offline), and a notification UI with read management.  
-The implementation keeps role boundaries explicit: MO executes hiring/finalization and job lifecycle operations, while admin has a dedicated reopen endpoint for closed recruitment states.
+**Full specification:** See **Section 6**, **6.3 Sprint 2 — Final Hiring, Job Lifecycle, Notifications, and Admin Reopen**, including implementation branch notes (`dev-Huishun-hu`), servlets, services, `hiring_history.json` / `notifications.json`, and frontend integration on `mo-applications.jsp` / `teacher.jsp` / `admin.jsp`.
 
-**Acceptance Criteria:**
-1. The Applicants page provides a per-job **Confirm Final Hiring** entry and modal-based final selection.
-2. Final confirmation writes final statuses, switches the job to `Recruitment Closed`, and prevents further MO status changes on that job.
-3. The Applicants page can open a **View History** modal and display operation records (`finalize` / `reopen`), timestamps, and hired candidate names.
-4. The My Jobs page enforces lifecycle actions:
-   - editable in non-closed and non-published draft-like states;
-   - deletable only when not published/closed and without active applications;
-   - published jobs can be taken offline through dedicated action.
-5. The My Jobs page shows a notification entry with unread count and a list containing applicant name, job name, and application time.
-6. Notification entries support **Mark as Read** and persist read state after refresh.
-7. Admin dashboard can reopen recruitment-closed jobs via API, and reopen records are included in hiring history.
-8. Applicants detail expansion is user-controlled and does not collapse unexpectedly during periodic refresh.
-
-**Functional Requirement Details:**
-
-- **Servlet Implementation (new/extended):**
-  - `MoHiringFinalizeServlet` (`POST /api/mo/hiring/finalize`) for final confirmation submission.
-  - `MoHiringStateServlet` (`GET /api/mo/hiring/state`) for per-job recruitment lock state.
-  - `MoHiringHistoryServlet` (`GET /api/mo/hiring/history`) for job-level history records.
-  - `MoJobEditServlet` (`POST /api/mo/jobs/edit/{jobId}`) for editable lifecycle updates.
-  - `MoJobDeleteServlet` (`POST /api/mo/jobs/delete/{jobId}`) for controlled draft deletion.
-  - `MoJobOfflineServlet` (`POST /api/mo/jobs/offline/{jobId}`) for take-offline operation.
-  - `MoNotificationsServlet` (`GET /api/mo/notifications`) for MO notification retrieval.
-  - `MoNotificationReadServlet` (`POST /api/mo/notifications/read/{notificationId}`) for read-state updates.
-  - `AdminJobReopenServlet` (`POST /api/admin/jobs/reopen/{jobId}`) for admin-only reopen control.
-
-- **Service Layer (new/extended):**
-  - `MoHiringService`:
-    - finalize hiring decision set and close recruitment;
-    - expose recruitment state;
-    - aggregate history records for Applicants history modal;
-    - support admin reopen with history append.
-  - `MoJobService`:
-    - add edit/delete/offline methods with lifecycle guard checks;
-    - retain ownership and validation constraints.
-  - `MoNotificationService`:
-    - generate/merge notification records from active applications;
-    - compute unread count and map to MO-facing response;
-    - persist mark-as-read actions.
-  - `MoApplicationService`:
-    - block status update endpoint when `recruitmentClosed=true`.
-
-- **Data Model & Persistence:**
-  - `JobPosting` extended with:
-    - `recruitmentClosed` (Boolean),
-    - `closedAt` (ISO timestamp).
-  - New persistence files:
-    - `hiring_history.json` for finalize/reopen records,
-    - `notifications.json` for MO notification state.
-  - `JsonUtility` extended with load/save methods for both new datasets.
-
-- **Frontend Integration:**
-  - `mo-applications.jsp` + `mo-applications.js`:
-    - final hiring modal;
-    - history modal;
-    - recruitment closed flag in job group bar;
-    - read-only action behavior after closure;
-    - detail expand persistence (manual collapse control).
-  - `teacher.jsp` + `teacher.js`:
-    - edit/delete/take-offline controls per job;
-    - notification button, unread badge, notification panel;
-    - mark-as-read interaction.
-  - `admin.jsp` + `admin.js`:
-    - recruitment column visibility;
-    - reopen action button for closed jobs.
-
-- **Branch / Ownership Note:**
-  - Implementation branch: `dev-Huishun-hu`.
-  - Contributor signature for this Sprint 2 extension: `yeahyeah66`.
-
-**Assignee:** yeahyeah66 (Huishun Hu)  
-**Branch:** dev-Huishun-hu  
+**Assignee:** Wanhe Ji / Huishun Hu  
+**Branch (historical):** dev-Huishun-hu  
 **Completion Date:** 2026-04-07
 
 ---
@@ -615,86 +473,12 @@ The goal is to keep the application usable under realistic project data volume w
 
 ### 4.4 Feature: Module Organiser Sprint 3 Productivity and Review Enhancement
 
-**User Stories:**
-- **MO_05:** As a Module Organiser (MO), I want to mark applicants as shortlisted, rejected, or pending and add evaluation notes, so that I can track review decisions consistently.
-- **MO_08:** As a Module Organiser (MO), I want to view a history list of all posted TA jobs, so that I can trace past recruitment and reuse job information later.
-- **MO_09:** As a Module Organiser (MO), I want to export my applicant list as a CSV/JSON file, so that I can review candidate information offline.
+**User Stories (summary):** **MO_05** (status, notes, filters, batch), **MO_08** (posted jobs / demands list), **MO_09** (CSV export).
 
-**Description:**
-This Sprint 3 MO feature set focuses on review productivity, historical visibility, and offline analysis support.
+**Full specification:** See **Section 6**, **6.4 Sprint 3 — Review Productivity, Posted Jobs Visibility, and CSV Export**.
 
-The scope of this iteration contains three coordinated parts:
-
-1. **Application review enhancement**
-   - support richer review-state management;
-   - store organiser-side evaluation notes;
-   - allow status-based filtering and batch-oriented review workflow.
-
-2. **Posted job history**
-   - show current and past job records in a unified history view;
-   - expose status, applicant count, hire count, publish time, and deadline;
-   - support quick reuse of historical job information for future recruitment cycles.
-
-3. **Applicant data export**
-   - export current or filtered applicant lists;
-   - support plain-text-compatible output formats such as CSV / JSON;
-   - improve offline review and evidence preparation.
-
-**Acceptance Criteria:**
-1. The MO can mark applicant status as shortlisted, rejected, or pending/viewed through the application page.
-2. The MO can save a private evaluation note for each applicant, and the note persists after refresh.
-3. The application list can be filtered by review status.
-4. The MO can open a history list of posted jobs sorted by release time and see summary metadata for each job.
-5. The MO can open historical job details and review related applicant/hiring summary data.
-6. The MO can export all applicants or a filtered subset in CSV or JSON format.
-7. Exported files include applicant name, applicant ID, major/programme, application time, status, and skills.
-
-**Functional Requirement Details:**
-
-- **Servlet Implementation (new/extended):**
-  - `MoApplicationStatusServlet` (`POST /api/mo/applications/status`) extended to support note persistence and batch review operations.
-  - `MoJobHistoryServlet` (`GET /api/mo/jobs/history`) for posted-job history list and summary retrieval.
-  - `MoApplicantExportServlet` (`GET /api/mo/applications/export`) for CSV / JSON export generation.
-
-- **Service Layer (new/extended):**
-  - `MoApplicationService`:
-    - persist organiser-side review notes;
-    - filter and group application records by status;
-    - support consistent review-state updates.
-  - `MoJobService`:
-    - provide history-oriented job summaries;
-    - prepare reusable job metadata for future reposting.
-  - `MoExportService`:
-    - transform visible applicant data into downloadable CSV / JSON output;
-    - keep export content aligned with current MO ownership rules.
-
-- **Data Management:**
-  - `applications.json` is extended to store MO-side evaluation note fields and review timestamps where needed.
-  - `jobs.json` remains the source of truth for current and historical job metadata.
-  - Exported files are generated dynamically and do not replace source JSON data.
-
-- **Frontend Integration:**
-  - `mo-applications.jsp` + `mo-applications.js` add:
-    - status filter controls;
-    - note entry / autosave or save action;
-    - export trigger for current applicant scope.
-  - `teacher.jsp` + `teacher.js` or a dedicated history page add:
-    - posted-job history list;
-    - job summary view;
-    - quick reuse / copy entry for historical jobs.
-
-- **Validation / Business Rules:**
-  - Evaluation notes are organiser-visible and admin-visible only; they are not shown to applicants.
-  - Export results must include only jobs owned by the current MO.
-  - Batch review actions must preserve ownership checks and recruitment-closed rules.
-  - Historical records must remain readable even after recruitment is closed.
-
-- **Session / Access Control:**
-  - All `/api/mo/*` endpoints require authenticated MO identity.
-  - MOs can only review, export, and access history for their own jobs and applications.
-
-**Assignee:**
-**Completion Date:**
+**Assignee:** Wanhe Ji / Huishun Hu  
+**Completion Date:** 2026-04
 
 ---
 
@@ -748,3 +532,164 @@ The feature provides a dedicated view of accepted jobs, associated schedule info
 
 **Assignee:**
 **Completion Date:**
+
+---
+
+## 5. Sprint 4 Detailed Feature Specifications
+
+### 5.1 Feature: Module Organiser Sprint 4 — Hiring/Rejection Reasons (MO_10) (cross-reference)
+
+**User Stories (summary):** **MO_10** (decision feedback for `hired` / `shortlisted` / `rejected`), admin read-only archiving, and related **manual hire** history behaviour.
+
+**Full specification:** See **Section 6**, **6.5 Sprint 4 — Decision Feedback (MO_10), Admin Archiving, Follow-Ups, and colour-coded workload preview** (workload UI is an extra Sprint 4 enhancement not on the MO backlog screenshot).
+
+**Assignee:** Wanhe Ji / Huishun Hu  
+**Completion Date:** 2026-04
+
+---
+
+## 6. Module Organiser (MO) — Consolidated Specification (Sprint 1 to Sprint 4)
+
+This section is the **single end-to-end functional specification** for the Module Organiser role. Sprint-numbered subsections **2.3**, **3.1**, **4.4**, and **5.1** elsewhere in this document are short cross-references that point here.
+
+**Assignees:** **Wanhe Ji / Huishun Hu** — joint ownership of the MO subsystem (demand and job lifecycle on the teacher portal, applicant review and hiring workflows on the applications page, notifications, exports, and internal decision feedback). Individual commits may sit on branches such as `dev-Huishun-hu`; integration and acceptance follow team process.
+
+**Primary UI:** `teacher.jsp` + `teacher.js` (My Jobs / demands / lifecycle actions / notifications entry), `mo-applications.jsp` + `mo-applications.js` (Applicants: filters, status, batch, finalize, history modal, notes, CSV). **API prefix:** `/api/mo/*` (session-protected for the teacher/MO role).
+
+---
+
+### 6.1 Data and Cross-Cutting Rules
+
+- **Persistence (file-based, no database):** `jobs.json` (demands and postings), `applications.json` (applications plus MO-only `evaluationNotes` and `decisionFeedback`), `hiring_history.json` (finalize / reopen / manual hire audit trail), `notifications.json` (MO notification read state), plus shared `users.json` / `students.json` for profiles surfaced in MO lists.
+- **Ownership:** Every MO API resolves the current organiser from session and enforces that only jobs owned by that MO (`teacherId` / MO id) are readable or mutable.
+- **Applicant visibility:** MO-only text (`evaluationNotes`, `decisionFeedback`) must not appear on student-facing pages; administrators may read aggregated application rows for archiving (`GET /api/admin/applications`).
+
+---
+
+### 6.2 Sprint 1 — Demand, Publish, and Application Review Baseline (MO_01–MO_06)
+
+**User Stories:**
+- **MO_01:** Submit a TA demand for a course.
+- **MO_02:** View approval progress of submitted demands.
+- **MO_03:** Publish an **approved** demand as a visible TA position.
+- **MO_04:** View **active** applications for **own** jobs only.
+- **MO_05 (Sprint 1):** Opening application detail promotes status from `pending` to `viewed`.
+- **MO_06:** Withdraw a position only when there are **no** active applications.
+
+**Description:** Sprint 1 establishes the MO pipeline from demand creation through publishing and first-pass applicant review. The teacher portal drives demand and publish/withdraw; the applications page lists candidates for owned jobs and supports detail view with automatic `pending`→`viewed` transition.
+
+**Acceptance Criteria (summary):**
+1. Demand submission includes course / headcount / workload intent; duplicate pending demands for the same course are rejected or blocked per business rules.
+2. Demand list shows approval state, publish state, and withdraw state for the current MO.
+3. Only `approvalStatus = approved` jobs can be published; otherwise the API returns a clear error.
+4. Publish supplies student-visible fields (e.g. location, requirements, deadline) per `MoJobPublishServlet` contract.
+5. Application list returns **active only** (`active = true`) and **owned jobs only**.
+6. Detail read updates `pending` → `viewed` where applicable.
+7. Withdraw is rejected when any active application exists for the job.
+
+**Functional Requirement Details:**
+
+- **Servlets:** `MoDemandCreateServlet` (`POST /api/mo/demands`), `MoDemandListServlet` (`GET /api/mo/demands/list`), `MoJobPublishServlet` (`POST /api/mo/jobs/publish/{jobId}`), `MoJobWithdrawServlet` (`POST /api/mo/jobs/withdraw/{jobId}`), `MoApplicationListServlet` (`GET /api/mo/applications`), `MoApplicationDetailServlet` (`GET /api/mo/applications/detail/{applicationId}`), and `AdminDemandReviewServlet` for admin approval during testing.
+- **Services:** `MoDemandService`, `MoJobService`, `MoApplicationService` (ownership + active filter + detail status transition), `MoBusinessException` for consistent errors.
+- **Frontend:** `teacher.jsp` / `teacher.js` for demands and publish/withdraw; `mo-applications.jsp` / `mo-applications.js` for listing and detail.
+
+---
+
+### 6.3 Sprint 2 — Final Hiring, Job Lifecycle, Notifications, and Admin Reopen
+
+**User Stories (summary):** Extended **MO_04** / **MO_06** — finalize hiring and lock recruitment; view hiring **history**; edit/delete/offline jobs under lifecycle rules; **MO_07** notifications; admin **reopen** closed recruitment.
+
+**Description:** Adds recruitment closure (`recruitmentClosed`, `closedAt` on `JobPosting`), auditable `hiring_history.json`, MO notifications in `notifications.json`, stricter edit/delete/offline rules on `MoJobService`, and `MoHiringService` for finalize and history. `MoApplicationService` blocks ordinary status changes when a job is closed (per implemented checks). Admin reopen is exposed from the admin dashboard and appends history.
+
+**Key endpoints:** `POST /api/mo/hiring/finalize`, `GET /api/mo/hiring/state`, `GET /api/mo/hiring/history`, `POST /api/mo/jobs/edit/{jobId}`, `POST /api/mo/jobs/delete/{jobId}`, `POST /api/mo/jobs/offline/{jobId}`, `GET /api/mo/notifications`, `POST /api/mo/notifications/read/{notificationId}`, `POST /api/admin/jobs/reopen/{jobId}`.
+
+**Frontend:** Final hiring modal and history modal on `mo-applications.jsp`; job cards with edit/delete/offline and notification UI on `teacher.jsp`; reopen control on `admin.jsp`.
+
+**Branch note:** Much of the Sprint 2 MO extension was developed on **`dev-Huishun-hu`** (contributor tag `yeahyeah66` in earlier notes); **Wanhe Ji** shares MO requirements ownership and integration testing for the same subsystem.
+
+---
+
+### 6.4 Sprint 3 — Review Productivity, Posted Jobs Visibility, and CSV Export (MO_05 / MO_08 / MO_09)
+
+**User Stories:**
+- **MO_05 (Sprint 3 scope):** Mark applicants Shortlisted / Rejected / Pending-style states, add **evaluation notes**, support **single and batch** status updates, **filter** the list by status, and keep UI state consistent after saves.
+- **MO_08:** View a **history-style** list of posted TA jobs/demands (draft / published / withdrawn / recruitment closed) for reuse and audit.
+- **MO_09:** Export applicant data for offline analysis (implemented as **browser CSV** from the current filtered rows).
+
+**Description:** Builds on Sprint 1–2 with richer review tooling: multi-checkbox status filter (`status` query: comma-separated; `pending` includes both `pending` and `viewed`; `__none__` when no box is ticked returns **no** rows to avoid accidental “show all”), batch bar + `POST /api/mo/applications/batch/status`, `POST /api/mo/applications/status`, and `POST /api/mo/applications/notes` for `evaluationNotes`. After status changes, the UI **reloads the list** so filters and rows stay aligned. **MO_08** is covered by `GET /api/mo/demands/list` on the teacher portal. **MO_09** uses client-side `exportCsv()` producing UTF-8 CSV (columns include application id, job id, student name, status, timestamps, notes — exact header as implemented in `mo-applications.js`); list JSON already exposes richer profile fields if the team extends CSV later.
+
+**Service notes:** `MoApplicationService.listApplications` implements `parseStatusFilter` / `matchesStatusFilter` (legacy “three statuses mean no filter” behaviour was removed to fix wrong rows when e.g. “Hired” is unchecked). Direct status change to `hired` can append a **`manual_hire`** record for history consistency (see 6.5).
+
+**Backlog alignment (product board — Sprint 3, MO_05 / MO_08 / MO_09):** The Sprint 3 MO rows on the team backlog are the wording baseline; the table below maps each acceptance line to the current build.
+
+| Backlog item | Acceptance theme | In current system |
+|--------------|------------------|-------------------|
+| **MO_05** | Single and batch status marking | **Yes** — per-row control + `POST /api/mo/applications/status`; batch + `POST /api/mo/applications/batch/status`. |
+| **MO_05** | Private evaluation notes | **Yes** — `evaluationNotes`, `POST /api/mo/applications/notes`; not exposed to applicants. |
+| **MO_05** | Filter list by marked status | **Yes** — checkboxes + `status` query (`__none__` when no box selected). |
+| **MO_05** | Auto-save without data loss | **Mostly** — notes auto-save via debounced POST; status saves on change and list reloads after success (see demo script for exact UX). |
+| **MO_08** | History list: sort, name, status, applicant count, hire count, release time, deadline | **Partial** — `GET /api/mo/demands/list` + `teacher.js` cards; confirm in demo whether every column in the board is shown or still TODO in API/UI. |
+| **MO_08** | Drill into historical job + application/hiring data | **Partial** — use existing job/application flows; confirm “historical” drill-down path for the report. |
+| **MO_08** | One-click copy to create new job | **Unverified in doc** — implement or document manual recreate if not present. |
+| **MO_09** | Export respects filters | **Yes** — CSV from currently loaded filtered rows. |
+| **MO_09** | Core columns: name, ID, major, time, status, skills | **Partial** — list API carries profile fields; CSV columns are a **subset** unless extended in `exportCsv()`. |
+| **MO_09** | Plain text, no DB | **Yes**. |
+| **MO_09** | Usable in Excel | **Yes** — UTF-8 CSV. |
+
+---
+
+### 6.5 Sprint 4 — Decision Feedback (MO_10), Admin Archiving, Follow-Ups, and Applicant Workload Colours
+
+**User Stories:**
+- **MO_10:** Submit short **hiring / rejection / shortlist reasons** for internal school traceability (MO and admin only, not shown to applicants).
+
+**Description:** `decisionFeedback` on `ApplicationRecord`, maintained by `MoApplicationService.updateDecisionFeedback` (eligibility: status in `hired` | `shortlisted` | `rejected`; **max 200 characters** — backlog text sometimes says “200 words”; the running code uses **characters**). Persisted in `applications.json`. MO UI posts to `POST /api/mo/applications/feedback`. Administrators use `GET /api/admin/applications` to read rows including `evaluationNotes` and `decisionFeedback` for archiving. **Manual hire history** (`manual_hire` in `hiring_history.json`) keeps audit aligned when hire happens outside the main finalize modal.
+
+**Backlog alignment (product board — Sprint 4, MO_10):**
+
+| Backlog line | In current system |
+|--------------|-------------------|
+| Short feedback up to **200 words** | Implementation enforces **200 characters**; align backlog wording with code or extend limit if course requires “words”. |
+| Visible only to MO and administrators | **Yes** — not on applicant APIs; admin list includes field for archiving. |
+| Linked to applicant + synced to admin backend | **Yes** — stored on application row; `GET /api/admin/applications` for read/archive. |
+
+**Sprint 4 — Additional enhancement (not on the MO backlog screenshot): colour-coded weekly workload preview on Applicants**
+
+This feature **was not** one of MO_05–MO_10 in the shared board; it is documented here under Sprint 4 as a team-added UX improvement.
+
+- **Where:** `mo-applications.jsp` (styles: `mo-wl-low` / `mo-wl-normal` / `mo-wl-warn` / `mo-wl-over`, neutral border) and `mo-applications.js` (`workloadTier`, `currentHiredHoursElsewhere`, `jobWeeklyHours`, `wlPanelClass` / `wlCardClass`).
+- **Behaviour:** For each applicant card, the UI estimates **current** weekly hours on other hired posts and **projected total if this applicant were hired** for the current job, then assigns a tier (**Low / Normal / Warning / Overload**) with **colour-coded** card border and summary panel backgrounds.
+- **Safety hint:** The UI can surface a prominent warning when hiring would exceed a **20 hours/week** style limit (wording as implemented in the script).
+- **Scope note:** This is a **front-end assistance** layer on the MO applications page; it does not replace admin workload policy elsewhere (e.g. ADM_04 in §4.1).
+
+---
+
+### 6.6 MO API Surface (Reference)
+
+| Area | Method | Path (representative) | Role |
+|------|--------|------------------------|------|
+| Demands | POST | `/api/mo/demands` | Create demand |
+| Demands | GET | `/api/mo/demands/list` | List own demands / jobs |
+| Publish / withdraw | POST | `/api/mo/jobs/publish/*`, `/api/mo/jobs/withdraw/*` | Job lifecycle |
+| Applications | GET | `/api/mo/applications` | List (optional `jobId`, `status`) |
+| Applications | GET | `/api/mo/applications/detail/*` | Detail + `pending`→`viewed` |
+| Status | POST | `/api/mo/applications/status` | Single status update |
+| Status | POST | `/api/mo/applications/batch/status` | Batch status update |
+| Notes | POST | `/api/mo/applications/notes` | Save `evaluationNotes` |
+| Feedback | POST | `/api/mo/applications/feedback` | Save `decisionFeedback` |
+| Hiring | POST | `/api/mo/hiring/finalize` | Finalize hiring |
+| Hiring | GET | `/api/mo/hiring/state`, `/api/mo/hiring/history` | State + history |
+| Jobs | POST | `/api/mo/jobs/edit/*`, `delete/*`, `offline/*` | Lifecycle |
+| Notifications | GET | `/api/mo/notifications` | List |
+| Notifications | POST | `/api/mo/notifications/read/*` | Mark read |
+| Admin | GET | `/api/admin/applications` | Admin list (archiving) |
+
+Paths follow the concrete `@WebServlet` mappings in the `com.ta.web.mo` package (some routes use `/*` pathInfo patterns as in the scaffold).
+
+---
+
+### 6.7 Completion
+
+**Assignees:** Wanhe Ji / Huishun Hu  
+**Completion window:** 2026-04 (align with project demonstration; adjust per team records).
+
