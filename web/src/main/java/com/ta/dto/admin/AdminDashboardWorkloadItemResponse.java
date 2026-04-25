@@ -5,6 +5,8 @@ public class AdminDashboardWorkloadItemResponse {
     private String studentName;
     private int hiredCount;
     private int weeklyHours;
+    private int thresholdHours;
+    private boolean warning;
 
     public String getStudentId() {
         return studentId;
@@ -36,5 +38,21 @@ public class AdminDashboardWorkloadItemResponse {
 
     public void setWeeklyHours(int weeklyHours) {
         this.weeklyHours = weeklyHours;
+    }
+
+    public int getThresholdHours() {
+        return thresholdHours;
+    }
+
+    public void setThresholdHours(int thresholdHours) {
+        this.thresholdHours = thresholdHours;
+    }
+
+    public boolean isWarning() {
+        return warning;
+    }
+
+    public void setWarning(boolean warning) {
+        this.warning = warning;
     }
 }
