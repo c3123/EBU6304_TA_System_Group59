@@ -1,9 +1,10 @@
-﻿document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener("DOMContentLoaded", async () => {
   const state = {
     activeTab: "jobs",
     loading: true,
     jobs: [],
     applications: [],
+    assignedJobs: [],
     student: null,
     search: "",
     statusFilter: "all",
@@ -19,6 +20,7 @@
   const panels = {
     jobs: byId("panel-jobs"),
     applications: byId("panel-applications"),
+    assigned: byId("panel-assigned"),
     profile: byId("panel-profile")
   };
 
@@ -30,6 +32,10 @@
   const appsLoadingEl = byId("appsLoading");
   const appsEmptyEl = byId("appsEmpty");
   const appsCountTextEl = byId("appsCountText");
+  const assignedListEl = byId("assignedList");
+  const assignedLoadingEl = byId("assignedLoading");
+  const assignedEmptyEl = byId("assignedEmpty");
+  const assignedCountTextEl = byId("assignedCountText");
   const studentWelcomeEl = byId("studentWelcome");
   const noticeEl = byId("studentNotice");
 
@@ -44,6 +50,7 @@
   const profileSkillsEl = byId("profileSkills");
   const profileExperienceEl = byId("profileExperience");
   const saveProfileBtn = byId("saveProfileBtn");
+  const changePasswordBtn = byId("studentChangePasswordBtn");
 
   const jobDetailOverlayEl = byId("jobDetailOverlay");
   const closeJobDetailBtn = byId("closeJobDetailBtn");
@@ -146,13 +153,6 @@
     return state.applications.some((app) => app.jobId === jobId);
   }
 
-  function todayIsoDate() {
-    const now = new Date();
-    const m = `${now.getMonth() + 1}`.padStart(2, "0");
-    const d = `${now.getDate()}`.padStart(2, "0");
-    return `${now.getFullYear()}-${m}-${d}`;
-  }
-
   function switchTab(tabKey) {
     state.activeTab = tabKey;
     tabButtons.forEach((btn) => {
@@ -220,6 +220,7 @@
           <p class="job-meta">
             ${escapeHtml(job.hours || "0")}h/week | Deadline: ${escapeHtml(job.deadline || "TBA")}
           </p>
+          <p class="job-meta">Schedule: ${escapeHtml(job.schedule || "-")} | Location: ${escapeHtml(job.location || "-")}</p>
           <p class="job-meta">Status: ${escapeHtml(job.status || "unknown")}</p>
           <div class="job-actions">${detailBtn}${applyBtn}</div>
         </article>
@@ -255,7 +256,7 @@
       const canWithdraw = normalizeStatus(app.status) !== "hired";
       const withdrawBtn = canWithdraw
         ? `<button class="withdraw-app-btn" data-app-id="${escapeHtml(app.id)}">Withdraw</button>`
-        : '';
+        : "";
       return `
       <article class="app-item status-${statusClass}">
         ${withdrawBtn}
@@ -267,14 +268,49 @@
     `;
     }).join("");
 
-    // Attach withdraw event listeners
-    appsListEl.querySelectorAll('.withdraw-app-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
+    appsListEl.querySelectorAll(".withdraw-app-btn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
         e.preventDefault();
         const appId = btn.dataset.appId;
         await withdrawApplication(appId);
       });
     });
+  }
+
+  function renderAssignedJobs() {
+    if (state.loading) {
+      assignedLoadingEl.classList.remove("hidden");
+      assignedListEl.classList.add("hidden");
+      assignedEmptyEl.classList.add("hidden");
+      assignedCountTextEl.textContent = "Loading your confirmed TA jobs...";
+      return;
+    }
+
+    assignedLoadingEl.classList.add("hidden");
+    const items = state.assignedJobs;
+    if (!items.length) {
+      assignedListEl.classList.add("hidden");
+      assignedEmptyEl.classList.remove("hidden");
+      assignedCountTextEl.textContent = "No hired TA jobs found.";
+      return;
+    }
+
+    assignedEmptyEl.classList.add("hidden");
+    assignedListEl.classList.remove("hidden");
+    assignedCountTextEl.textContent = `${items.length} hired job(s) confirmed.`;
+    assignedListEl.innerHTML = items.map((item) => `
+      <article class="app-item status-hired">
+        <h3>${escapeHtml(item.title || "Untitled Job")}</h3>
+        <p class="app-meta">${escapeHtml(item.moduleCode || "-")} | ${escapeHtml(item.teacherName || "-")}</p>
+        <div class="app-feedback">
+          Weekly Hours: ${escapeHtml(String(item.weeklyHours || 0))}<br />
+          Schedule: ${escapeHtml(item.schedule || "-")}<br />
+          Location: ${escapeHtml(item.location || "-")}<br />
+          Deadline: ${escapeHtml(item.deadline || "-")}<br />
+          Recruitment Closed: ${item.recruitmentClosed ? "Yes" : "No"}
+        </div>
+      </article>
+    `).join("");
   }
 
   function renderProfile() {
@@ -297,23 +333,22 @@
       return;
     }
 
-    const html = attachments.map(att => `
+    const html = attachments.map((att) => `
       <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #f3f4f6;">
         <div>
           <p style="margin: 0; font-size: 13px; font-weight: 500;">${escapeHtml(att.fileName)}</p>
           <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">
-            ${escapeHtml(att.label || 'Unlabeled')} • ${formatFileSize(att.fileSize)} • ${extractDate(att.uploadedAt)}
+            ${escapeHtml(att.label || "Unlabeled")} • ${formatFileSize(att.fileSize)} • ${extractDate(att.uploadedAt)}
           </p>
         </div>
         <button class="delete-attachment-btn" data-attachment-id="${escapeHtml(att.id)}" style="padding: 6px 10px; background-color: #fee2e2; color: #991b1b; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">Delete</button>
       </div>
-    `).join('');
+    `).join("");
 
     attachmentsListEl.innerHTML = html;
 
-    // Attach delete event listeners
-    attachmentsListEl.querySelectorAll('.delete-attachment-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
+    attachmentsListEl.querySelectorAll(".delete-attachment-btn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
         e.preventDefault();
         const attachmentId = btn.dataset.attachmentId;
         await deleteAttachment(attachmentId);
@@ -322,11 +357,11 @@
   }
 
   function formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return "0 Bytes";
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB'];
+    const sizes = ["Bytes", "KB", "MB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
   }
 
   function getAttachmentLabel() {
@@ -366,11 +401,10 @@
       return;
     }
 
-    // Validate file
-    const allowedExtensions = ['pdf', 'docx', 'xlsx', 'jpg', 'png'];
-    const fileExtension = file.name.split('.').pop().toLowerCase();
+    const allowedExtensions = ["pdf", "docx", "xlsx", "jpg", "png"];
+    const fileExtension = file.name.split(".").pop().toLowerCase();
     if (!allowedExtensions.includes(fileExtension)) {
-      showNotice(`File type not allowed. Allowed types: ${allowedExtensions.join(', ')}`, true);
+      showNotice(`File type not allowed. Allowed types: ${allowedExtensions.join(", ")}`, true);
       return;
     }
 
@@ -381,12 +415,12 @@
 
     try {
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('label', label);
+      formData.append("file", file);
+      formData.append("label", label);
 
       const res = await fetch(buildApiUrl("/attachments"), {
-        method: 'POST',
-        credentials: 'same-origin',
+        method: "POST",
+        credentials: "same-origin",
         body: formData
       });
 
@@ -397,9 +431,9 @@
 
       state.attachments.push(body.data);
       renderAttachmentsList();
-      fileInputEl.value = '';
-      if (attachmentLabelEl) attachmentLabelEl.value = 'Resume';
-      if (attachmentCustomLabelEl) attachmentCustomLabelEl.value = '';
+      fileInputEl.value = "";
+      if (attachmentLabelEl) attachmentLabelEl.value = "Resume";
+      if (attachmentCustomLabelEl) attachmentCustomLabelEl.value = "";
       syncAttachmentLabelUi();
       showNotice("Document uploaded successfully.", false);
     } catch (err) {
@@ -412,8 +446,8 @@
 
     try {
       const res = await fetch(buildApiUrl(`/attachments/${attachmentId}`), {
-        method: 'DELETE',
-        credentials: 'same-origin'
+        method: "DELETE",
+        credentials: "same-origin"
       });
 
       const body = await res.json();
@@ -421,7 +455,7 @@
         throw new Error(body.message || "Delete failed.");
       }
 
-      state.attachments = state.attachments.filter(a => a.id !== attachmentId);
+      state.attachments = state.attachments.filter((a) => a.id !== attachmentId);
       renderAttachmentsList();
       showNotice("Document deleted successfully.", false);
     } catch (err) {
@@ -429,11 +463,16 @@
     }
   }
 
-  async function fetchApplications() {
+  async function fetchApplicationsAndAssigned() {
     try {
-      const appData = await requestApi("/applications");
+      const [appData, assignedData] = await Promise.all([
+        requestApi("/applications"),
+        requestApi("/my-jobs")
+      ]);
       state.applications = Array.isArray(appData.items) ? appData.items : [];
+      state.assignedJobs = Array.isArray(assignedData.items) ? assignedData.items : [];
       renderApplications();
+      renderAssignedJobs();
     } catch (err) {
       showNotice(err.message || "Failed to refresh applications.", true);
     }
@@ -446,8 +485,8 @@
       await requestApi(`/applications?applicationId=${encodeURIComponent(applicationId)}`, {
         method: "DELETE"
       });
-      await fetchApplications();
-      renderJobs(); // Refresh jobs to update apply button status
+      await fetchApplicationsAndAssigned();
+      renderJobs();
       showNotice("Application withdrawn successfully.", false);
     } catch (err) {
       showNotice(err.message || "Failed to withdraw application.", true);
@@ -479,7 +518,7 @@
     if (detailHoursEl) detailHoursEl.textContent = `${job.hours || 0}h/week`;
     if (detailPositionsEl) detailPositionsEl.textContent = String(job.positions || "-");
     if (detailDeadlineEl) detailDeadlineEl.textContent = job.deadline || "-";
-    if (detailStatusEl) detailStatusEl.textContent = job.status || "-";
+    if (detailStatusEl) detailStatusEl.textContent = `${job.status || "-"} | Schedule: ${job.schedule || "-"} | Location: ${job.location || "-"}`;
     if (detailRequirementsEl) {
       detailRequirementsEl.textContent = job.requirements || "No detailed requirements provided yet.";
     }
@@ -508,15 +547,18 @@
       return;
     }
 
-    detailAttachmentsListEl.innerHTML = attachments.map((att, idx) => `
+    detailAttachmentsListEl.innerHTML = attachments.map((att) => `
       <label style="display:flex;align-items:center;gap:8px;margin:6px 0;">
-        <input type="checkbox" class="detail-attachment-checkbox" data-attachment-id="${escapeHtml(att.id)}" ${idx === 0 ? "checked" : "checked"} />
+        <input type="checkbox" class="detail-attachment-checkbox" data-attachment-id="${escapeHtml(att.id)}" checked />
         <span>${escapeHtml(att.fileName || "Unnamed file")} (${escapeHtml(att.label || "Unlabeled")}, ${formatFileSize(att.fileSize || 0)})</span>
       </label>
     `).join("");
 
     if (detailApplyBtn) detailApplyBtn.disabled = false;
-    if (detailAttachmentHintEl) detailAttachmentHintEl.textContent = "At least one attachment is required. All are selected by default.";
+    if (detailAttachmentHintEl) {
+      detailAttachmentHintEl.textContent = "At least one attachment is required. All are selected by default.";
+      detailAttachmentHintEl.style.color = "";
+    }
 
     detailAttachmentsListEl.querySelectorAll(".detail-attachment-checkbox").forEach((checkbox) => {
       checkbox.addEventListener("change", () => {
@@ -547,14 +589,45 @@
       throw new Error("Please select at least one attachment.");
     }
 
-    const created = await requestApi("/applications", {
+    await requestApi("/applications", {
       method: "POST",
       body: { jobId, selectedAttachmentIds }
     });
-    state.applications.unshift(created);
+    await fetchApplicationsAndAssigned();
     renderJobs();
-    renderApplications();
     showNotice("Application submitted successfully.", false);
+  }
+
+  async function changePassword() {
+    try {
+      changePasswordBtn.disabled = true;
+      changePasswordBtn.textContent = "Changing...";
+      const response = await fetch(`${window.location.origin}${getContextPath()}/api/account/change-password`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          oldPassword: byId("studentOldPassword").value.trim(),
+          newPassword: byId("studentNewPassword").value.trim(),
+          confirmPassword: byId("studentConfirmPassword").value.trim()
+        })
+      });
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        throw new Error(body.message || "Request failed.");
+      }
+      byId("studentOldPassword").value = "";
+      byId("studentNewPassword").value = "";
+      byId("studentConfirmPassword").value = "";
+      showNotice("Password changed successfully.", false);
+    } catch (err) {
+      showNotice(err.message || "Failed to change password.", true);
+    } finally {
+      changePasswordBtn.disabled = false;
+      changePasswordBtn.textContent = "Change Password";
+    }
   }
 
   tabButtons.forEach((btn) => {
@@ -647,48 +720,49 @@
     }
   });
 
-  // File upload handling
+  changePasswordBtn.addEventListener("click", changePassword);
+
   if (uploadAreaEl && fileInputEl) {
     syncAttachmentLabelUi();
 
     if (attachmentLabelEl) {
-      attachmentLabelEl.addEventListener('change', syncAttachmentLabelUi);
+      attachmentLabelEl.addEventListener("change", syncAttachmentLabelUi);
     }
 
-    uploadAreaEl.addEventListener('click', () => {
+    uploadAreaEl.addEventListener("click", () => {
       fileInputEl.click();
     });
 
-    uploadAreaEl.addEventListener('dragover', (e) => {
+    uploadAreaEl.addEventListener("dragover", (e) => {
       e.preventDefault();
-      uploadAreaEl.style.borderColor = '#1e5eff';
-      uploadAreaEl.style.backgroundColor = '#eff6ff';
+      uploadAreaEl.style.borderColor = "#1e5eff";
+      uploadAreaEl.style.backgroundColor = "#eff6ff";
     });
 
-    uploadAreaEl.addEventListener('dragleave', () => {
-      uploadAreaEl.style.borderColor = '#9ca3af';
-      uploadAreaEl.style.backgroundColor = '#f9fafb';
+    uploadAreaEl.addEventListener("dragleave", () => {
+      uploadAreaEl.style.borderColor = "#9ca3af";
+      uploadAreaEl.style.backgroundColor = "#f9fafb";
     });
 
-    uploadAreaEl.addEventListener('drop', (e) => {
+    uploadAreaEl.addEventListener("drop", (e) => {
       e.preventDefault();
-      uploadAreaEl.style.borderColor = '#9ca3af';
-      uploadAreaEl.style.backgroundColor = '#f9fafb';
+      uploadAreaEl.style.borderColor = "#9ca3af";
+      uploadAreaEl.style.backgroundColor = "#f9fafb";
       const files = e.dataTransfer.files;
       if (files.length > 0) {
         (async () => {
-          for (let file of files) {
+          for (const file of files) {
             await uploadFile(file);
           }
         })();
       }
     });
 
-    fileInputEl.addEventListener('change', (e) => {
+    fileInputEl.addEventListener("change", (e) => {
       const files = e.target.files;
       if (files.length > 0) {
         (async () => {
-          for (let file of files) {
+          for (const file of files) {
             await uploadFile(file);
           }
         })();
@@ -697,14 +771,16 @@
   }
 
   async function loadFromBackend() {
-    const [jobData, appData, profileData] = await Promise.all([
+    const [jobData, appData, assignedData, profileData] = await Promise.all([
       requestApi("/jobs"),
       requestApi("/applications"),
+      requestApi("/my-jobs"),
       requestApi("/profile")
     ]);
 
     state.jobs = Array.isArray(jobData.items) ? jobData.items : [];
     state.applications = Array.isArray(appData.items) ? appData.items : [];
+    state.assignedJobs = Array.isArray(assignedData.items) ? assignedData.items : [];
     state.student = {
       id: profileData.userId,
       name: profileData.name,
@@ -723,6 +799,7 @@
 
   renderJobs();
   renderApplications();
+  renderAssignedJobs();
 
   try {
     await loadFromBackend();
@@ -733,6 +810,7 @@
     state.loading = false;
     renderJobs();
     renderApplications();
+    renderAssignedJobs();
     renderProfile();
   }
 });

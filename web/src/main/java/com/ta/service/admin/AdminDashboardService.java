@@ -9,6 +9,7 @@ import com.ta.model.ApplicationRecord;
 import com.ta.model.JobPosting;
 import com.ta.model.SystemSettings;
 import com.ta.model.User;
+import com.ta.util.JobHoursUtil;
 import com.ta.util.JsonUtility;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletResponse;
@@ -173,7 +174,7 @@ public class AdminDashboardService {
         Map<String, Integer> jobHoursById = new LinkedHashMap<>();
         for (JobPosting job : jobs) {
             if (job.getId() != null) {
-                jobHoursById.put(job.getId(), resolveWeeklyHours(job));
+                jobHoursById.put(job.getId(), JobHoursUtil.resolveWeeklyHours(job));
             }
         }
 
@@ -207,28 +208,6 @@ public class AdminDashboardService {
         List<AdminDashboardWorkloadItemResponse> items = new ArrayList<>(workloadByStudent.values());
         items.sort(Comparator.comparingInt(AdminDashboardWorkloadItemResponse::getWeeklyHours).reversed());
         return items;
-    }
-
-    private int resolveWeeklyHours(JobPosting job) {
-        if (job == null) {
-            return 0;
-        }
-        if (job.getHours() > 0) {
-            return job.getHours();
-        }
-
-        Integer min = job.getHourMin();
-        Integer max = job.getHourMax();
-        if (min != null && max != null) {
-            return (int) Math.round((min + max) / 2.0);
-        }
-        if (max != null && max > 0) {
-            return max;
-        }
-        if (min != null && min > 0) {
-            return min;
-        }
-        return 0;
     }
 
     private String trimToEmpty(String value) {

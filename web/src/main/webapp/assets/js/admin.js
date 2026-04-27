@@ -20,10 +20,32 @@ document.addEventListener("DOMContentLoaded", async () => {
   const createButton = byId("adminCreateUserBtn");
   const studentIdField = byId("adminStudentIdField");
   const programmeField = byId("adminProgrammeField");
+
+  const thresholdForm = byId("adminThresholdForm");
+  const thresholdHoursEl = byId("adminThresholdHours");
+  const thresholdUpdatedAtEl = byId("adminThresholdUpdatedAt");
+  const thresholdSaveBtn = byId("adminThresholdSaveBtn");
+
+  const statusFilterEl = byId("adminJobStatusFilter");
+  const departmentFilterEl = byId("adminJobDepartmentFilter");
+  const departmentOptionsEl = byId("adminDepartmentOptions");
+  const applyFiltersBtn = byId("adminApplyFiltersBtn");
+  const resetFiltersBtn = byId("adminResetFiltersBtn");
+  const exportCsvBtn = byId("adminExportCsvBtn");
+  const exportTxtBtn = byId("adminExportTxtBtn");
+
+  const changePasswordForm = byId("adminChangePasswordForm");
+  const changePasswordBtn = byId("adminChangePasswordBtn");
+
   const currentUserId = portal?.getAttribute("data-current-user-id") || "";
   const currentUserName = portal?.getAttribute("data-current-user-name") || "Admin User";
 
   let latestData = null;
+  let knownDepartments = [];
+  const filters = {
+    status: "all",
+    department: "all"
+  };
 
   function setNotice(message, isError) {
     if (!noticeEl) return;
@@ -31,27 +53,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     noticeEl.style.color = isError ? "#b91c1c" : "";
   }
 
-  function statusTag(hours) {
-    if (hours >= 20) return { label: "Overload", cls: "danger" };
-    if (hours >= 15) return { label: "Warning", cls: "warn" };
-    if (hours >= 10) return { label: "Normal", cls: "ok" };
-    return { label: "Low", cls: "low" };
-  }
-
   function activateTab(tabName) {
-    tabs.forEach(tab => {
+    tabs.forEach((tab) => {
       const active = tab.getAttribute("data-admin-tab") === tabName;
       tab.classList.toggle("active", active);
       tab.setAttribute("aria-selected", active ? "true" : "false");
     });
-    panels.forEach(panel => {
+    panels.forEach((panel) => {
       panel.classList.toggle("admin-hidden", panel.getAttribute("data-admin-panel") !== tabName);
     });
+
     const title = byId("adminSubTitle");
     if (!title) return;
     if (tabName === "workload") title.textContent = "TA Workload Statistics";
     if (tabName === "users") title.textContent = "User Management";
     if (tabName === "jobs") title.textContent = "Job Management";
+    if (tabName === "account") title.textContent = "My Account";
     if (tabName === "overview") title.textContent = `Welcome, ${currentUserName}`;
   }
 
@@ -80,11 +97,30 @@ document.addEventListener("DOMContentLoaded", async () => {
     return body.data;
   }
 
+  function renderDepartmentOptions() {
+    if (!departmentOptionsEl) return;
+    departmentOptionsEl.innerHTML = knownDepartments
+      .map((value) => `<option value="${escapeHtml(value)}"></option>`)
+      .join("");
+  }
+
   async function loadAdminDashboard() {
-    const data = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/dashboard`, {
+    const params = new URLSearchParams();
+    params.set("status", filters.status || "all");
+    params.set("department", filters.department || "all");
+
+    const data = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/dashboard?${params.toString()}`, {
       method: "GET"
     });
     latestData = data || {};
+
+    if (filters.status === "all" && filters.department === "all") {
+      knownDepartments = Array.from(new Set((latestData.jobs || [])
+        .map((job) => String(job.department || "").trim())
+        .filter(Boolean)))
+        .sort((a, b) => a.localeCompare(b));
+      renderDepartmentOptions();
+    }
 
     byId("statJobs").textContent = latestData.totalJobs ?? 0;
     byId("statUsers").textContent = latestData.totalUsers ?? 0;
@@ -95,10 +131,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderWorkload(latestData.workload || []);
   }
 
+  async function loadThresholdSettings() {
+    const settings = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/settings/workload-threshold`, {
+      method: "GET"
+    });
+    thresholdHoursEl.value = settings.workloadThresholdHours ?? 20;
+    thresholdUpdatedAtEl.value = settings.updatedAt || "";
+  }
+
   function renderOverview(data) {
     const jobs = data.jobs || [];
-    const openJobs = jobs.filter(job => !job.recruitmentClosed).length;
-    const closedJobs = jobs.filter(job => job.recruitmentClosed).length;
+    const openJobs = jobs.filter((job) => !job.recruitmentClosed).length;
+    const closedJobs = jobs.filter((job) => job.recruitmentClosed).length;
     const totalHired = (data.workload || []).reduce((sum, item) => sum + Number(item.hiredCount || 0), 0);
     byId("overviewOpenJobs").textContent = openJobs;
     byId("overviewClosedJobs").textContent = closedJobs;
@@ -122,22 +166,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function renderUsers(users) {
-    const adminCount = users.filter(user => user.role === "admin").length;
+    const adminCount = users.filter((user) => user.role === "admin").length;
     const roleGroups = {
       student: { title: "Students", items: [] },
       teacher: { title: "Teachers", items: [] },
       admin: { title: "Administrators", items: [] }
     };
-    users.forEach(user => {
+    users.forEach((user) => {
       const key = user.role in roleGroups ? user.role : "student";
       roleGroups[key].items.push(user);
     });
 
-    usersGrouped.innerHTML = Object.values(roleGroups).map(group => `
+    usersGrouped.innerHTML = Object.values(roleGroups).map((group) => `
       <div class="card">
         <h3 class="admin-subtitle">${group.title} (${group.items.length})</h3>
         <div class="admin-list">
-          ${group.items.map(user => `
+          ${group.items.map((user) => `
             <div class="admin-list-item">
               <div>
                 <p class="admin-list-name">${escapeHtml(user.name)}</p>
@@ -150,7 +194,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       </div>
     `).join("");
 
-    usersBody.innerHTML = users.map(user => `
+    usersBody.innerHTML = users.map((user) => `
       <tr>
         <td>${escapeHtml(user.name)}</td>
         <td>${escapeHtml(user.email)}</td>
@@ -162,20 +206,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function renderJobs(jobs) {
-    jobsCards.innerHTML = jobs.map(job => {
-      const isOpen = !job.recruitmentClosed;
-      const recruitment = isOpen ? "Open" : "Closed";
+    jobsCards.innerHTML = jobs.map((job) => {
+      const recruitment = job.recruitmentClosed ? "Closed" : "Open";
       return `
-        <article class="card admin-job-card ${isOpen ? "" : "is-closed"}">
+        <article class="card admin-job-card ${job.recruitmentClosed ? "is-closed" : ""}">
           <div class="admin-job-top">
             <div>
               <h3 class="admin-subtitle">${escapeHtml(job.moduleCode)} - ${escapeHtml(job.title)}</h3>
               <p class="admin-list-meta">Module Organiser: ${escapeHtml(job.teacherName)}</p>
             </div>
-            <span class="tag ${isOpen ? "ok" : ""}">${recruitment}</span>
+            <span class="tag ${job.recruitmentClosed ? "" : "ok"}">${recruitment}</span>
           </div>
           <div class="admin-job-grid">
             <div><span class="admin-key">Status</span><strong>${escapeHtml(job.status)}</strong></div>
+            <div><span class="admin-key">Department</span><strong>${escapeHtml(job.department || "-")}</strong></div>
             <div><span class="admin-key">Positions</span><strong>${escapeHtml(String(job.positions))}</strong></div>
             <div><span class="admin-key">Recruitment</span><strong>${recruitment}</strong></div>
             <div><span class="admin-key">Action</span>${job.recruitmentClosed ? `<button class="btn btn-outline" data-reopen-job="${escapeHtml(job.id)}">Reopen</button>` : "<span>-</span>"}</div>
@@ -184,10 +228,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       `;
     }).join("") || `<div class="card"><p class="admin-empty-text">No jobs found.</p></div>`;
 
-    jobsBody.innerHTML = jobs.map(job => `
+    jobsBody.innerHTML = jobs.map((job) => `
       <tr>
         <td>${escapeHtml(job.moduleCode)}</td>
         <td>${escapeHtml(job.title)}</td>
+        <td>${escapeHtml(job.department || "-")}</td>
         <td>${escapeHtml(job.teacherName)}</td>
         <td>${escapeHtml(job.status)}</td>
         <td>${job.recruitmentClosed ? "Recruitment Closed" : "Open"}</td>
@@ -198,8 +243,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function renderWorkload(workload) {
-    workloadCards.innerHTML = workload.map(item => {
-      const tag = statusTag(Number(item.weeklyHours || 0));
+    workloadCards.innerHTML = workload.map((item) => {
+      const tag = item.warning
+        ? { label: `Warning > ${item.thresholdHours || 0}h`, cls: "danger" }
+        : { label: `Within ${item.thresholdHours || 0}h`, cls: "ok" };
       return `
         <article class="card admin-work-card ${tag.cls === "danger" ? "is-danger" : ""}">
           <div class="admin-work-top">
@@ -208,25 +255,27 @@ document.addEventListener("DOMContentLoaded", async () => {
               <p class="admin-list-meta">Student ID: ${escapeHtml(item.studentId)}</p>
             </div>
             <div class="admin-work-hours">
-              <strong>${escapeHtml(String(item.weeklyHours))}</strong>
+              <strong>${escapeHtml(String(item.weeklyHours || 0))}</strong>
               <span>hrs/week</span>
               <em class="tag ${tag.cls}">${tag.label}</em>
             </div>
           </div>
-          <p class="admin-list-meta">Active Applications: ${escapeHtml(String(item.hiredCount))}</p>
+          <p class="admin-list-meta">Hired Jobs: ${escapeHtml(String(item.hiredCount || 0))} | Threshold: ${escapeHtml(String(item.thresholdHours || 0))}h</p>
         </article>
       `;
     }).join("") || `<div class="card"><p class="admin-empty-text">No hired records yet.</p></div>`;
 
-    workloadBody.innerHTML = workload.map(item => `
+    workloadBody.innerHTML = workload.map((item) => `
       <tr>
         <td>${escapeHtml(item.studentId)}</td>
         <td>${escapeHtml(item.studentName)}</td>
-        <td>${escapeHtml(String(item.hiredCount))}</td>
-        <td>${escapeHtml(String(item.weeklyHours))}</td>
+        <td>${escapeHtml(String(item.hiredCount || 0))}</td>
+        <td>${escapeHtml(String(item.weeklyHours || 0))}</td>
+        <td>${escapeHtml(String(item.thresholdHours || 0))}</td>
+        <td>${item.warning ? "Warning" : "OK"}</td>
       </tr>
     `).join("") || `
-      <tr><td colspan="4">No hired records yet.</td></tr>
+      <tr><td colspan="6">No hired records yet.</td></tr>
     `;
   }
 
@@ -261,6 +310,120 @@ document.addEventListener("DOMContentLoaded", async () => {
     } finally {
       createButton.disabled = false;
       createButton.textContent = "Create User";
+    }
+  }
+
+  async function saveThreshold(event) {
+    event.preventDefault();
+    try {
+      thresholdSaveBtn.disabled = true;
+      thresholdSaveBtn.textContent = "Saving...";
+      const saved = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/settings/workload-threshold`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json;charset=UTF-8" },
+        body: JSON.stringify({ workloadThresholdHours: Number(thresholdHoursEl.value) })
+      });
+      thresholdHoursEl.value = saved.workloadThresholdHours ?? thresholdHoursEl.value;
+      thresholdUpdatedAtEl.value = saved.updatedAt || "";
+      setNotice("Workload threshold saved.", false);
+      await loadAdminDashboard();
+      activateTab("workload");
+    } catch (err) {
+      setNotice(err.message, true);
+      activateTab("workload");
+    } finally {
+      thresholdSaveBtn.disabled = false;
+      thresholdSaveBtn.textContent = "Save Threshold";
+    }
+  }
+
+  async function applyFilters() {
+    filters.status = statusFilterEl.value || "all";
+    const department = (departmentFilterEl.value || "").trim();
+    filters.department = department ? department : "all";
+    try {
+      await loadAdminDashboard();
+      setNotice("Job filters applied.", false);
+      activateTab("jobs");
+    } catch (err) {
+      setNotice(err.message, true);
+      activateTab("jobs");
+    }
+  }
+
+  async function resetFilters() {
+    filters.status = "all";
+    filters.department = "all";
+    statusFilterEl.value = "all";
+    departmentFilterEl.value = "";
+    try {
+      await loadAdminDashboard();
+      setNotice("Job filters reset.", false);
+      activateTab("jobs");
+    } catch (err) {
+      setNotice(err.message, true);
+      activateTab("jobs");
+    }
+  }
+
+  async function downloadReport(format) {
+    const button = format === "csv" ? exportCsvBtn : exportTxtBtn;
+    const defaultText = format === "csv" ? "Export CSV" : "Export TXT";
+    try {
+      button.disabled = true;
+      button.textContent = "Preparing...";
+      const response = await fetch(`${window.location.origin}${getContextPath()}/api/admin/reports/weekly?format=${encodeURIComponent(format)}`, {
+        method: "GET",
+        credentials: "same-origin"
+      });
+      const contentType = response.headers.get("content-type") || "";
+      if (!response.ok || contentType.includes("application/json")) {
+        const errorBody = await response.json();
+        throw new Error(errorBody.message || "Export failed.");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `weekly-recruitment-report.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setNotice(`Weekly ${format.toUpperCase()} report exported.`, false);
+      activateTab("jobs");
+    } catch (err) {
+      setNotice(err.message, true);
+      activateTab("jobs");
+    } finally {
+      button.disabled = false;
+      button.textContent = defaultText;
+    }
+  }
+
+  async function changeOwnPassword(event) {
+    event.preventDefault();
+    const oldPassword = byId("adminOldPassword").value.trim();
+    const newPassword = byId("adminNewPassword").value.trim();
+    const confirmPassword = byId("adminConfirmPassword").value.trim();
+
+    try {
+      changePasswordBtn.disabled = true;
+      changePasswordBtn.textContent = "Changing...";
+      await requestJson(`${window.location.origin}${getContextPath()}/api/account/change-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json;charset=UTF-8" },
+        body: JSON.stringify({ oldPassword, newPassword, confirmPassword })
+      });
+      changePasswordForm.reset();
+      setNotice("Password changed successfully.", false);
+      activateTab("account");
+    } catch (err) {
+      setNotice(err.message, true);
+      activateTab("account");
+    } finally {
+      changePasswordBtn.disabled = false;
+      changePasswordBtn.textContent = "Change Password";
     }
   }
 
@@ -356,16 +519,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   usersGrouped.addEventListener("click", handleUserActions);
   jobsBody.addEventListener("click", onReopen);
   jobsCards.addEventListener("click", onReopen);
-  tabs.forEach(tab => {
+  tabs.forEach((tab) => {
     tab.addEventListener("click", () => activateTab(tab.getAttribute("data-admin-tab")));
   });
   createRoleEl.addEventListener("change", syncCreateRoleFields);
   createUserForm.addEventListener("submit", createUser);
+  thresholdForm.addEventListener("submit", saveThreshold);
+  applyFiltersBtn.addEventListener("click", applyFilters);
+  resetFiltersBtn.addEventListener("click", resetFilters);
+  exportCsvBtn.addEventListener("click", () => downloadReport("csv"));
+  exportTxtBtn.addEventListener("click", () => downloadReport("txt"));
+  changePasswordForm.addEventListener("submit", changeOwnPassword);
 
   syncCreateRoleFields();
   activateTab("overview");
   try {
-    await loadAdminDashboard();
+    await Promise.all([loadAdminDashboard(), loadThresholdSettings()]);
   } catch (err) {
     setNotice(err.message, true);
   }

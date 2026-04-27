@@ -27,6 +27,7 @@ public class JobPosting {
     private Integer hourMin;
     private Integer hourMax;
     private String department;
+    private String schedule;
     private String approvalStatus;
     private Boolean published;
     private Boolean withdrawn;
@@ -137,6 +138,14 @@ public class JobPosting {
 
     public void setDepartment(String department) {
         this.department = department;
+    }
+
+    public String getSchedule() {
+        return schedule;
+    }
+
+    public void setSchedule(String schedule) {
+        this.schedule = schedule;
     }
 
     public String getApprovalStatus() {
