@@ -9,6 +9,7 @@ public class MoJobPublishResponse {
     private String publishedAt;
     private String deadline;
     private String location;
+    private String schedule;
     private String requirements;
 
     public String getJobId() {
@@ -49,6 +50,14 @@ public class MoJobPublishResponse {
 
     public void setLocation(String location) {
         this.location = location;
+    }
+
+    public String getSchedule() {
+        return schedule;
+    }
+
+    public void setSchedule(String schedule) {
+        this.schedule = schedule;
     }
 
     public String getRequirements() {

@@ -62,6 +62,7 @@ public class MoJobService {
             job.setLocation(request.getLocation());
             job.setRequirements(request.getRequirements());
             job.setDeadline(request.getDeadline());
+            job.setSchedule(request.getSchedule().trim());
             job.setPublished(true);
             job.setWithdrawn(false);
             job.setStatus("open");
@@ -75,6 +76,7 @@ public class MoJobService {
             response.setPublishedAt(now);
             response.setDeadline(job.getDeadline());
             response.setLocation(job.getLocation());
+            response.setSchedule(job.getSchedule());
             response.setRequirements(job.getRequirements());
             return response;
         } catch (IOException e) {
@@ -114,6 +116,7 @@ public class MoJobService {
             String now = Instant.now().toString();
             job.setTitle(request.getCourseName().trim());
             job.setModuleCode(request.getCourseName().trim());
+            job.setDepartment(request.getDepartment().trim());
             job.setPositions(request.getPlannedCount());
             job.setHourMin(request.getHourMin());
             job.setHourMax(request.getHourMax());
@@ -215,10 +218,14 @@ public class MoJobService {
     }
 
     private void validatePublishRequest(MoJobPublishRequest request) {
-        if (request == null || isBlank(request.getLocation()) || isBlank(request.getRequirements()) || isBlank(request.getDeadline())) {
+        if (request == null
+                || isBlank(request.getLocation())
+                || isBlank(request.getRequirements())
+                || isBlank(request.getDeadline())
+                || isBlank(request.getSchedule())) {
             throw new MoBusinessException(
                     ErrorCodes.VALIDATION_ERROR,
-                    "location, requirements and deadline are required.",
+                    "location, requirements, deadline, and schedule are required.",
                     HttpServletResponse.SC_BAD_REQUEST
             );
         }
@@ -235,12 +242,13 @@ public class MoJobService {
     private void validateEditRequest(MoJobEditRequest request) {
         if (request == null
                 || isBlank(request.getCourseName())
+                || isBlank(request.getDepartment())
                 || request.getPlannedCount() == null
                 || request.getHourMin() == null
                 || request.getHourMax() == null) {
             throw new MoBusinessException(
                     ErrorCodes.VALIDATION_ERROR,
-                    "courseName, plannedCount, hourMin, hourMax are required.",
+                    "courseName, department, plannedCount, hourMin, hourMax are required.",
                     HttpServletResponse.SC_BAD_REQUEST
             );
         }
@@ -275,6 +283,7 @@ public class MoJobService {
         item.setJobId(job.getId());
         item.setMoId(job.getTeacherId());
         item.setCourseName(job.getTitle());
+        item.setDepartment(job.getDepartment());
         item.setPlannedCount(job.getPositions());
         item.setHourMin(job.getHourMin());
         item.setHourMax(job.getHourMax());
@@ -287,6 +296,10 @@ public class MoJobService {
         item.setWithdrawn(job.getWithdrawn());
         item.setRecruitmentClosed(Boolean.TRUE.equals(job.getRecruitmentClosed()));
         item.setClosedAt(job.getClosedAt());
+        item.setSchedule(job.getSchedule());
+        item.setLocation(job.getLocation());
+        item.setDeadline(job.getDeadline());
+        item.setRequirements(job.getRequirements());
         item.setCreatedAt(job.getCreatedAt());
         item.setUpdatedAt(job.getUpdatedAt());
         return item;

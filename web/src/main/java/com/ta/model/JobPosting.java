@@ -26,6 +26,8 @@ public class JobPosting {
     // MO iteration 1 agreed fields
     private Integer hourMin;
     private Integer hourMax;
+    private String department;
+    private String schedule;
     private String approvalStatus;
     private Boolean published;
     private Boolean withdrawn;
@@ -128,6 +130,22 @@ public class JobPosting {
 
     public void setHourMax(Integer hourMax) {
         this.hourMax = hourMax;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+
+    public String getSchedule() {
+        return schedule;
+    }
+
+    public void setSchedule(String schedule) {
+        this.schedule = schedule;
     }
 
     public String getApprovalStatus() {

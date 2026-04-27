@@ -69,6 +69,7 @@ public class MoDemandService {
             job.setTeacherId(moId);
             job.setTitle(request.getCourseName());
             job.setModuleCode(request.getCourseName());
+            job.setDepartment(request.getDepartment().trim());
             job.setPositions(request.getPlannedCount());
             job.setHourMin(request.getHourMin());
             job.setHourMax(request.getHourMax());
@@ -95,12 +96,13 @@ public class MoDemandService {
     private void validateCreateRequest(MoDemandCreateRequest request) {
         if (request == null
                 || isBlank(request.getCourseName())
+                || isBlank(request.getDepartment())
                 || request.getPlannedCount() == null
                 || request.getHourMin() == null
                 || request.getHourMax() == null) {
             throw new MoBusinessException(
                     ErrorCodes.VALIDATION_ERROR,
-                    "courseName, plannedCount, hourMin, hourMax are required.",
+                    "courseName, department, plannedCount, hourMin, hourMax are required.",
                     HttpServletResponse.SC_BAD_REQUEST
             );
         }
@@ -119,6 +121,7 @@ public class MoDemandService {
         item.setJobId(job.getId());
         item.setMoId(job.getTeacherId());
         item.setCourseName(job.getTitle());
+        item.setDepartment(job.getDepartment());
         item.setPlannedCount(job.getPositions());
         item.setHourMin(job.getHourMin());
         item.setHourMax(job.getHourMax());
@@ -131,6 +134,10 @@ public class MoDemandService {
         item.setWithdrawn(job.getWithdrawn());
         item.setRecruitmentClosed(Boolean.TRUE.equals(job.getRecruitmentClosed()));
         item.setClosedAt(job.getClosedAt());
+        item.setSchedule(job.getSchedule());
+        item.setLocation(job.getLocation());
+        item.setDeadline(job.getDeadline());
+        item.setRequirements(job.getRequirements());
         item.setCreatedAt(job.getCreatedAt());
         item.setUpdatedAt(job.getUpdatedAt());
         return item;

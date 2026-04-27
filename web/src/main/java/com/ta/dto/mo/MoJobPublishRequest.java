@@ -7,6 +7,7 @@ public class MoJobPublishRequest {
     private String location;
     private String requirements;
     private String deadline;
+    private String schedule;
 
     public String getLocation() {
         return location;
@@ -30,5 +31,13 @@ public class MoJobPublishRequest {
 
     public void setDeadline(String deadline) {
         this.deadline = deadline;
+    }
+
+    public String getSchedule() {
+        return schedule;
+    }
+
+    public void setSchedule(String schedule) {
+        this.schedule = schedule;
     }
 }

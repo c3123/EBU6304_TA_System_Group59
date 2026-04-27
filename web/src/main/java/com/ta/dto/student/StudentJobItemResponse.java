@@ -10,6 +10,8 @@ public class StudentJobItemResponse {
     private String deadline;
     private String teacherName;
     private String requirements;
+    private String schedule;
+    private String location;
 
     public String getId() {
         return id;
@@ -81,5 +83,21 @@ public class StudentJobItemResponse {
 
     public void setRequirements(String requirements) {
         this.requirements = requirements;
+    }
+
+    public String getSchedule() {
+        return schedule;
+    }
+
+    public void setSchedule(String schedule) {
+        this.schedule = schedule;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
     }
 }

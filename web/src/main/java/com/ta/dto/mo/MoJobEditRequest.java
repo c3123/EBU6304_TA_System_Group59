@@ -2,6 +2,7 @@ package com.ta.dto.mo;
 
 public class MoJobEditRequest {
     private String courseName;
+    private String department;
     private Integer plannedCount;
     private Integer hourMin;
     private Integer hourMax;
@@ -12,6 +13,14 @@ public class MoJobEditRequest {
 
     public void setCourseName(String courseName) {
         this.courseName = courseName;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
     }
 
     public Integer getPlannedCount() {

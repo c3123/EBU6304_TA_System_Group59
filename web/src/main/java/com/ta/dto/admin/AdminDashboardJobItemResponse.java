@@ -5,6 +5,7 @@ public class AdminDashboardJobItemResponse {
     private String moduleCode;
     private String title;
     private String teacherName;
+    private String department;
     private String status;
     private Integer positions;
     private Boolean recruitmentClosed;
@@ -40,6 +41,14 @@ public class AdminDashboardJobItemResponse {
 
     public void setTeacherName(String teacherName) {
         this.teacherName = teacherName;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
     }
 
     public String getStatus() {
