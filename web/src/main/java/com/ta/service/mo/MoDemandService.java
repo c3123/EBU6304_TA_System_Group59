@@ -140,6 +140,7 @@ public class MoDemandService {
         item.setRequirements(job.getRequirements());
         item.setCreatedAt(job.getCreatedAt());
         item.setUpdatedAt(job.getUpdatedAt());
+        item.setPublishedAt(job.getPublishedAt());
         return item;
     }
 

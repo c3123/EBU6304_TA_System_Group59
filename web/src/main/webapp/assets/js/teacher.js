@@ -74,6 +74,8 @@ function teacherSetButtonLoading(button, loadingText, fallbackText, isLoading) {
 
 const teacherState = {
   items: [],
+  historyItems: [],
+  currentHistoryJobId: null,
   pollingTimer: null,
   notifications: [],
   unreadCount: 0
@@ -103,6 +105,64 @@ async function loadTeacherJobs() {
   const data = await teacherRequest(`${teacherApiBase()}/demands/list`, { method: "GET" });
   teacherState.items = data && Array.isArray(data.items) ? data.items : [];
   renderTeacherJobs();
+}
+
+async function loadJobHistory() {
+  const data = await teacherRequest(`${teacherApiBase()}/jobs/history`, { method: "GET" });
+  teacherState.historyItems = data && Array.isArray(data.items) ? data.items : [];
+  renderJobHistory();
+}
+
+function historyStatusTag(status) {
+  const normalized = String(status || "").toLowerCase();
+  if (normalized === "recruitment_closed") return '<span class="mo-status-pill mo-status-withdrawn">recruitment closed</span>';
+  if (normalized === "withdrawn") return '<span class="mo-status-pill mo-status-withdrawn">withdrawn</span>';
+  if (normalized === "open" || normalized === "published") return '<span class="mo-status-pill mo-status-published">published</span>';
+  if (normalized === "approved") return '<span class="mo-status-pill mo-status-approved">approved</span>';
+  if (normalized === "rejected") return '<span class="mo-status-pill mo-status-rejected">rejected</span>';
+  return '<span class="mo-status-pill mo-status-pending">draft</span>';
+}
+
+function renderJobHistory() {
+  const body = byId("historyTableBody");
+  const empty = byId("historyEmpty");
+  const tableWrap = document.querySelector(".mo-history-table-wrap");
+
+  if (!teacherState.historyItems.length) {
+    body.innerHTML = "";
+    empty.style.display = "block";
+    if (tableWrap) tableWrap.style.display = "none";
+    return;
+  }
+
+  empty.style.display = "none";
+  if (tableWrap) tableWrap.style.display = "block";
+  body.innerHTML = teacherState.historyItems.map((item) => renderHistoryRow(item)).join("");
+}
+
+function renderHistoryRow(item) {
+  const jobId = teacherEscapeHtml(teacherSafeText(item.jobId));
+  return `
+    <tr data-history-job-id="${jobId}">
+      <td>
+        <strong>${teacherEscapeHtml(teacherSafeText(item.courseName))}</strong>
+        <div style="font-size:12px;color:#64748b">${teacherEscapeHtml(teacherSafeText(item.department))}</div>
+      </td>
+      <td>${historyStatusTag(item.status)}</td>
+      <td><span class="mo-history-counts"><span>${teacherEscapeHtml(teacherSafeText(item.applicantCount))}</span></span></td>
+      <td><span class="mo-history-counts"><span>${teacherEscapeHtml(teacherSafeText(item.hireCount))}</span></span></td>
+      <td>${teacherEscapeHtml(teacherFormatDateTime(item.releaseTime))}</td>
+      <td>${teacherEscapeHtml(teacherSafeText(item.deadline))}</td>
+      <td>
+        <div class="mo-history-actions">
+          <button class="btn btn-outline" type="button" data-history-details="${jobId}">View Details</button>
+          <button class="btn btn-outline" type="button" data-history-reuse="${jobId}">Reuse</button>
+          <button class="btn btn-outline" type="button" data-history-export="${jobId}" data-scope="all" data-format="csv">Export All</button>
+          <button class="btn btn-outline" type="button" data-history-export="${jobId}" data-scope="shortlisted" data-format="csv">Export Shortlisted</button>
+        </div>
+      </td>
+    </tr>
+  `;
 }
 
 function renderTeacherJobs() {
@@ -447,6 +507,125 @@ async function changeTeacherPassword(event) {
   }
 }
 
+function exportApplicants(jobId, scope, format) {
+  const params = new URLSearchParams({ jobId, scope, format });
+  window.location.href = `${teacherApiBase()}/applications/export?${params.toString()}`;
+}
+
+async function reuseHistoryJob(jobId, button) {
+  if (!window.confirm("Create a new draft job by reusing this historical job?")) {
+    return;
+  }
+  teacherSetButtonLoading(button, "Reusing...", "Reuse", true);
+  try {
+    const params = new URLSearchParams({ jobId });
+    const data = await teacherRequest(`${teacherApiBase()}/jobs/reuse?${params.toString()}`, { method: "POST" });
+    teacherSetNotice("historyNotice", `Created new draft job ${data.jobId}.`, false);
+    await loadTeacherJobs();
+    await loadJobHistory();
+  } catch (err) {
+    teacherSetNotice("historyNotice", `${err.code || "REQUEST_ERROR"}: ${err.message}`, true);
+  } finally {
+    teacherSetButtonLoading(button, "Reusing...", "Reuse", false);
+  }
+}
+
+async function openHistoryDetails(jobId) {
+  teacherState.currentHistoryJobId = jobId;
+  const item = teacherState.historyItems.find((it) => it.jobId === jobId);
+  byId("historyDetailsTitle").textContent = item ? teacherSafeText(item.courseName) : "Job Details";
+  byId("historyDetailsSubtitle").textContent = `Job ID: ${jobId}`;
+  byId("historyDetailsBody").innerHTML = "";
+  byId("historyDetailsModal").classList.add("open");
+  teacherSetNotice("historyDetailsNotice", "Loading applicants...", false);
+
+  try {
+    const params = new URLSearchParams({ jobId });
+    const data = await teacherRequest(`${teacherApiBase()}/applications?${params.toString()}`, { method: "GET" });
+    const items = data && Array.isArray(data.items) ? data.items : [];
+    renderHistoryDetails(items);
+    teacherSetNotice("historyDetailsNotice", `Loaded ${items.length} applicant record(s).`, false);
+  } catch (err) {
+    teacherSetNotice("historyDetailsNotice", `${err.code || "REQUEST_ERROR"}: ${err.message}`, true);
+  }
+}
+
+function renderHistoryDetails(items) {
+  const body = byId("historyDetailsBody");
+  if (!items.length) {
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#64748b">No applicants for this job.</td></tr>';
+    return;
+  }
+  body.innerHTML = items.map((item) => `
+    <tr>
+      <td>${teacherEscapeHtml(teacherSafeText(item.studentName))}</td>
+      <td>${teacherEscapeHtml(teacherSafeText(item.studentNo || item.studentId))}</td>
+      <td>${teacherEscapeHtml(teacherSafeText(item.programme))}</td>
+      <td>${teacherEscapeHtml(teacherFormatDateTime(item.appliedAt))}</td>
+      <td>${teacherEscapeHtml(teacherSafeText(item.status))}</td>
+      <td>${teacherEscapeHtml(teacherSafeText(item.skills))}</td>
+    </tr>
+  `).join("");
+}
+
+function closeHistoryDetails() {
+  teacherState.currentHistoryJobId = null;
+  byId("historyDetailsModal").classList.remove("open");
+}
+
+function bindHistoryActions() {
+  byId("historyReloadBtn").addEventListener("click", reloadJobHistory);
+  byId("historyTableBody").addEventListener("click", async (event) => {
+    const detailsBtn = event.target.closest("[data-history-details]");
+    if (detailsBtn) {
+      await openHistoryDetails(detailsBtn.getAttribute("data-history-details"));
+      return;
+    }
+
+    const reuseBtn = event.target.closest("[data-history-reuse]");
+    if (reuseBtn) {
+      await reuseHistoryJob(reuseBtn.getAttribute("data-history-reuse"), reuseBtn);
+      return;
+    }
+
+    const exportBtn = event.target.closest("[data-history-export]");
+    if (exportBtn) {
+      exportApplicants(
+        exportBtn.getAttribute("data-history-export"),
+        exportBtn.getAttribute("data-scope") || "all",
+        exportBtn.getAttribute("data-format") || "csv"
+      );
+    }
+  });
+
+  byId("historyDetailsCloseBtn").addEventListener("click", closeHistoryDetails);
+  byId("historyDetailsModal").addEventListener("click", (event) => {
+    if (event.target.id === "historyDetailsModal") closeHistoryDetails();
+  });
+  byId("modalExportAllCsvBtn").addEventListener("click", () => {
+    if (teacherState.currentHistoryJobId) exportApplicants(teacherState.currentHistoryJobId, "all", "csv");
+  });
+  byId("modalExportShortlistedCsvBtn").addEventListener("click", () => {
+    if (teacherState.currentHistoryJobId) exportApplicants(teacherState.currentHistoryJobId, "shortlisted", "csv");
+  });
+  byId("modalExportAllJsonBtn").addEventListener("click", () => {
+    if (teacherState.currentHistoryJobId) exportApplicants(teacherState.currentHistoryJobId, "all", "json");
+  });
+  byId("modalExportShortlistedJsonBtn").addEventListener("click", () => {
+    if (teacherState.currentHistoryJobId) exportApplicants(teacherState.currentHistoryJobId, "shortlisted", "json");
+  });
+}
+
+async function reloadJobHistory() {
+  try {
+    teacherSetNotice("historyNotice", "Loading job history...", false);
+    await loadJobHistory();
+    teacherSetNotice("historyNotice", `Loaded ${teacherState.historyItems.length} historical job record(s).`, false);
+  } catch (err) {
+    teacherSetNotice("historyNotice", `${err.code || "REQUEST_ERROR"}: ${err.message}`, true);
+  }
+}
+
 function bindTeacherFeedActions() {
   const feed = byId("jobsFeed");
   feed.addEventListener("click", async (event) => {
@@ -507,6 +686,7 @@ async function reloadTeacherWorkflow() {
   try {
     teacherSetNotice("jobsNotice", "Loading demand list...", false);
     await loadTeacherJobs();
+    await loadJobHistory();
     teacherSetNotice("jobsNotice", `Loaded ${teacherState.items.length} job record(s).`, false);
   } catch (err) {
     teacherSetNotice("jobsNotice", `${err.code || "REQUEST_ERROR"}: ${err.message}`, true);
@@ -527,6 +707,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     await markNotificationRead(markBtn.getAttribute("data-mark-read"));
   });
   bindTeacherFeedActions();
+  bindHistoryActions();
   await reloadTeacherWorkflow();
   await loadNotifications();
 });

@@ -66,6 +66,7 @@ public class MoJobService {
             job.setPublished(true);
             job.setWithdrawn(false);
             job.setStatus("open");
+            job.setPublishedAt(now);
             job.setUpdatedAt(now);
 
             JsonUtility.saveJobs(context, jobs);
@@ -196,6 +197,45 @@ public class MoJobService {
         }
     }
 
+    public MoDemandItemResponse reuseJob(ServletContext context, String moId, String sourceJobId) {
+        try {
+            List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            JobPosting source = findOwnedJob(jobs, moId, sourceJobId);
+            String now = Instant.now().toString();
+
+            JobPosting copied = new JobPosting();
+            copied.setId("job_" + java.util.UUID.randomUUID().toString().replace("-", ""));
+            copied.setTeacherId(source.getTeacherId());
+            copied.setTeacherName(source.getTeacherName());
+            copied.setModuleCode(source.getModuleCode());
+            copied.setTitle(source.getTitle());
+            copied.setHours(source.getHours());
+            copied.setPositions(source.getPositions());
+            copied.setHourMin(source.getHourMin());
+            copied.setHourMax(source.getHourMax());
+            copied.setDepartment(source.getDepartment());
+            copied.setSchedule(source.getSchedule());
+            copied.setLocation(source.getLocation());
+            copied.setRequirements(source.getRequirements());
+            copied.setApprovalStatus("approved");
+            copied.setPublished(false);
+            copied.setWithdrawn(false);
+            copied.setStatus("draft");
+            copied.setDeadline(null);
+            copied.setPublishedAt(null);
+            copied.setRecruitmentClosed(false);
+            copied.setClosedAt(null);
+            copied.setCreatedAt(now);
+            copied.setUpdatedAt(now);
+
+            jobs.add(copied);
+            JsonUtility.saveJobs(context, jobs);
+            return toDemandItem(copied);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to reuse job.", e);
+        }
+    }
+
     private JobPosting findOwnedJob(List<JobPosting> jobs, String moId, String jobId) {
         JobPosting job = jobs.stream()
                 .filter(j -> jobId.equals(j.getId()))
@@ -302,6 +342,7 @@ public class MoJobService {
         item.setRequirements(job.getRequirements());
         item.setCreatedAt(job.getCreatedAt());
         item.setUpdatedAt(job.getUpdatedAt());
+        item.setPublishedAt(job.getPublishedAt());
         return item;
     }
 

@@ -169,6 +169,123 @@
     .mo-notification-item:last-child {
       border-bottom: none;
     }
+    .mo-history-card {
+      margin-top: 18px;
+    }
+    .mo-history-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .mo-history-table-wrap {
+      overflow-x: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      background: #fff;
+    }
+    .mo-history-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 920px;
+    }
+    .mo-history-table th,
+    .mo-history-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+    .mo-history-table th {
+      background: #f8fafc;
+      color: #334155;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+    .mo-history-table tr:last-child td {
+      border-bottom: none;
+    }
+    .mo-history-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .mo-history-actions .btn {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+    .mo-history-counts {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .mo-history-counts span {
+      border-radius: 999px;
+      padding: 3px 8px;
+      background: #f1f5f9;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .mo-modal-mask {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.45);
+      z-index: 1000;
+      padding: 20px;
+    }
+    .mo-modal-mask.open {
+      display: flex;
+    }
+    .mo-modal {
+      width: min(980px, 96vw);
+      max-height: 88vh;
+      overflow: auto;
+      border-radius: 14px;
+      background: #fff;
+      border: 1px solid #dbe2ee;
+      box-shadow: 0 24px 48px rgba(15, 23, 42, 0.25);
+      padding: 18px;
+    }
+    .mo-modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .mo-modal-head h3 {
+      margin: 0 0 4px;
+    }
+    .mo-details-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 780px;
+    }
+    .mo-details-table th,
+    .mo-details-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      font-size: 13px;
+      vertical-align: top;
+    }
+    .mo-details-table th {
+      background: #f8fafc;
+      color: #334155;
+    }
+    .mo-table-scroll {
+      overflow-x: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+    }
     @media (max-width: 960px) {
       .mo-job-layout {
         grid-template-columns: 1fr;
@@ -294,6 +411,67 @@
       <div id="jobsFeed"></div>
     </div>
   </section>
+  <section class="card mo-history-card">
+    <div class="mo-history-head">
+      <div>
+        <h3>Job History</h3>
+        <p class="desc">Review released jobs, applicant statistics, reuse previous job settings, and export applicant data.</p>
+      </div>
+      <button id="historyReloadBtn" class="btn btn-outline" type="button">Refresh History</button>
+    </div>
+    <div id="historyNotice" class="notice"></div>
+    <div id="historyEmpty" class="mo-empty-tip" style="display:none;">No job history found yet.</div>
+    <div class="mo-history-table-wrap">
+      <table class="mo-history-table" aria-label="Job history table">
+        <thead>
+          <tr>
+            <th>Job Title</th>
+            <th>Status</th>
+            <th>Applicants</th>
+            <th>Hired</th>
+            <th>Release Time</th>
+            <th>Deadline</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="historyTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div id="historyDetailsModal" class="mo-modal-mask" role="dialog" aria-modal="true" aria-labelledby="historyDetailsTitle">
+    <div class="mo-modal">
+      <div class="mo-modal-head">
+        <div>
+          <h3 id="historyDetailsTitle">Job Details</h3>
+          <p id="historyDetailsSubtitle" class="desc"></p>
+        </div>
+        <button id="historyDetailsCloseBtn" class="btn btn-outline" type="button">Close</button>
+      </div>
+      <div id="historyDetailsNotice" class="notice"></div>
+      <div class="row" style="margin-bottom:12px;">
+        <button id="modalExportAllCsvBtn" class="btn btn-outline" type="button">Export All CSV</button>
+        <button id="modalExportShortlistedCsvBtn" class="btn btn-outline" type="button">Export Shortlisted CSV</button>
+        <button id="modalExportAllJsonBtn" class="btn btn-outline" type="button">Export All JSON</button>
+        <button id="modalExportShortlistedJsonBtn" class="btn btn-outline" type="button">Export Shortlisted JSON</button>
+      </div>
+      <div class="mo-table-scroll">
+        <table class="mo-details-table" aria-label="Applicant detail table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Applicant ID</th>
+              <th>Major</th>
+              <th>Application Time</th>
+              <th>Status</th>
+              <th>Skills</th>
+            </tr>
+          </thead>
+          <tbody id="historyDetailsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </main>
 <script src="../assets/js/common.js?v=mo3"></script>
 <script src="../assets/js/teacher.js?v=mo3"></script>
