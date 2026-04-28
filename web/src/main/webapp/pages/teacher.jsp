@@ -344,11 +344,6 @@
   </div>
   <div id="notificationPanel" class="mo-notification-panel"></div>
 
-  <div class="mo-scope-note" role="note">
-    <strong>Iteration 1 scope.</strong>
-    This page covers the backend functions completed by A side: demand creation, approval progress viewing, approved-job publishing, and withdraw restrictions.
-  </div>
-
   <div id="globalNotice" class="notice" style="margin-bottom:16px"></div>
 
   <section class="mo-job-layout">
@@ -360,6 +355,10 @@
         <div class="field">
           <label for="courseName">Course Name</label>
           <input id="courseName" type="text" placeholder="e.g. EBU6304 Software Engineering" required />
+        </div>
+        <div class="field">
+          <label for="department">Department</label>
+          <input id="department" type="text" placeholder="e.g. Computer Science" required />
         </div>
         <div class="field">
           <label for="plannedCount">Planned TA Count</label>
@@ -380,6 +379,28 @@
           <button class="btn btn-outline" type="reset">Clear</button>
         </div>
       </form>
+
+      <div style="margin-top:24px;padding-top:24px;border-top:1px solid #e5e7eb;">
+        <h3>Change Password</h3>
+        <p class="desc">Update your own account password.</p>
+        <form id="teacherChangePasswordForm">
+          <div class="field">
+            <label for="teacherOldPassword">Current Password</label>
+            <input id="teacherOldPassword" type="password" required />
+          </div>
+          <div class="field">
+            <label for="teacherNewPassword">New Password</label>
+            <input id="teacherNewPassword" type="password" required />
+          </div>
+          <div class="field">
+            <label for="teacherConfirmPassword">Confirm New Password</label>
+            <input id="teacherConfirmPassword" type="password" required />
+          </div>
+          <div class="row" style="margin-top:12px;">
+            <button id="teacherChangePasswordBtn" class="btn btn-outline" type="submit">Change Password</button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <div class="card mo-feed-card">

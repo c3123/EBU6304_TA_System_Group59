@@ -4,6 +4,8 @@ import com.ta.constant.ErrorCodes;
 import com.ta.dto.student.StudentApplicationCreateRequest;
 import com.ta.dto.student.StudentApplicationItemResponse;
 import com.ta.dto.student.StudentApplicationListResponse;
+import com.ta.dto.student.StudentAssignedJobItemResponse;
+import com.ta.dto.student.StudentAssignedJobListResponse;
 import com.ta.dto.student.StudentJobItemResponse;
 import com.ta.dto.student.StudentJobListResponse;
 import com.ta.dto.student.StudentProfileResponse;
@@ -15,6 +17,7 @@ import com.ta.model.StudentProfile;
 import com.ta.model.User;
 import com.ta.util.JsonUtility;
 import com.ta.util.FileStorageUtil;
+import com.ta.util.JobHoursUtil;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -89,6 +92,54 @@ public class StudentService {
             return response;
         } catch (IOException e) {
             throw new RuntimeException("Failed to load applications.", e);
+        }
+    }
+
+    public StudentAssignedJobListResponse listMyAssignedJobs(ServletContext context, String studentUserId) {
+        try {
+            List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            Map<String, JobPosting> jobsById = new HashMap<>();
+            for (JobPosting job : jobs) {
+                jobsById.put(job.getId(), job);
+            }
+
+            List<StudentAssignedJobItemResponse> items = new ArrayList<>();
+            for (ApplicationRecord record : applications) {
+                if (!studentUserId.equals(record.getStudentId())) {
+                    continue;
+                }
+                if (!record.isActive() || !"hired".equalsIgnoreCase(record.getStatus())) {
+                    continue;
+                }
+
+                JobPosting job = jobsById.get(record.getJobId());
+                if (job == null) {
+                    continue;
+                }
+
+                StudentAssignedJobItemResponse item = new StudentAssignedJobItemResponse();
+                item.setApplicationId(record.getId());
+                item.setJobId(job.getId());
+                item.setModuleCode(job.getModuleCode());
+                item.setTitle(job.getTitle());
+                item.setTeacherName(job.getTeacherName());
+                item.setWeeklyHours(JobHoursUtil.resolveWeeklyHours(job));
+                item.setSchedule(displayValue(job.getSchedule()));
+                item.setLocation(displayValue(job.getLocation()));
+                item.setDeadline(displayValue(job.getDeadline()));
+                item.setRecruitmentClosed(Boolean.TRUE.equals(job.getRecruitmentClosed()));
+                items.add(item);
+            }
+
+            items.sort(Comparator.comparing(StudentAssignedJobItemResponse::getDeadline, Comparator.nullsLast(String::compareTo))
+                    .thenComparing(StudentAssignedJobItemResponse::getTitle, Comparator.nullsLast(String::compareToIgnoreCase)));
+
+            StudentAssignedJobListResponse response = new StudentAssignedJobListResponse();
+            response.setItems(items);
+            return response;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load assigned jobs.", e);
         }
     }
 
@@ -280,11 +331,14 @@ public class StudentService {
         item.setId(job.getId());
         item.setModuleCode(job.getModuleCode());
         item.setTitle(job.getTitle());
-        item.setHours(job.getHours());
+        item.setHours(JobHoursUtil.resolveWeeklyHours(job));
         item.setPositions(job.getPositions());
         item.setStatus(job.getStatus());
         item.setDeadline(job.getDeadline());
         item.setTeacherName(job.getTeacherName());
+        item.setRequirements(job.getRequirements());
+        item.setSchedule(displayValue(job.getSchedule()));
+        item.setLocation(displayValue(job.getLocation()));
         return item;
     }
 
@@ -368,6 +422,11 @@ public class StudentService {
 
     private String trimToEmpty(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private String displayValue(String value) {
+        String trimmed = trimToEmpty(value);
+        return trimmed.isBlank() ? "-" : trimmed;
     }
 
     /**

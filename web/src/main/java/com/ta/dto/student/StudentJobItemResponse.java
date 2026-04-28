@@ -9,6 +9,9 @@ public class StudentJobItemResponse {
     private String status;
     private String deadline;
     private String teacherName;
+    private String requirements;
+    private String schedule;
+    private String location;
 
     public String getId() {
         return id;
@@ -72,5 +75,29 @@ public class StudentJobItemResponse {
 
     public void setTeacherName(String teacherName) {
         this.teacherName = teacherName;
+    }
+
+    public String getRequirements() {
+        return requirements;
+    }
+
+    public void setRequirements(String requirements) {
+        this.requirements = requirements;
+    }
+
+    public String getSchedule() {
+        return schedule;
+    }
+
+    public void setSchedule(String schedule) {
+        this.schedule = schedule;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
     }
 }

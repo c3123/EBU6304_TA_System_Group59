@@ -31,13 +31,20 @@ function statusPill(status) {
   return `<span class="status-pill">${escapeHtml(safeText(status))}</span>`;
 }
 
+function statusSelectValue(st) {
+  const s = String(st || "").toLowerCase();
+  if (s === "viewed") return "pending";
+  return s || "pending";
+}
+
 const state = {
   items: [],
   jobTitles: {},
   jobMeta: {},
   hiringState: {},
   pollingTimer: null,
-  finalModalJobId: null
+  finalModalJobId: null,
+  selectedIds: new Set()
 };
 
 async function getJson(url) {
@@ -73,6 +80,68 @@ function setNotice(message, isError) {
   const notice = byId("pageNotice");
   notice.textContent = message || "";
   notice.style.color = isError ? "#dc2626" : "#475569";
+}
+
+function buildStatusQueryParam() {
+  const p = byId("filterPending").checked;
+  const s = byId("filterShortlisted").checked;
+  const r = byId("filterRejected").checked;
+  const h = byId("filterHired").checked;
+  if (p && s && r && h) {
+    return null;
+  }
+  const parts = [];
+  if (p) parts.push("pending");
+  if (s) parts.push("shortlisted");
+  if (r) parts.push("rejected");
+  if (h) parts.push("hired");
+  if (parts.length === 0) {
+    return "__none__";
+  }
+  return parts.join(",");
+}
+
+function updateBatchBar() {
+  const bar = byId("batchBar");
+  const label = byId("batchBarLabel");
+  const n = state.selectedIds.size;
+  if (n === 0) {
+    bar.classList.remove("visible");
+    return;
+  }
+  bar.classList.add("visible");
+  label.textContent = `${n} applicant${n === 1 ? "" : "s"} selected`;
+}
+
+function pruneSelectionToItems() {
+  const next = new Set();
+  for (const id of state.selectedIds) {
+    if (state.items.some(i => i.applicationId === id)) next.add(id);
+  }
+  state.selectedIds = next;
+}
+
+function setIndicator(el, mode, errMsg) {
+  if (!el) return;
+  el.textContent = "";
+  el.removeAttribute("title");
+  el.className = "mo-save-indicator";
+  if (mode === "loading") {
+    el.textContent = "…";
+  } else if (mode === "ok") {
+    el.textContent = "✓";
+    el.classList.add("ok");
+    setTimeout(() => {
+      if (el.textContent === "✓") {
+        el.textContent = "";
+        el.classList.remove("ok");
+      }
+    }, 1000);
+  } else if (mode === "err") {
+    el.textContent = "!";
+    el.classList.add("err");
+    if (errMsg) el.setAttribute("title", errMsg);
+  }
 }
 
 function jobClosed(jobId) {
@@ -154,22 +223,77 @@ async function loadList() {
   const jobId = byId("jobIdInput").value.trim();
   const params = new URLSearchParams();
   if (jobId) params.set("jobId", jobId);
+  const st = buildStatusQueryParam();
+  if (st != null) {
+    params.set("status", st);
+  }
   const url = params.toString() ? `${apiBase()}/applications?${params}` : `${apiBase()}/applications`;
   const data = await getJson(url);
   state.items = data && Array.isArray(data.items) ? data.items : [];
+  pruneSelectionToItems();
   renderApplicantFeed(state.items);
+  updateBatchBar();
+}
+
+function renderStatusSelect(item, closed) {
+  const st = String(item.status || "").toLowerCase();
+  const id = escapeHtml(item.applicationId);
+  const selVal = statusSelectValue(item.status);
+  const selDis = closed || st === "hired" ? "disabled" : "";
+  return `<select class="mo-status-select" data-mo-status data-app-id="${id}" data-prev="${escapeHtml(selVal)}" ${selDis}>
+    <option value="pending" ${selVal === "pending" ? "selected" : ""}>Pending</option>
+    <option value="shortlisted" ${selVal === "shortlisted" ? "selected" : ""}>Shortlisted</option>
+    <option value="rejected" ${selVal === "rejected" ? "selected" : ""}>Rejected</option>
+    <option value="hired" ${selVal === "hired" ? "selected" : ""}>Hired</option>
+  </select>`;
+}
+
+function renderNotesAndFeedback(item, closed) {
+  const st = String(item.status || "").toLowerCase();
+  const id = escapeHtml(item.applicationId);
+  const notesVal = escapeHtml(item.evaluationNotes || "");
+  const fbAllowed = st === "shortlisted" || st === "rejected" || st === "hired";
+  const fbRaw = item.decisionFeedback || "";
+  const fbVal = escapeHtml(fbRaw);
+  const fbLen = String(fbRaw).length;
+  const notesDis = closed ? "disabled" : "";
+  const fbBlock = fbAllowed
+    ? `<input type="text" maxlength="200" style="flex:1;min-width:140px;" data-mo-feedback data-app-id="${id}" placeholder="Reason (max 200 chars)" value="${fbVal}" ${closed ? "disabled" : ""}/>`
+    : `<span style="color:#94a3b8;">—</span>`;
+  const fbSaveBtn = fbAllowed
+    ? `<button type="button" class="btn btn-outline" data-fb-save data-app-id="${id}" ${closed ? "disabled" : ""}>Save</button>`
+    : "";
+  const cnt = fbAllowed ? `<span class="mo-fb-count" data-fb-count data-app-id="${id}">${fbLen}/200</span>` : "";
+  return `
+    <div class="mo-field-inline" data-notes-wrap>
+      <label>Evaluation notes</label>
+      <div style="flex:1;display:flex;align-items:flex-start;gap:8px;">
+        <textarea rows="2" style="flex:1;" data-mo-notes data-app-id="${id}" placeholder="Private evaluation notes..." ${notesDis}>${notesVal}</textarea>
+        <span class="mo-save-indicator" data-notes-ind data-app-id="${id}" style="padding-top:6px;"></span>
+      </div>
+    </div>
+    <div class="mo-field-inline" data-fb-wrap>
+      <label>Decision feedback</label>
+      <div style="flex:1;display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
+        ${fbBlock}
+        ${fbSaveBtn}
+        <span class="mo-save-indicator" data-fb-ind data-app-id="${id}"></span>
+        ${cnt}
+      </div>
+    </div>`;
 }
 
 function renderApplicantCard(item, closed) {
   const st = String(item.status || "").toLowerCase();
   const id = escapeHtml(item.applicationId);
+  const rawId = item.applicationId;
   const jobLabel = escapeHtml(safeText(state.jobTitles[item.jobId] || item.jobId || "—"));
   const positionHrs = jobWeeklyHours(item.jobId);
   const currentOther = currentHiredHoursElsewhere(state.items, item.studentId, item.applicationId);
   const ifHiredTotal = currentOther + positionHrs;
   const tier = workloadTier(ifHiredTotal);
   const showWorkloadPanel = st !== "hired";
-  const borderClass = showWorkloadPanel ? wlCardClass(tier.key) : "mo-wl-neutral";
+  const borderClass = (showWorkloadPanel ? wlCardClass(tier.key) : "mo-wl-neutral") + (state.selectedIds.has(rawId) ? " mo-app-card-selected" : "");
   const hireLabel = ifHiredTotal >= 20 ? "Hire (Override Warning)" : "Hire";
 
   const warnNote = tier.key === "over"
@@ -197,14 +321,22 @@ function renderApplicantCard(item, closed) {
     actionsBlock = `<div class="mo-wl-actions"><button type="button" class="btn btn-success" data-mo-action="hired" data-app-id="${id}">${hireLabel}</button><button type="button" class="btn btn-outline" data-mo-action="shortlisted" data-app-id="${id}">Shortlist</button><button type="button" class="btn btn-outline" style="color:#b91c1c;border-color:#fecaca" data-mo-action="rejected" data-app-id="${id}">Reject</button><button type="button" class="btn btn-primary mo-app-detail-btn">View details</button></div>`;
   }
 
+  const chk = closed
+    ? ""
+    : `<label style="display:flex;align-items:center;gap:6px;margin-right:8px;flex-shrink:0;"><input type="checkbox" data-app-select="${id}" ${state.selectedIds.has(rawId) ? "checked" : ""} /></label>`;
+
   return `
     <article class="mo-app-card-proto ${borderClass}" data-application-id="${id}">
-      <div class="mo-app-card-head">
-        <div><h4>${escapeHtml(safeText(item.studentName))}</h4><p class="mo-app-meta">${jobLabel} • Applied: ${escapeHtml(safeText(item.appliedAt))}</p></div>
-        <div class="mo-app-status-slot">${statusPill(item.status)}</div>
+      <div class="mo-app-card-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+        <div style="display:flex;align-items:flex-start;gap:8px;min-width:0;">
+          ${chk}
+          <div style="min-width:0;"><h4>${escapeHtml(safeText(item.studentName))}</h4><p class="mo-app-meta">${jobLabel} • Applied: ${escapeHtml(safeText(item.appliedAt))}</p></div>
+        </div>
+        <div class="mo-app-status-slot" style="flex-shrink:0;">${renderStatusSelect(item, closed)}</div>
       </div>
       ${workloadBlock}
       ${actionsBlock}
+      ${renderNotesAndFeedback(item, closed)}
       <div class="mo-app-grid">
         <div><span class="mo-app-lbl">Student No</span><div>${escapeHtml(safeText(item.studentNo))}</div></div>
         <div><span class="mo-app-lbl">Programme</span><div>${escapeHtml(safeText(item.programme))}</div></div>
@@ -219,6 +351,8 @@ function renderApplicantCard(item, closed) {
           <div><span class="mo-app-lbl">Course grade</span><div data-field="courseGrade"></div></div>
           <div><span class="mo-app-lbl">Applied at</span><div data-field="appliedAt"></div></div>
           <div><span class="mo-app-lbl">Status</span><div data-field="status"></div></div>
+          <div><span class="mo-app-lbl">Evaluation notes</span><div data-field="evaluationNotes"></div></div>
+          <div><span class="mo-app-lbl">Decision feedback</span><div data-field="decisionFeedback"></div></div>
           <div><span class="mo-app-lbl">Updated at</span><div data-field="updatedAt"></div></div>
           <div style="grid-column:1/-1;"><span class="mo-app-lbl">Attachments</span><div data-field="attachments"></div></div>
         </div>
@@ -252,9 +386,10 @@ function renderApplicantFeed(items) {
     const closed = jobClosed(jobId);
     const closedAt = state.hiringState[jobId] ? state.hiringState[jobId].closedAt : "";
     const shortlistedCount = groupItems.filter(x => String(x.status || "").toLowerCase() === "shortlisted").length;
-    parts.push(`<section class="mo-job-group"><div class="mo-job-group-bar">`);
+    const jEsc = escapeHtml(jobId);
+    parts.push(`<section class="mo-job-group" data-job-group="${jEsc}"><div class="mo-job-group-bar">`);
     parts.push(`<h3 class="mo-job-group-title">${escapeHtml(label)} <span style="font-weight:500;color:#64748b">(${groupItems.length} applicant${groupItems.length === 1 ? "" : "s"})</span></h3>`);
-    parts.push(`<div class="mo-job-tools"><span class="mo-pos-hrs">This position: <strong>${posHrs || "—"}</strong> hours/week</span>${closed ? `<span class="mo-closed-flag">Recruitment Closed${closedAt ? ` (${escapeHtml(closedAt)})` : ""}</span>` : ""}<button class="btn btn-outline" type="button" data-open-history="${escapeHtml(jobId)}">View history</button><button class="btn btn-primary" type="button" data-open-final="${escapeHtml(jobId)}" ${closed ? "disabled" : ""}>Confirm Final Hiring</button></div>`);
+    parts.push(`<div class="mo-job-tools"><label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-right:8px;color:#475569;"><input type="checkbox" data-select-all-job="${jEsc}" ${closed ? "disabled" : ""}/> Select all</label><span class="mo-pos-hrs">This position: <strong>${posHrs || "—"}</strong> hours/week</span>${closed ? `<span class="mo-closed-flag">Recruitment Closed${closedAt ? ` (${escapeHtml(closedAt)})` : ""}</span>` : ""}<button class="btn btn-outline" type="button" data-open-history="${jEsc}">View history</button><button class="btn btn-primary" type="button" data-open-final="${jEsc}" ${closed ? "disabled" : ""}>Confirm Final Hiring</button></div>`);
     parts.push(`</div>`);
     if (!closed && shortlistedCount === 0) {
       parts.push(`<p class="notice">No shortlisted applicant yet for final confirmation.</p>`);
@@ -263,6 +398,22 @@ function renderApplicantFeed(items) {
     parts.push(`</section>`);
   }
   feed.innerHTML = parts.join("");
+  syncSelectAllMasters();
+}
+
+function syncSelectAllMasters() {
+  const feed = byId("applicationsFeed");
+  if (!feed) return;
+  feed.querySelectorAll(".mo-job-group").forEach(sec => {
+    const master = sec.querySelector("[data-select-all-job]");
+    if (!master || master.disabled) return;
+    const boxes = [...sec.querySelectorAll("[data-app-select]")];
+    if (!boxes.length) return;
+    const allOn = boxes.every(b => b.checked);
+    const someOn = boxes.some(b => b.checked);
+    master.checked = allOn;
+    master.indeterminate = !allOn && someOn;
+  });
 }
 
 function fillDetailFields(expandEl, detail) {
@@ -297,26 +448,21 @@ async function openCardDetail(card, btn) {
     const detail = await getJson(`${apiBase()}/applications/detail/${encodeURIComponent(rawId)}`);
     fillDetailFields(expand, detail);
     expand.classList.add("mo-open");
-    const slot = card.querySelector(".mo-app-status-slot");
-    if (slot) slot.innerHTML = statusPill(detail.status);
     const it = state.items.find(i => i.applicationId === rawId);
-    if (it) it.status = detail.status;
+    if (it) {
+      it.status = detail.status;
+      if (detail.evaluationNotes != null) it.evaluationNotes = detail.evaluationNotes;
+      if (detail.decisionFeedback != null) it.decisionFeedback = detail.decisionFeedback;
+    }
+    const slot = card.querySelector("[data-mo-status]");
+    if (slot && !slot.disabled) {
+      const nv = statusSelectValue(detail.status);
+      slot.value = nv;
+      slot.setAttribute("data-prev", nv);
+    }
   } finally {
     btn.disabled = false;
   }
-}
-
-async function loadList() {
-  const jobId = byId("jobIdInput").value.trim();
-  const params = new URLSearchParams();
-  if (jobId) params.set("jobId", jobId);
-  const query = params.toString();
-  const url = query
-    ? `${apiBase()}/applications?${query}`
-    : `${apiBase()}/applications`;
-  const data = await getJson(url);
-  state.items = data && Array.isArray(data.items) ? data.items : [];
-  renderApplicantFeed(state.items);
 }
 
 async function openFinalHiringModal(jobId) {
@@ -375,8 +521,62 @@ function closeHistoryModal() {
   byId("historyModal").classList.remove("open");
 }
 
+function mergeUpdatedItem(applicationId, updated) {
+  const it = state.items.find(i => i.applicationId === applicationId);
+  if (!it || !updated) return;
+  if (updated.status != null) it.status = updated.status;
+  if (updated.evaluationNotes != null) it.evaluationNotes = updated.evaluationNotes;
+  if (updated.decisionFeedback != null) it.decisionFeedback = updated.decisionFeedback;
+}
+
 async function submitDecision(applicationId, status) {
-  await postJson(`${apiBase()}/applications/status`, { applicationId, status });
+  const updated = await postJson(`${apiBase()}/applications/status`, { applicationId, status });
+  mergeUpdatedItem(applicationId, updated);
+}
+
+async function saveNotes(applicationId, text) {
+  await postJson(`${apiBase()}/applications/notes`, { applicationId, evaluationNotes: text });
+  const it = state.items.find(i => i.applicationId === applicationId);
+  if (it) it.evaluationNotes = text;
+}
+
+async function saveFeedback(applicationId, text) {
+  await postJson(`${apiBase()}/applications/feedback`, { applicationId, decisionFeedback: text });
+  const it = state.items.find(i => i.applicationId === applicationId);
+  if (it) it.decisionFeedback = text;
+}
+
+async function persistFeedbackFromInput(feed, fbEl) {
+  const appId = fbEl.getAttribute("data-app-id");
+  const ind = feed.querySelector(`[data-fb-ind][data-app-id="${appId}"]`);
+  const wrap = fbEl.closest("[data-fb-wrap]");
+  wrap.classList.remove("mo-field-error");
+  setIndicator(ind, "loading");
+  try {
+    await saveFeedback(appId, fbEl.value);
+    setIndicator(ind, "ok");
+    setNotice("Decision feedback saved.", false);
+  } catch (err) {
+    wrap.classList.add("mo-field-error");
+    setIndicator(ind, "err", err.message || "Save failed");
+    setNotice(`${err.code || "ERROR"}: ${err.message || "Save failed"}`, true);
+  }
+}
+
+async function runBatchStatus(status, label) {
+  const ids = Array.from(state.selectedIds);
+  if (!ids.length) return;
+  const ok = window.confirm(`Are you sure you want to mark ${ids.length} applicant${ids.length === 1 ? "" : "s"} as ${label}?`);
+  if (!ok) return;
+  try {
+    setNotice("Updating applicants...", false);
+    const data = await postJson(`${apiBase()}/applications/batch/status`, { ids, status });
+    setNotice(`${data.updated || ids.length} applicants updated successfully.`, false);
+    state.selectedIds.clear();
+    await queryWithFeedback();
+  } catch (err) {
+    setNotice(`${err.code || "ERROR"}: ${err.message}`, true);
+  }
 }
 
 async function queryWithFeedback() {
@@ -388,14 +588,17 @@ async function queryWithFeedback() {
     setNotice(`Loaded ${state.items.length} active application(s).`, false);
   } catch (err) {
     setNotice(`${err.code || "REQUEST_ERROR"}: ${err.message || "Request failed."}`, true);
+    state.items = [];
     renderApplicantFeed([]);
   }
 }
 
 function exportCsv() {
-  const lines = ["applicationId,jobId,studentName,status,appliedAt"];
+  const lines = ["applicationId,jobId,studentName,status,appliedAt,evaluationNotes,decisionFeedback"];
   for (const it of state.items) {
-    const row = [it.applicationId, it.jobId, it.studentName, it.status, it.appliedAt].map(v => `"${String(v ?? "").replace(/"/g, '""')}"`);
+    const row = [it.applicationId, it.jobId, it.studentName, it.status, it.appliedAt, it.evaluationNotes, it.decisionFeedback].map(v =>
+      `"${String(v ?? "").replace(/"/g, '""')}"`
+    );
     lines.push(row.join(","));
   }
   const blob = new Blob([lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
@@ -419,6 +622,99 @@ function startPolling() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   const feed = byId("applicationsFeed");
+
+  let filterDeb;
+  ["filterPending", "filterShortlisted", "filterRejected", "filterHired"].forEach(fid => {
+    byId(fid).addEventListener("change", () => {
+      clearTimeout(filterDeb);
+      filterDeb = setTimeout(() => queryWithFeedback(), 200);
+    });
+  });
+
+  feed.addEventListener("change", async e => {
+    if (e.target.matches("input[type=checkbox][data-select-all-job]")) {
+      const section = e.target.closest(".mo-job-group");
+      if (!section) return;
+      const boxes = section.querySelectorAll("[data-app-select]");
+      const on = e.target.checked;
+      boxes.forEach(b => {
+        b.checked = on;
+        const aid = b.getAttribute("data-app-select");
+        if (!aid) return;
+        if (on) state.selectedIds.add(aid);
+        else state.selectedIds.delete(aid);
+      });
+      renderApplicantFeed(state.items);
+      updateBatchBar();
+      return;
+    }
+
+    if (e.target.matches("input[type=checkbox][data-app-select]")) {
+      const aid = e.target.getAttribute("data-app-select");
+      if (e.target.checked) state.selectedIds.add(aid);
+      else state.selectedIds.delete(aid);
+      renderApplicantFeed(state.items);
+      updateBatchBar();
+      return;
+    }
+
+    const statusSel = e.target.closest("[data-mo-status]");
+    if (statusSel && !statusSel.disabled) {
+      const appId = statusSel.getAttribute("data-app-id");
+      const prev = statusSel.getAttribute("data-prev") || "pending";
+      const v = statusSel.value;
+      if (v === prev) return;
+      statusSel.disabled = true;
+      try {
+        setNotice("Saving status...", false);
+        await submitDecision(appId, v);
+        statusSel.setAttribute("data-prev", v);
+        await loadList();
+        setNotice("Saved. Status is stored on the server.", false);
+      } catch (err) {
+        statusSel.value = prev;
+        setNotice(`${err.code || "ERROR"}: ${err.message}`, true);
+      } finally {
+        statusSel.disabled = false;
+      }
+    }
+  });
+
+  feed.addEventListener(
+    "blur",
+    async e => {
+      const notesEl = e.target.closest("[data-mo-notes]");
+      if (notesEl && !notesEl.disabled) {
+        const appId = notesEl.getAttribute("data-app-id");
+        const ind = feed.querySelector(`[data-notes-ind][data-app-id="${appId}"]`);
+        const wrap = notesEl.closest("[data-notes-wrap]");
+        wrap.classList.remove("mo-field-error");
+        setIndicator(ind, "loading");
+        try {
+          await saveNotes(appId, notesEl.value);
+          setIndicator(ind, "ok");
+        } catch (err) {
+          wrap.classList.add("mo-field-error");
+          setIndicator(ind, "err", err.message || "Save failed");
+        }
+        return;
+      }
+      const fbEl = e.target.closest("[data-mo-feedback]");
+      if (fbEl && !fbEl.disabled) {
+        await persistFeedbackFromInput(feed, fbEl);
+      }
+    },
+    true
+  );
+
+  feed.addEventListener("input", e => {
+    const fbEl = e.target.closest("[data-mo-feedback]");
+    if (!fbEl) return;
+    const appId = fbEl.getAttribute("data-app-id");
+    const cnt = feed.querySelector(`[data-fb-count][data-app-id="${appId}"]`);
+    if (cnt) cnt.textContent = `${fbEl.value.length}/200`;
+  });
+
   feed.addEventListener("click", async e => {
     const finalBtn = e.target.closest("[data-open-final]");
     if (finalBtn && !finalBtn.disabled) {
@@ -439,13 +735,23 @@ document.addEventListener("DOMContentLoaded", async () => {
       try {
         setNotice("Saving...", false);
         await submitDecision(appId, action);
-        await queryWithFeedback();
+        await loadList();
         setNotice("Saved. Status is stored on the server.", false);
       } catch (err) {
         setNotice(`${err.code || "ERROR"}: ${err.message}`, true);
       } finally {
         actionBtn.disabled = false;
       }
+      return;
+    }
+    const saveBtn = e.target.closest("[data-fb-save]");
+    if (saveBtn && !saveBtn.disabled) {
+      const appId = saveBtn.getAttribute("data-app-id");
+      const fbEl = feed.querySelector(`[data-mo-feedback][data-app-id="${appId}"]`);
+      if (!fbEl || fbEl.disabled) return;
+      saveBtn.disabled = true;
+      await persistFeedbackFromInput(feed, fbEl);
+      saveBtn.disabled = false;
       return;
     }
     const btn = e.target.closest(".mo-app-detail-btn");
@@ -461,6 +767,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     await openCardDetail(card, btn);
     btn.textContent = "Hide details";
   });
+
+  byId("batchShortlistBtn").addEventListener("click", () => runBatchStatus("shortlisted", "Shortlisted"));
+  byId("batchRejectBtn").addEventListener("click", () => runBatchStatus("rejected", "Rejected"));
+  byId("batchPendingBtn").addEventListener("click", () => runBatchStatus("pending", "Pending"));
 
   byId("finalHiringCloseBtn").addEventListener("click", closeFinalHiringModal);
   byId("historyCloseBtn").addEventListener("click", closeHistoryModal);
@@ -482,11 +792,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   byId("queryBtn").addEventListener("click", queryWithFeedback);
   byId("resetBtn").addEventListener("click", async () => {
     byId("jobIdInput").value = "";
+    byId("filterPending").checked = true;
+    byId("filterShortlisted").checked = true;
+    byId("filterRejected").checked = true;
+    byId("filterHired").checked = true;
     await queryWithFeedback();
   });
   byId("exportCsvBtn").addEventListener("click", exportCsv);
 
-  // Check URL parameters for jobId filter
   const urlParams = new URLSearchParams(window.location.search);
   const jobIdFromUrl = urlParams.get("jobId");
   if (jobIdFromUrl) {

@@ -8,6 +8,10 @@ function teacherApiBase() {
   return `${window.location.origin}${getTeacherContextPath()}/api/mo`;
 }
 
+function accountApiBase() {
+  return `${window.location.origin}${getTeacherContextPath()}/api/account`;
+}
+
 function teacherSafeText(value) {
   if (value === null || value === undefined || value === "") return "-";
   return String(value);
@@ -172,25 +176,27 @@ function renderTeacherJobs() {
   }
 
   empty.style.display = "none";
-  feed.innerHTML = teacherState.items.map(item => renderTeacherJobCard(item)).join("");
+  feed.innerHTML = teacherState.items.map((item) => renderTeacherJobCard(item)).join("");
 }
 
 function renderTeacherJobCard(item) {
   const isClosed = item.recruitmentClosed === true;
   const isPublished = item.published === true;
-  const isWithdrawn = item.withdrawn === true;
   const canPublish = String(item.approvalStatus || "").toLowerCase() === "approved" && !isPublished && !isClosed;
   const publishLocked = isPublished ? "Published" : "Publish job";
   const publishDisabled = canPublish ? "" : "disabled";
   const canEdit = !isClosed && !isPublished;
   const canDelete = !isClosed && !isPublished;
   const canTakeOffline = isPublished && !isClosed;
+
   const detailBlock = item.published === true
     ? `
       <div class="mo-inline-form open" style="display:block">
         <div class="mo-publish-grid">
           <div><span>Published</span><div>${teacherStatusTag(item)}</div></div>
-          <div><span>Withdrawn</span><div>${teacherSafeText(item.withdrawn)}</div></div>
+          <div><span>Schedule</span><div>${teacherEscapeHtml(teacherSafeText(item.schedule))}</div></div>
+          <div><span>Location</span><div>${teacherEscapeHtml(teacherSafeText(item.location))}</div></div>
+          <div><span>Deadline</span><div>${teacherEscapeHtml(teacherSafeText(item.deadline))}</div></div>
           <div><span>Created At</span><div>${teacherEscapeHtml(teacherFormatDateTime(item.createdAt))}</div></div>
           <div><span>Updated At</span><div>${teacherEscapeHtml(teacherFormatDateTime(item.updatedAt))}</div></div>
         </div>
@@ -209,6 +215,10 @@ function renderTeacherJobCard(item) {
           <div class="field">
             <label>Deadline</label>
             <input name="deadline" type="date" required />
+          </div>
+          <div class="field">
+            <label>Schedule</label>
+            <input name="schedule" type="text" placeholder="e.g. Wed 14:00-16:00" required />
           </div>
         </div>
         <div class="field">
@@ -231,6 +241,10 @@ function renderTeacherJobCard(item) {
             <input name="courseName" type="text" required value="${teacherEscapeHtml(teacherSafeText(item.courseName))}" />
           </div>
           <div class="field">
+            <label>Department</label>
+            <input name="department" type="text" required value="${teacherEscapeHtml(teacherSafeText(item.department))}" />
+          </div>
+          <div class="field">
             <label>Planned Count</label>
             <input name="plannedCount" type="number" min="1" required value="${teacherEscapeHtml(teacherSafeText(item.plannedCount))}" />
           </div>
@@ -249,6 +263,7 @@ function renderTeacherJobCard(item) {
         </div>
       </form>
     ` : "";
+
   return `
     <article class="mo-job-card" data-job-id="${teacherEscapeHtml(item.jobId)}">
       <div class="mo-job-card-head">
@@ -261,12 +276,14 @@ function renderTeacherJobCard(item) {
 
       <div class="mo-demand-meta">
         <div><span>Planned Count</span><strong>${teacherEscapeHtml(teacherSafeText(item.plannedCount))}</strong></div>
+        <div><span>Department</span><strong>${teacherEscapeHtml(teacherSafeText(item.department))}</strong></div>
         <div><span>Hours</span><strong>${teacherEscapeHtml(teacherSafeText(item.hourMin))} - ${teacherEscapeHtml(teacherSafeText(item.hourMax))}</strong></div>
         <div><span>Created</span><strong>${teacherEscapeHtml(teacherFormatDateTime(item.createdAt))}</strong></div>
         <div><span>Updated</span><strong>${teacherEscapeHtml(teacherFormatDateTime(item.updatedAt))}</strong></div>
       </div>
 
       <p class="notice">Approval status: <strong>${teacherEscapeHtml(teacherSafeText(item.approvalStatus || "pending"))}</strong>. Job status: <strong>${teacherEscapeHtml(teacherSafeText(item.status || "-"))}</strong>. Published: <strong>${teacherEscapeHtml(String(item.published === true))}</strong>. Withdrawn: <strong>${teacherEscapeHtml(String(item.withdrawn === true))}</strong>.</p>
+      <p class="notice">Schedule: <strong>${teacherEscapeHtml(teacherSafeText(item.schedule))}</strong>. Location: <strong>${teacherEscapeHtml(teacherSafeText(item.location))}</strong>. Deadline: <strong>${teacherEscapeHtml(teacherSafeText(item.deadline))}</strong>.</p>
 
       <div class="mo-demand-actions">
         <button class="btn btn-primary" type="button" data-open-publish="${teacherEscapeHtml(item.jobId)}" ${publishDisabled}>${publishLocked}</button>
@@ -291,6 +308,7 @@ async function submitDemandForm(event) {
   try {
     const payload = {
       courseName: byId("courseName").value.trim(),
+      department: byId("department").value.trim(),
       plannedCount: Number(byId("plannedCount").value),
       hourMin: Number(byId("hourMin").value),
       hourMax: Number(byId("hourMax").value)
@@ -321,6 +339,7 @@ async function submitPublishForm(form) {
     const payload = {
       location: form.location.value,
       deadline: form.deadline.value,
+      schedule: form.schedule.value.trim(),
       requirements: form.requirements.value.trim()
     };
     await teacherRequest(`${teacherApiBase()}/jobs/publish/${encodeURIComponent(jobId)}`, {
@@ -353,7 +372,7 @@ async function takeOffline(jobId, button) {
 }
 
 function openPublishForm(jobId) {
-  document.querySelectorAll(".mo-inline-form").forEach(el => el.classList.remove("open"));
+  document.querySelectorAll(".mo-inline-form").forEach((el) => el.classList.remove("open"));
   const form = document.querySelector(`[data-publish-form="${CSS.escape(jobId)}"]`);
   if (form) {
     form.classList.add("open");
@@ -369,7 +388,7 @@ function resetPublishForm(jobId) {
 }
 
 function openEditForm(jobId) {
-  document.querySelectorAll("[data-edit-form]").forEach(el => el.classList.remove("open"));
+  document.querySelectorAll("[data-edit-form]").forEach((el) => el.classList.remove("open"));
   const form = document.querySelector(`[data-edit-form="${CSS.escape(jobId)}"]`);
   if (form) form.classList.add("open");
 }
@@ -389,6 +408,7 @@ async function submitEditForm(form) {
   try {
     const payload = {
       courseName: form.courseName.value.trim(),
+      department: form.department.value.trim(),
       plannedCount: Number(form.plannedCount.value),
       hourMin: Number(form.hourMin.value),
       hourMax: Number(form.hourMax.value)
@@ -446,7 +466,7 @@ function renderNotifications() {
     panel.innerHTML = '<p class="notice" style="margin:0">No notifications.</p>';
     return;
   }
-  panel.innerHTML = teacherState.notifications.map(n => `
+  panel.innerHTML = teacherState.notifications.map((n) => `
     <div class="mo-notification-item">
       <div style="min-width:0">
         <div><strong>${teacherEscapeHtml(teacherSafeText(n.applicantName))}</strong> applied to <strong>${teacherEscapeHtml(teacherSafeText(n.jobName || n.jobId))}</strong></div>
@@ -608,7 +628,7 @@ async function reloadJobHistory() {
 
 function bindTeacherFeedActions() {
   const feed = byId("jobsFeed");
-  feed.addEventListener("click", async event => {
+  feed.addEventListener("click", async (event) => {
     const openBtn = event.target.closest("[data-open-publish]");
     if (openBtn) {
       openPublishForm(openBtn.getAttribute("data-open-publish"));
@@ -647,7 +667,7 @@ function bindTeacherFeedActions() {
     }
   });
 
-  feed.addEventListener("submit", async event => {
+  feed.addEventListener("submit", async (event) => {
     const form = event.target.closest("[data-publish-form]");
     if (form) {
       event.preventDefault();
@@ -675,12 +695,13 @@ async function reloadTeacherWorkflow() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   byId("demandForm").addEventListener("submit", submitDemandForm);
+  byId("teacherChangePasswordForm").addEventListener("submit", changeTeacherPassword);
   byId("reloadBtn").addEventListener("click", reloadTeacherWorkflow);
   byId("notificationBtn").addEventListener("click", () => {
     const panel = byId("notificationPanel");
     panel.style.display = panel.style.display === "block" ? "none" : "block";
   });
-  byId("notificationPanel").addEventListener("click", async event => {
+  byId("notificationPanel").addEventListener("click", async (event) => {
     const markBtn = event.target.closest("[data-mark-read]");
     if (!markBtn) return;
     await markNotificationRead(markBtn.getAttribute("data-mark-read"));

@@ -5,200 +5,105 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Student Portal</title>
-  <link rel="stylesheet" href="../assets/css/main.css" />
+  <link rel="stylesheet" href="<%= request.getContextPath() %>/assets/css/main.css?v=student2" />
   <style>
-    html, body {
-      height: 100%;
-      overflow: hidden;
+    body.student-portal-page {
+      background: #f9fafb;
     }
 
-    .app-shell {
-      height: 80vh;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-      background: radial-gradient(circle at top left, #e7efff, #f7fbff 45%, #f4f7fb 100%);
+    .student-portal-page .mo-tab svg,
+    .student-portal-page .student-portal-icon svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
     }
 
-    .student-portal {
-      width: 100%;
-      max-width: 1240px;
-      height: 100%;
-      background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
-      border: 1px solid #dbe2ee;
-      border-radius: 18px;
-      box-shadow: 0 24px 45px rgba(21, 43, 88, 0.12);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .student-hero {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      padding: 20px 24px;
-      border-bottom: 1px solid #dbe2ee;
-      background: radial-gradient(circle at top right, #edf3ff, #ffffff 60%);
-    }
-
-    .student-title {
-      margin: 0;
-      font-size: 28px;
-      line-height: 1.1;
-    }
-
-    .student-subtitle {
-      margin: 6px 0 0;
-      color: #475569;
-      font-size: 14px;
-    }
-
-    .student-tabs {
-      display: flex;
-      gap: 8px;
-      padding: 12px 16px;
-      border-bottom: 1px solid #dbe2ee;
-      background: #ffffff;
-      overflow-x: auto;
-    }
-
-    .student-tab {
-      border: 1px solid #dbe2ee;
-      border-radius: 999px;
-      background: #ffffff;
-      color: #334155;
-      font-weight: 600;
-      padding: 10px 14px;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    .student-tab.active {
-      background: #1e5eff;
-      color: #ffffff;
-      border-color: #1e5eff;
-    }
-
-    .student-content {
-      padding: 22px;
-      flex: 1;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
+    .student-portal-page .student-portal-icon svg {
+      width: 22px;
+      height: 22px;
     }
 
     .student-panel {
       display: none;
-      flex: 1;
-      overflow: hidden;
     }
 
     .student-panel.active {
+      display: block;
+    }
+
+    .student-panel-header {
       display: flex;
-      flex-direction: column;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .student-panel-header h2 {
+      margin: 0 0 4px;
+    }
+
+    .student-panel-header p {
+      margin: 0;
     }
 
     .module-frame {
       width: 100%;
-      max-width: 980px;
-      margin: 0 auto;
-      background: linear-gradient(180deg, #f4f8ff 0%, #eef4ff 100%);
-      border: 1px solid #d4def0;
-      border-radius: 16px;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 12px 24px rgba(14, 32, 66, 0.08);
-      flex: 1;
-      overflow-y: auto;
-      padding: 18px;
     }
 
-    .student-panel-header {
-      text-align: center;
-      margin-bottom: 18px;
-      flex-shrink: 0;
+    .student-filter-card {
+      margin-bottom: 16px;
     }
 
-    .student-panel-header h2 {
-      margin: 0;
-      font-size: 24px;
-    }
-
-    .student-panel-header p {
-      margin: 8px 0 0;
-      color: #64748b;
+    .student-portal-page .btn,
+    .student-filter-card.card {
+      border-radius: 8px;
     }
 
     .student-search {
-      display: flex;
-      gap: 10px;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      margin-bottom: 18px;
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) minmax(150px, 180px) minmax(150px, 180px);
+      gap: 12px;
+      align-items: end;
     }
 
-    .student-search input {
-      flex: 1 1 320px;
-      min-width: 240px;
-      background: #ffffff;
-    }
-
+    .student-search input,
     .student-search select {
-      flex: 0 1 180px;
-      min-width: 150px;
-      background: #ffffff;
+      border-width: 1px;
+      border-radius: 8px;
+      min-height: 42px;
     }
 
     .jobs-grid,
-    .apps-list,
-    .profile-wrap {
-      width: 100%;
-      max-width: none;
-      margin: 0;
-    }
-
-    .jobs-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 14px;
-    }
-
     .apps-list {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 14px;
     }
 
     .job-card,
     .app-item,
     .profile-wrap {
-      background: #ffffff;
-      border: 1px solid #dbe2ee;
-      border-radius: 14px;
-      box-shadow: 0 6px 14px rgba(14, 32, 66, 0.08);
-    }
-
-    .jobs-grid,
-    .apps-list {
-      padding: 2px;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
     }
 
     .job-card,
     .app-item {
-      padding: 16px;
+      padding: 18px;
     }
 
     .job-card h3,
     .app-item h3 {
-      margin: 0;
+      margin: 0 0 6px;
       font-size: 17px;
+      line-height: 1.35;
     }
 
     .app-item h3 {
-      padding-right: 80px;
+      padding-right: 86px;
     }
 
     .job-meta,
@@ -206,32 +111,37 @@
       margin: 8px 0;
       color: #64748b;
       font-size: 13px;
+      line-height: 1.5;
     }
 
-    .job-actions,
+    .job-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid #e5e7eb;
+    }
+
     .app-feedback {
       margin-top: 12px;
-    }
-
-    .app-feedback {
-      background: #f8fbff;
-      border: 1px solid #dbe2ee;
-      border-radius: 10px;
-      padding: 9px 10px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 10px 12px;
       color: #334155;
       font-size: 13px;
+      line-height: 1.5;
     }
 
     .empty-state,
     .loading-state {
-      max-width: 700px;
-      margin: 0 auto;
       text-align: center;
-      background: #ffffff;
-      border: 1px dashed #cbd5e1;
-      border-radius: 16px;
-      padding: 34px 16px;
-      color: #475569;
+      background: #fff;
+      border: 2px dashed #d1d5db;
+      border-radius: 8px;
+      padding: 42px 24px;
+      color: #64748b;
     }
 
     .hidden {
@@ -239,10 +149,7 @@
     }
 
     .profile-wrap {
-      padding: 18px;
-      border: none;
-      box-shadow: none;
-      background: transparent;
+      padding: 20px;
     }
 
     .app-item.status-pending {
@@ -291,7 +198,7 @@
     .profile-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
+      gap: 14px;
     }
 
     .profile-grid .field-wide {
@@ -303,18 +210,74 @@
       color: #475569;
     }
 
+    .student-documents {
+      margin-top: 24px;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 24px;
+    }
+
+    .student-documents h3 {
+      margin: 0 0 6px;
+      font-size: 17px;
+    }
+
+    .student-documents p {
+      margin: 0;
+    }
+
+    .student-upload-area {
+      margin-top: 16px;
+      border: 2px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 22px;
+      text-align: center;
+      cursor: pointer;
+      background-color: #f9fafb;
+      transition: all 0.2s ease;
+    }
+
+    .student-upload-area:hover {
+      border-color: #2563eb;
+      background: #eff6ff;
+    }
+
+    .student-document-label {
+      margin-top: 16px;
+    }
+
+    .student-document-label-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .student-document-label select,
+    .student-document-label input {
+      border-width: 1px;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+
+    .student-attachments-block {
+      margin-top: 16px;
+    }
+
+    #attachmentsList {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      max-height: 250px;
+      overflow-y: auto;
+      background: #fff;
+    }
+
     .portal-notice {
       margin-top: 12px;
       text-align: center;
       min-height: 20px;
       color: #1e5eff;
       font-weight: 600;
-    }
-
-    .job-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
     }
 
     .job-detail-overlay {
@@ -338,7 +301,7 @@
       overflow-y: auto;
       background: #ffffff;
       border: 1px solid #dbe2ee;
-      border-radius: 16px;
+      border-radius: 8px;
       box-shadow: 0 24px 45px rgba(21, 43, 88, 0.22);
       padding: 18px;
     }
@@ -366,7 +329,7 @@
     .job-detail-block {
       background: #f8fbff;
       border: 1px solid #dbe2ee;
-      border-radius: 10px;
+      border-radius: 8px;
       padding: 10px;
     }
 
@@ -391,168 +354,238 @@
     }
 
     @media (max-width: 760px) {
-      .job-detail-grid {
+      .student-panel-header {
+        display: block;
+      }
+
+      .student-search {
         grid-template-columns: 1fr;
       }
 
-      .student-content {
-        padding: 14px;
-      }
-
-      .student-title {
-        font-size: 23px;
+      .job-detail-grid {
+        grid-template-columns: 1fr;
       }
 
       .profile-grid {
         grid-template-columns: 1fr;
       }
+
+      .student-document-label-grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
-<body>
-<div class="app-shell">
-  <div class="student-portal">
-    <header class="student-hero">
-      <div>
-        <h1 class="student-title">Student Portal</h1>
-        <p class="student-subtitle" id="studentWelcome">Welcome back.</p>
+<body class="mo-portal student-portal-page">
+<header class="mo-portal-header">
+  <div class="mo-portal-header-inner">
+    <div class="mo-portal-brand">
+      <div class="mo-portal-icon student-portal-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z"></path>
+          <path d="M6 12v5c3 2 9 2 12 0v-5"></path>
+        </svg>
       </div>
-      <a class="btn btn-outline" href="<%= request.getContextPath() %>/logout">Logout</a>
-    </header>
+      <div>
+        <h1>Student Portal</h1>
+        <p id="studentWelcome">Welcome back.</p>
+      </div>
+    </div>
+    <a class="mo-btn-logout" href="<%= request.getContextPath() %>/logout">Logout</a>
+  </div>
+</header>
 
-    <nav class="student-tabs" aria-label="Student modules">
-      <button type="button" class="student-tab active" data-tab="jobs">Available Jobs</button>
-      <button type="button" class="student-tab" data-tab="applications">My Applications</button>
-      <button type="button" class="student-tab" data-tab="profile">Profile</button>
-    </nav>
+<main class="mo-portal-main student-content">
+  <nav class="mo-tabs student-tabs" aria-label="Student modules">
+    <button type="button" class="mo-tab student-tab active" data-tab="jobs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+        <path d="M7 8h10M7 12h6M7 16h8"></path>
+      </svg>
+      Available Jobs
+    </button>
+    <button type="button" class="mo-tab student-tab" data-tab="applications">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M9 11l3 3L22 4"></path>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+      </svg>
+      My Applications
+    </button>
+    <button type="button" class="mo-tab student-tab" data-tab="assigned">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M5 12l5 5L20 7"></path>
+      </svg>
+      My Jobs
+    </button>
+    <button type="button" class="mo-tab student-tab" data-tab="profile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M20 21a8 8 0 0 0-16 0"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </svg>
+      Profile
+    </button>
+  </nav>
 
-    <main class="student-content">
-      <section class="student-panel active" id="panel-jobs" aria-labelledby="Available Jobs">
-        <div class="student-panel-header">
-          <h2>Available Jobs</h2>
-          <p id="jobsCountText">Preparing the latest positions...</p>
+  <section class="student-panel active" id="panel-jobs" aria-labelledby="Available Jobs">
+    <div class="student-panel-header mo-applicants-head">
+      <div>
+        <h2 class="mo-section-title">Available Jobs</h2>
+        <p class="mo-section-desc" id="jobsCountText">Preparing the latest positions...</p>
+      </div>
+    </div>
+
+    <div class="module-frame">
+      <div class="card student-filter-card">
+        <div class="student-search">
+          <input id="jobSearchInput" type="text" placeholder="Search by module code or title" />
+          <select id="jobStatusFilter">
+            <option value="all">All Status</option>
+            <option value="open">Open</option>
+            <option value="closed">Closed</option>
+          </select>
+          <select id="jobHoursFilter">
+            <option value="all">All Hours</option>
+            <option value="<=10">&lt;=10h</option>
+            <option value=">10">&gt;10h</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="jobsLoading" class="loading-state">Loading job data...</div>
+      <div id="jobsEmpty" class="empty-state hidden">No matching positions at the moment.</div>
+      <div id="jobsList" class="jobs-grid hidden"></div>
+    </div>
+  </section>
+
+  <section class="student-panel" id="panel-applications" aria-labelledby="My Applications">
+    <div class="student-panel-header mo-applicants-head">
+      <div>
+        <h2 class="mo-section-title">My Applications</h2>
+        <p class="mo-section-desc" id="appsCountText">Preparing your application history...</p>
+      </div>
+    </div>
+
+    <div class="module-frame">
+      <div id="appsLoading" class="loading-state">Loading applications...</div>
+      <div id="appsEmpty" class="empty-state hidden">You have not submitted any applications yet.</div>
+      <div id="appsList" class="apps-list hidden"></div>
+    </div>
+  </section>
+
+  <section class="student-panel" id="panel-assigned" aria-labelledby="My Jobs">
+    <div class="student-panel-header mo-applicants-head">
+      <div>
+        <h2 class="mo-section-title">My Assigned Jobs</h2>
+        <p class="mo-section-desc" id="assignedCountText">Preparing your confirmed TA assignments...</p>
+      </div>
+    </div>
+
+    <div class="module-frame">
+      <div id="assignedLoading" class="loading-state">Loading assigned jobs...</div>
+      <div id="assignedEmpty" class="empty-state hidden">You do not have any hired TA jobs yet.</div>
+      <div id="assignedList" class="apps-list hidden"></div>
+    </div>
+  </section>
+
+  <section class="student-panel" id="panel-profile" aria-labelledby="Profile">
+    <div class="student-panel-header mo-applicants-head">
+      <div>
+        <h2 class="mo-section-title">Profile</h2>
+        <p class="mo-section-desc">Update your information and supporting documents.</p>
+      </div>
+    </div>
+
+    <div class="module-frame">
+      <div class="profile-wrap">
+        <div class="profile-grid">
+          <div class="field">
+            <label for="profileName">Full Name</label>
+            <input id="profileName" type="text" />
+          </div>
+          <div class="field">
+            <label for="profileEmail">Email</label>
+            <input id="profileEmail" class="readonly" type="text" readonly />
+          </div>
+          <div class="field">
+            <label for="profileStudentId">Student ID</label>
+            <input id="profileStudentId" class="readonly" type="text" readonly />
+          </div>
+          <div class="field">
+            <label for="profileProgramme">Programme</label>
+            <input id="profileProgramme" class="readonly" type="text" readonly />
+          </div>
+          <div class="field field-wide">
+            <label for="profileSkills">Skills</label>
+            <input id="profileSkills" type="text" placeholder="For example: Java, SQL, Python" />
+          </div>
+          <div class="field field-wide">
+            <label for="profileExperience">Experience</label>
+            <textarea id="profileExperience" placeholder="Describe your relevant experience"></textarea>
+          </div>
         </div>
 
-        <div class="module-frame">
-          <div class="student-search">
-            <input id="jobSearchInput" type="text" placeholder="Search by module code or title" />
-            <select id="jobStatusFilter">
-              <option value="all">All Status</option>
-              <option value="open">Open</option>
-              <option value="closed">Closed</option>
-            </select>
-            <select id="jobHoursFilter">
-              <option value="all">All Hours</option>
-              <option value="<=10">&lt;=10h</option>
-              <option value=">10">&gt;10h</option>
-            </select>
+        <div class="student-documents">
+          <h3>Supporting Documents</h3>
+          <p class="notice">Upload certificates, transcripts, or other supporting documents. Max 50MB total.</p>
+
+          <div id="uploadArea" class="student-upload-area">
+            <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 600;">Drag and drop files or click to browse</p>
+            <p style="font-size: 12px; color: #6b7280;">PDF, DOCX, XLSX, JPG, PNG</p>
+            <input id="fileInput" type="file" style="display: none;" />
           </div>
 
-          <div id="jobsLoading" class="loading-state">Loading job data...</div>
-          <div id="jobsEmpty" class="empty-state hidden">No matching positions at the moment.</div>
-          <div id="jobsList" class="jobs-grid hidden"></div>
-        </div>
-      </section>
-
-      <section class="student-panel" id="panel-applications" aria-labelledby="My Applications">
-        <div class="student-panel-header">
-          <h2>My Applications</h2>
-          <p id="appsCountText">Preparing your application history...</p>
-        </div>
-
-        <div class="module-frame">
-          <div id="appsLoading" class="loading-state">Loading applications...</div>
-          <div id="appsEmpty" class="empty-state hidden">You have not submitted any applications yet.</div>
-          <div id="appsList" class="apps-list hidden"></div>
-        </div>
-      </section>
-
-      <section class="student-panel" id="panel-profile" aria-labelledby="Profile">
-        <div class="student-panel-header">
-          <h2>Profile</h2>
-          <p>Update your information and supporting documents.</p>
-        </div>
-
-        <div class="module-frame">
-          <div class="profile-wrap">
-            <div class="profile-grid">
-              <div class="field">
-                <label for="profileName">Full Name</label>
-                <input id="profileName" type="text" />
-              </div>
-              <div class="field">
-                <label for="profileEmail">Email</label>
-                <input id="profileEmail" class="readonly" type="text" readonly />
-              </div>
-              <div class="field">
-                <label for="profileStudentId">Student ID</label>
-                <input id="profileStudentId" class="readonly" type="text" readonly />
-              </div>
-              <div class="field">
-                <label for="profileProgramme">Programme</label>
-                <input id="profileProgramme" class="readonly" type="text" readonly />
-              </div>
-              <div class="field field-wide">
-                <label for="profileSkills">Skills</label>
-                <input id="profileSkills" type="text" placeholder="For example: Java, SQL, Python" />
-              </div>
-              <div class="field field-wide">
-                <label for="profileExperience">Experience</label>
-                <textarea id="profileExperience" placeholder="Describe your relevant experience"></textarea>
-              </div>
+          <div class="student-document-label">
+            <label for="attachmentLabel">Document Type</label>
+            <div class="student-document-label-grid">
+              <select id="attachmentLabel">
+                <option value="Resume">Resume</option>
+                <option value="Certificate">Certificate</option>
+                <option value="Transcript">Transcript</option>
+                <option value="Custom">Custom...</option>
+              </select>
+              <input id="attachmentCustomLabel" type="text" placeholder="Type custom label" style="display:none;" />
             </div>
+          </div>
 
-            <!-- Attachments Section -->
-            <div style="margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 24px;">
-              <h3 style="margin: 0 0 14px 0; font-size: 16px; font-weight: 600;">Supporting Documents</h3>
-              <p style="margin: 0 0 14px 0; color: #6b7280; font-size: 13px;">Upload certificates, transcripts, or other supporting documents (Max 50MB total)</p>
-
-              <!-- Upload Area -->
-              <div id="uploadArea" style="border: 2px dashed #9ca3af; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; background-color: #f9fafb; transition: all 0.2s;">
-                <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 500;">Drag & drop files or click to browse</p>
-                <p style="margin: 0; font-size: 12px; color: #6b7280;">PDF, DOCX, XLSX, JPG, PNG (Max 50MB total)</p>
-                <input id="fileInput" type="file" style="display: none;" />
-              </div>
-
-              <!-- Label Selection -->
-              <div style="margin-top: 14px;">
-                <label for="attachmentLabel" style="display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px;">Document Type</label>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:center;">
-                  <select id="attachmentLabel" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
-                    <option value="Resume">Resume</option>
-                    <option value="Certificate">Certificate</option>
-                    <option value="Transcript">Transcript</option>
-                    <option value="Custom">Custom...</option>
-                  </select>
-                  <input id="attachmentCustomLabel" type="text" placeholder="Type custom label" style="display:none;width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;" />
-                </div>
-              </div>
-
-              <!-- Uploaded Files List -->
-              <div style="margin-top: 16px;">
-                <p style="margin: 0 0 10px 0; font-size: 13px; font-weight: 500;">Uploaded Documents</p>
-                <div id="attachmentsList" style="border: 1px solid #e5e7eb; border-radius: 6px; max-height: 250px; overflow-y: auto;">
-                  <p style="margin: 14px; text-align: center; color: #6b7280; font-size: 13px;">No documents uploaded yet</p>
-                </div>
-              </div>
-            </div>
-
-            <div class="row" style="margin-top: 20px; justify-content: center;">
-              <button type="button" class="btn btn-primary" id="saveProfileBtn">Save Profile</button>
+          <div class="student-attachments-block">
+            <p style="margin: 0 0 10px 0; font-size: 13px; font-weight: 600;">Uploaded Documents</p>
+            <div id="attachmentsList">
+              <p style="margin: 14px; text-align: center; color: #6b7280; font-size: 13px;">No documents uploaded yet</p>
             </div>
           </div>
         </div>
-      </section>
 
-      <p id="studentNotice" class="portal-notice" aria-live="polite"></p>
-    </main>
-  </div>
-</div>
+        <div class="row" style="margin-top: 20px; justify-content: center;">
+          <button type="button" class="btn btn-primary" id="saveProfileBtn">Save Profile</button>
+        </div>
 
-      <p id="studentNotice" class="portal-notice" aria-live="polite"></p>
-    </main>
-  </div>
-</div>
+        <div class="student-documents">
+          <h3>Change Password</h3>
+          <p class="notice">Update your own account password.</p>
+          <div class="profile-grid" style="margin-top: 16px;">
+            <div class="field">
+              <label for="studentOldPassword">Current Password</label>
+              <input id="studentOldPassword" type="password" />
+            </div>
+            <div class="field">
+              <label for="studentNewPassword">New Password</label>
+              <input id="studentNewPassword" type="password" />
+            </div>
+            <div class="field field-wide">
+              <label for="studentConfirmPassword">Confirm New Password</label>
+              <input id="studentConfirmPassword" type="password" />
+            </div>
+          </div>
+          <div class="row" style="margin-top: 16px; justify-content: center;">
+            <button type="button" class="btn btn-outline" id="studentChangePasswordBtn">Change Password</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p id="studentNotice" class="portal-notice" aria-live="polite"></p>
+</main>
 
 <div class="job-detail-overlay" id="jobDetailOverlay" aria-hidden="true">
   <div class="job-detail-modal" role="dialog" aria-modal="true" aria-labelledby="jobDetailTitle">
@@ -595,8 +628,8 @@
     </div>
   </div>
 </div>
-<script src="../assets/js/common.js"></script>
-<script src="../assets/js/student.js"></script>
+<script src="<%= request.getContextPath() %>/assets/js/common.js?v=student2"></script>
+<script src="<%= request.getContextPath() %>/assets/js/student.js?v=student2"></script>
 </body>
 </html>
 
