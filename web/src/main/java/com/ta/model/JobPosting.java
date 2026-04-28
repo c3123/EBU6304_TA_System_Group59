@@ -24,6 +24,8 @@ public class JobPosting {
     // MO iteration 1 agreed fields
     private Integer hourMin;
     private Integer hourMax;
+    private String department;
+    private String schedule;
     private String approvalStatus;
     private Boolean published;
     private Boolean withdrawn;
@@ -31,10 +33,13 @@ public class JobPosting {
     private String requirements;
     private String createdAt;
     private String updatedAt;
+    /** ISO timestamp when this job was released/published for applicants. */
+    private String publishedAt;
     /** MO_04: set true after final hiring confirmation. */
     private Boolean recruitmentClosed;
     /** ISO timestamp when recruitment is closed. */
     private String closedAt;
+    
 
     public JobPosting() {
     }
@@ -127,6 +132,22 @@ public class JobPosting {
         this.hourMax = hourMax;
     }
 
+    public String getDepartment() {
+        return department;
+}
+
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+
+    public String getSchedule() {
+        return schedule;
+    }
+
+    public void setSchedule(String schedule) {
+        this.schedule = schedule;
+    }
+    
     public String getApprovalStatus() {
         return approvalStatus;
     }
@@ -181,6 +202,14 @@ public class JobPosting {
 
     public void setUpdatedAt(String updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getPublishedAt() {
+        return publishedAt;
+    }
+
+    public void setPublishedAt(String publishedAt) {
+        this.publishedAt = publishedAt;
     }
 
     public Boolean getRecruitmentClosed() {

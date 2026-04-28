@@ -20,6 +20,7 @@ public class MoDemandItemResponse {
     private String closedAt;
     private String createdAt;
     private String updatedAt;
+    private String publishedAt;
 
     public String getJobId() {
         return jobId;
@@ -139,5 +140,13 @@ public class MoDemandItemResponse {
 
     public void setUpdatedAt(String updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getPublishedAt() {
+        return publishedAt;
+    }
+
+    public void setPublishedAt(String publishedAt) {
+        this.publishedAt = publishedAt;
     }
 }

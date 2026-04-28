@@ -133,6 +133,7 @@ public class MoDemandService {
         item.setClosedAt(job.getClosedAt());
         item.setCreatedAt(job.getCreatedAt());
         item.setUpdatedAt(job.getUpdatedAt());
+        item.setPublishedAt(job.getPublishedAt());
         return item;
     }
 
