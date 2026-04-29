@@ -411,6 +411,12 @@
       </svg>
       My Applications
     </button>
+    <button type="button" class="mo-tab student-tab" data-tab="assigned">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M5 12l5 5L20 7"></path>
+      </svg>
+      My Jobs
+    </button>
     <button type="button" class="mo-tab student-tab" data-tab="profile">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <path d="M20 21a8 8 0 0 0-16 0"></path>
@@ -463,6 +469,21 @@
       <div id="appsLoading" class="loading-state">Loading applications...</div>
       <div id="appsEmpty" class="empty-state hidden">You have not submitted any applications yet.</div>
       <div id="appsList" class="apps-list hidden"></div>
+    </div>
+  </section>
+
+  <section class="student-panel" id="panel-assigned" aria-labelledby="My Jobs">
+    <div class="student-panel-header mo-applicants-head">
+      <div>
+        <h2 class="mo-section-title">My Assigned Jobs</h2>
+        <p class="mo-section-desc" id="assignedCountText">Preparing your confirmed TA assignments...</p>
+      </div>
+    </div>
+
+    <div class="module-frame">
+      <div id="assignedLoading" class="loading-state">Loading assigned jobs...</div>
+      <div id="assignedEmpty" class="empty-state hidden">You do not have any hired TA jobs yet.</div>
+      <div id="assignedList" class="apps-list hidden"></div>
     </div>
   </section>
 
@@ -536,6 +557,28 @@
 
         <div class="row" style="margin-top: 20px; justify-content: center;">
           <button type="button" class="btn btn-primary" id="saveProfileBtn">Save Profile</button>
+        </div>
+
+        <div class="student-documents">
+          <h3>Change Password</h3>
+          <p class="notice">Update your own account password.</p>
+          <div class="profile-grid" style="margin-top: 16px;">
+            <div class="field">
+              <label for="studentOldPassword">Current Password</label>
+              <input id="studentOldPassword" type="password" />
+            </div>
+            <div class="field">
+              <label for="studentNewPassword">New Password</label>
+              <input id="studentNewPassword" type="password" />
+            </div>
+            <div class="field field-wide">
+              <label for="studentConfirmPassword">Confirm New Password</label>
+              <input id="studentConfirmPassword" type="password" />
+            </div>
+          </div>
+          <div class="row" style="margin-top: 16px; justify-content: center;">
+            <button type="button" class="btn btn-outline" id="studentChangePasswordBtn">Change Password</button>
+          </div>
         </div>
       </div>
     </div>

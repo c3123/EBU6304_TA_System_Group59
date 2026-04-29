@@ -8,7 +8,9 @@
     "courseGrade": "A",
     "appliedAt": "2026-04-01T10:00:00Z",
     "status": "pending",
-    "active": true
+    "active": true,
+    "evaluationNotes": "",
+    "decisionFeedback": ""
   },
   {
     "id": "app002",
@@ -19,6 +21,8 @@
     "courseGrade": "B",
     "appliedAt": "2026-03-28T10:00:00Z",
     "status": "pending",
-    "active": false
+    "active": false,
+    "evaluationNotes": "",
+    "decisionFeedback": ""
   }
 ]

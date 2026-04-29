@@ -219,6 +219,91 @@
     .mo-applicants-figma .mo-tabs {
       border-bottom-color: #e5e7eb;
     }
+    .mo-status-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 14px 20px;
+      margin-bottom: 14px;
+    }
+    .mo-status-toolbar label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      color: #334155;
+      cursor: pointer;
+    }
+    .mo-batch-bar {
+      display: none;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
+    .mo-batch-bar.visible {
+      display: flex;
+    }
+    .mo-app-card-proto.mo-app-card-selected {
+      box-shadow: 0 0 0 2px #3b82f6, 0 4px 14px rgba(15, 23, 42, 0.08);
+    }
+    .mo-field-inline {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin: 10px 0 0;
+      flex-wrap: wrap;
+    }
+    .mo-field-inline label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      min-width: 120px;
+      padding-top: 6px;
+    }
+    .mo-field-inline input[type="text"],
+    .mo-field-inline textarea {
+      flex: 1;
+      min-width: 160px;
+      max-width: 100%;
+      font-size: 13px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+    .mo-field-inline textarea { min-height: 44px; resize: vertical; }
+    .mo-field-inline.mo-field-error input,
+    .mo-field-inline.mo-field-error textarea {
+      border-color: #dc2626;
+    }
+    .mo-save-indicator {
+      font-size: 12px;
+      min-width: 22px;
+      color: #64748b;
+    }
+    .mo-save-indicator.ok { color: #16a34a; }
+    .mo-save-indicator.err { color: #dc2626; cursor: help; }
+    .mo-fb-count {
+      font-size: 11px;
+      color: #94a3b8;
+      align-self: flex-end;
+    }
+    .mo-status-select {
+      font-size: 13px;
+      padding: 4px 8px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+    }
+    .mo-privacy-hint {
+      font-size: 12px;
+      color: #64748b;
+      margin: 0 0 8px;
+    }
   </style>
 </head>
 <body class="mo-portal mo-applicants-figma">
@@ -279,6 +364,14 @@
   </div>
 
   <div class="card" style="margin-bottom:16px">
+    <p class="mo-privacy-hint">Decision feedback is only visible to Module Organisers and Administrators.</p>
+    <div class="mo-status-toolbar" id="statusFilterBar">
+      <span style="font-weight:600;font-size:14px;color:#0f172a;">Filter by Status:</span>
+      <label><input type="checkbox" id="filterPending" checked /> Pending</label>
+      <label><input type="checkbox" id="filterShortlisted" checked /> Shortlisted</label>
+      <label><input type="checkbox" id="filterRejected" checked /> Rejected</label>
+      <label><input type="checkbox" id="filterHired" checked /> Hired</label>
+    </div>
     <div class="row mo-filter-row" style="align-items:flex-end;">
       <div class="field" style="min-width:220px;">
         <label for="jobIdInput">Filter by Job ID (optional)</label>
@@ -290,6 +383,13 @@
     <p id="pageNotice" class="notice"></p>
   </div>
 
+  <div id="batchBar" class="mo-batch-bar" aria-live="polite">
+    <span id="batchBarLabel" style="font-weight:600;color:#0f172a"></span>
+    <button type="button" id="batchShortlistBtn" class="btn btn-success" style="font-weight:600">Mark as Shortlisted</button>
+    <button type="button" id="batchRejectBtn" class="btn btn-outline" style="color:#b91c1c;border-color:#fecaca">Mark as Rejected</button>
+    <button type="button" id="batchPendingBtn" class="btn btn-outline">Mark as Pending</button>
+  </div>
+
   <div id="applicationsEmpty" class="mo-empty-state" style="display:none;" role="status">
     <svg class="mo-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
@@ -297,8 +397,8 @@
       <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
       <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
     </svg>
-    <h3>No Applications Yet</h3>
-    <p>There are no active applications for this view.</p>
+    <h3>No applicants found</h3>
+    <p>There are no active applications for this view. Try adjusting job or status filters.</p>
   </div>
 
   <div id="applicationsFeed" class="mo-applicant-feed" style="display:none;" aria-live="polite"></div>
@@ -328,7 +428,7 @@
     </div>
   </div>
 </main>
-<script src="../assets/js/common.js?v=mo5"></script>
-<script src="../assets/js/mo-applications.js?v=mo5"></script>
+<script src="../assets/js/common.js?v=mo6"></script>
+<script src="../assets/js/mo-applications.js?v=mo9"></script>
 </body>
 </html>

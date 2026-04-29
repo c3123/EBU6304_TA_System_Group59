@@ -11,6 +11,8 @@ import java.util.List;
  * 2) status may be pending | viewed | shortlisted | hired | rejected.
  * 3) active=true means visible in MO list; student withdraw sets active=false.
  * 4) selectedAttachmentIds: list of attachment IDs included in this application
+ * 5) evaluationNotes: MO-only private notes (MO_05); persisted in applications.json
+ * 6) decisionFeedback: MO/Admin-only short reason for hired/shortlisted/rejected (MO_10); max 200 chars enforced in service
  */
 public class ApplicationRecord {
     private String id;
@@ -23,6 +25,10 @@ public class ApplicationRecord {
     private String status;
     private boolean active;
     private List<String> selectedAttachmentIds;
+    /** MO private evaluation notes (optional; Gson omits if null in older JSON files) */
+    private String evaluationNotes;
+    /** Hiring/rejection feedback visible to MO and Admin only */
+    private String decisionFeedback;
 
     public ApplicationRecord() {
         this.selectedAttachmentIds = new ArrayList<>();
@@ -106,5 +112,21 @@ public class ApplicationRecord {
 
     public void setSelectedAttachmentIds(List<String> selectedAttachmentIds) {
         this.selectedAttachmentIds = selectedAttachmentIds != null ? selectedAttachmentIds : new ArrayList<>();
+    }
+
+    public String getEvaluationNotes() {
+        return evaluationNotes;
+    }
+
+    public void setEvaluationNotes(String evaluationNotes) {
+        this.evaluationNotes = evaluationNotes;
+    }
+
+    public String getDecisionFeedback() {
+        return decisionFeedback;
+    }
+
+    public void setDecisionFeedback(String decisionFeedback) {
+        this.decisionFeedback = decisionFeedback;
     }
 }
