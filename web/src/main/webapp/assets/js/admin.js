@@ -135,7 +135,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const settings = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/settings/workload-threshold`, {
       method: "GET"
     });
-    thresholdHoursEl.value = settings.workloadThresholdHours ?? 20;
+    thresholdHoursEl.value = settings.workloadThresholdHours;
     thresholdUpdatedAtEl.value = settings.updatedAt || "";
   }
 
@@ -315,15 +315,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function saveThreshold(event) {
     event.preventDefault();
+    const thresholdValue = Number(thresholdHoursEl.value);
+    if (!Number.isInteger(thresholdValue) || thresholdValue <= 0) {
+      setNotice("Threshold must be a positive integer.", true);
+      activateTab("workload");
+      return;
+    }
     try {
       thresholdSaveBtn.disabled = true;
       thresholdSaveBtn.textContent = "Saving...";
       const saved = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/settings/workload-threshold`, {
         method: "POST",
         headers: { "Content-Type": "application/json;charset=UTF-8" },
-        body: JSON.stringify({ workloadThresholdHours: Number(thresholdHoursEl.value) })
+        body: JSON.stringify({ workloadThresholdHours: thresholdValue })
       });
-      thresholdHoursEl.value = saved.workloadThresholdHours ?? thresholdHoursEl.value;
+      thresholdHoursEl.value = saved.workloadThresholdHours;
       thresholdUpdatedAtEl.value = saved.updatedAt || "";
       setNotice("Workload threshold saved.", false);
       await loadAdminDashboard();

@@ -170,7 +170,8 @@ public class AdminDashboardService {
     private List<AdminDashboardWorkloadItemResponse> toWorkload(List<ApplicationRecord> applications,
                                                                 List<JobPosting> jobs,
                                                                 Integer thresholdHours) {
-        int threshold = thresholdHours == null || thresholdHours <= 0 ? 20 : thresholdHours;
+        // Threshold value is normalized by JsonUtility.loadSystemSettings.
+        int threshold = thresholdHours;
         Map<String, Integer> jobHoursById = new LinkedHashMap<>();
         for (JobPosting job : jobs) {
             if (job.getId() != null) {
