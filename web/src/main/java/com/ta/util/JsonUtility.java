@@ -98,23 +98,30 @@ public final class JsonUtility {
     }
 
     private static File resolveDataFile(ServletContext context, String fileName) throws IOException {
-        String realPath = context.getRealPath(DATA_ROOT + fileName);
-        if (realPath == null) {
-            // 如果getRealPath返回null，尝试构造路径
-            String contextPath = context.getRealPath("/");
-            if (contextPath != null) {
-                realPath = contextPath + DATA_ROOT.substring(1) + fileName;
-            }
-        }
-        File dataFile = new File(realPath);
-        File dataDir = dataFile.getParentFile();
+        String configuredDataDir = System.getProperty("ta.data.dir");
+        File dataFile;
 
-        // 确保数据目录存在
+        if (configuredDataDir != null && !configuredDataDir.isBlank()) {
+            dataFile = new File(configuredDataDir, fileName);
+        } else {
+            String realPath = context.getRealPath(DATA_ROOT + fileName);
+            if (realPath == null) {
+                String contextPath = context.getRealPath("/");
+                if (contextPath != null) {
+                    realPath = contextPath + DATA_ROOT.substring(1) + fileName;
+                }
+            }
+            if (realPath == null) {
+                throw new IOException("Cannot resolve data file path: " + fileName);
+            }
+            dataFile = new File(realPath);
+        }
+
+        File dataDir = dataFile.getParentFile();
         if (!dataDir.exists()) {
             Files.createDirectories(dataDir.toPath());
         }
 
-        // 如果文件不存在，创建空的 JSON 数组文件
         if (!dataFile.exists()) {
             Files.writeString(dataFile.toPath(), "[]", StandardCharsets.UTF_8);
         }

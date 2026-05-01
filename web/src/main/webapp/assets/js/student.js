@@ -19,6 +19,7 @@
   const panels = {
     jobs: byId("panel-jobs"),
     applications: byId("panel-applications"),
+    hired: byId("panel-hired"),
     profile: byId("panel-profile")
   };
 
@@ -30,6 +31,13 @@
   const appsLoadingEl = byId("appsLoading");
   const appsEmptyEl = byId("appsEmpty");
   const appsCountTextEl = byId("appsCountText");
+  const hiredListEl = byId("hiredList");
+  const hiredLoadingEl = byId("hiredLoading");
+  const hiredEmptyEl = byId("hiredEmpty");
+  const hiredContentEl = byId("hiredContent");
+  const hiredCountTextEl = byId("hiredCountText");
+  const hiredTotalHoursEl = byId("hiredTotalHours");
+  const hiredSummaryNoteEl = byId("hiredSummaryNote");
   const studentWelcomeEl = byId("studentWelcome");
   const noticeEl = byId("studentNotice");
 
@@ -144,6 +152,16 @@
 
   function hasApplied(jobId) {
     return state.applications.some((app) => app.jobId === jobId);
+  }
+
+  function weeklyHoursForApplication(app) {
+    const appHours = Number(app.hours);
+    if (Number.isFinite(appHours) && appHours > 0) {
+      return appHours;
+    }
+    const job = state.jobs.find((item) => item.id === app.jobId);
+    const jobHours = Number(job && job.hours);
+    return Number.isFinite(jobHours) && jobHours > 0 ? jobHours : 0;
   }
 
   function todayIsoDate() {
@@ -275,6 +293,55 @@
         await withdrawApplication(appId);
       });
     });
+  }
+
+  function renderHiredJobs() {
+    if (!hiredLoadingEl || !hiredContentEl || !hiredListEl || !hiredEmptyEl) return;
+
+    if (state.loading) {
+      hiredLoadingEl.classList.remove("hidden");
+      hiredContentEl.classList.add("hidden");
+      if (hiredCountTextEl) hiredCountTextEl.textContent = "Loading your confirmed workload...";
+      return;
+    }
+
+    hiredLoadingEl.classList.add("hidden");
+    hiredContentEl.classList.remove("hidden");
+
+    const hiredApps = state.applications.filter((app) => normalizeStatus(app.status) === "hired");
+    const totalHours = hiredApps.reduce((sum, app) => sum + weeklyHoursForApplication(app), 0);
+
+    if (hiredTotalHoursEl) hiredTotalHoursEl.textContent = `${totalHours}h`;
+    if (hiredCountTextEl) {
+      hiredCountTextEl.textContent = `${hiredApps.length} hired job(s), ${totalHours}h/week in total.`;
+    }
+    if (hiredSummaryNoteEl) {
+      hiredSummaryNoteEl.textContent = hiredApps.length
+        ? "This total is calculated from all applications currently marked as Hired."
+        : "Confirmed TA jobs will appear here after a teacher finalizes hiring.";
+    }
+
+    if (!hiredApps.length) {
+      hiredListEl.classList.add("hidden");
+      hiredEmptyEl.classList.remove("hidden");
+      return;
+    }
+
+    hiredEmptyEl.classList.add("hidden");
+    hiredListEl.classList.remove("hidden");
+    hiredListEl.innerHTML = hiredApps.map((app) => {
+      const hours = weeklyHoursForApplication(app);
+      return `
+        <article class="hired-item">
+          <h3>${escapeHtml(app.jobTitle || "Unknown Job")}</h3>
+          <p class="hired-meta">
+            ${escapeHtml(app.moduleCode || app.jobId || "N/A")} | ${escapeHtml(app.teacherName || "N/A")}
+          </p>
+          <p class="hired-meta">${hours}h/week | Applied on ${escapeHtml(app.appliedAt || "Unknown Date")}</p>
+          <div>${toStatusTag(app.status)}</div>
+        </article>
+      `;
+    }).join("");
   }
 
   function renderProfile() {
@@ -434,6 +501,7 @@
       const appData = await requestApi("/applications");
       state.applications = Array.isArray(appData.items) ? appData.items : [];
       renderApplications();
+      renderHiredJobs();
     } catch (err) {
       showNotice(err.message || "Failed to refresh applications.", true);
     }
@@ -554,6 +622,7 @@
     state.applications.unshift(created);
     renderJobs();
     renderApplications();
+    renderHiredJobs();
     showNotice("Application submitted successfully.", false);
   }
 
@@ -723,6 +792,7 @@
 
   renderJobs();
   renderApplications();
+  renderHiredJobs();
 
   try {
     await loadFromBackend();
@@ -733,6 +803,7 @@
     state.loading = false;
     renderJobs();
     renderApplications();
+    renderHiredJobs();
     renderProfile();
   }
 });

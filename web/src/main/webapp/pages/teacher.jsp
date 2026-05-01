@@ -274,7 +274,7 @@
     </div>
   </section>
 </main>
-<script src="../assets/js/common.js?v=mo3"></script>
-<script src="../assets/js/teacher.js?v=mo3"></script>
+<script src="../assets/js/common.js?v=mo4"></script>
+<script src="../assets/js/teacher.js?v=mo4"></script>
 </body>
 </html>

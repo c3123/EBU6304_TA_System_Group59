@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Student Portal</title>
-  <link rel="stylesheet" href="<%= request.getContextPath() %>/assets/css/main.css?v=student2" />
+  <link rel="stylesheet" href="<%= request.getContextPath() %>/assets/css/main.css?v=student3" />
   <style>
     body.student-portal-page {
       background: #f9fafb;
@@ -75,7 +75,8 @@
     }
 
     .jobs-grid,
-    .apps-list {
+    .apps-list,
+    .hired-list {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 14px;
@@ -83,6 +84,7 @@
 
     .job-card,
     .app-item,
+    .hired-item,
     .profile-wrap {
       background: #fff;
       border: 1px solid #e5e7eb;
@@ -91,12 +93,14 @@
     }
 
     .job-card,
-    .app-item {
+    .app-item,
+    .hired-item {
       padding: 18px;
     }
 
     .job-card h3,
-    .app-item h3 {
+    .app-item h3,
+    .hired-item h3 {
       margin: 0 0 6px;
       font-size: 17px;
       line-height: 1.35;
@@ -107,11 +111,56 @@
     }
 
     .job-meta,
-    .app-meta {
+    .app-meta,
+    .hired-meta {
       margin: 8px 0;
       color: #64748b;
       font-size: 13px;
       line-height: 1.5;
+    }
+
+    .hired-summary {
+      display: grid;
+      grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .hired-total-card {
+      background: #0f172a;
+      color: #fff;
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+    }
+
+    .hired-total-card span {
+      display: block;
+      color: #cbd5e1;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .hired-total-card strong {
+      display: block;
+      font-size: 34px;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .hired-summary-note {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 18px;
+      color: #475569;
+      font-size: 14px;
+      line-height: 1.6;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+    }
+
+    .hired-item {
+      border-left: 5px solid #16a34a;
     }
 
     .job-actions {
@@ -366,6 +415,10 @@
         grid-template-columns: 1fr;
       }
 
+      .hired-summary {
+        grid-template-columns: 1fr;
+      }
+
       .profile-grid {
         grid-template-columns: 1fr;
       }
@@ -410,6 +463,14 @@
         <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
       </svg>
       My Applications
+    </button>
+    <button type="button" class="mo-tab student-tab" data-tab="hired">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M16 21v-2a4 4 0 0 0-8 0v2"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+        <path d="M20 8l-3 3-2-2"></path>
+      </svg>
+      Hired Jobs
     </button>
     <button type="button" class="mo-tab student-tab" data-tab="profile">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -463,6 +524,32 @@
       <div id="appsLoading" class="loading-state">Loading applications...</div>
       <div id="appsEmpty" class="empty-state hidden">You have not submitted any applications yet.</div>
       <div id="appsList" class="apps-list hidden"></div>
+    </div>
+  </section>
+
+  <section class="student-panel" id="panel-hired" aria-labelledby="Hired Jobs">
+    <div class="student-panel-header mo-applicants-head">
+      <div>
+        <h2 class="mo-section-title">Hired Jobs</h2>
+        <p class="mo-section-desc" id="hiredCountText">Preparing your confirmed workload...</p>
+      </div>
+    </div>
+
+    <div class="module-frame">
+      <div id="hiredLoading" class="loading-state">Loading hired jobs...</div>
+      <div id="hiredContent" class="hidden">
+        <div class="hired-summary">
+          <div class="hired-total-card">
+            <span>Total weekly workload</span>
+            <strong id="hiredTotalHours">0h</strong>
+          </div>
+          <div class="hired-summary-note" id="hiredSummaryNote">
+            Confirmed TA jobs are counted from applications with Hired status.
+          </div>
+        </div>
+        <div id="hiredEmpty" class="empty-state hidden">You do not have any hired jobs yet.</div>
+        <div id="hiredList" class="hired-list hidden"></div>
+      </div>
     </div>
   </section>
 
@@ -585,8 +672,8 @@
     </div>
   </div>
 </div>
-<script src="<%= request.getContextPath() %>/assets/js/common.js?v=student2"></script>
-<script src="<%= request.getContextPath() %>/assets/js/student.js?v=student2"></script>
+<script src="<%= request.getContextPath() %>/assets/js/common.js?v=student3"></script>
+<script src="<%= request.getContextPath() %>/assets/js/student.js?v=student3"></script>
 </body>
 </html>
 
