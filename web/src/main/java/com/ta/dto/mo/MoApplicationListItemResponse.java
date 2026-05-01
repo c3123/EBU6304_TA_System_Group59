@@ -16,6 +16,8 @@ public class MoApplicationListItemResponse {
     private String programme;
     private String skills;
     private String experience;
+    private String evaluationNotes;
+    private String decisionFeedback;
 
     public String getApplicationId() {
         return applicationId;
@@ -103,5 +105,21 @@ public class MoApplicationListItemResponse {
 
     public void setExperience(String experience) {
         this.experience = experience;
+    }
+
+    public String getEvaluationNotes() {
+        return evaluationNotes;
+    }
+
+    public void setEvaluationNotes(String evaluationNotes) {
+        this.evaluationNotes = evaluationNotes;
+    }
+
+    public String getDecisionFeedback() {
+        return decisionFeedback;
+    }
+
+    public void setDecisionFeedback(String decisionFeedback) {
+        this.decisionFeedback = decisionFeedback;
     }
 }

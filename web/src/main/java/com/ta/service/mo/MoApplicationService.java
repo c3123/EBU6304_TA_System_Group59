@@ -7,6 +7,7 @@ import com.ta.dto.mo.MoApplicationListItemResponse;
 import com.ta.dto.mo.MoApplicationListResponse;
 import com.ta.model.ApplicationRecord;
 import com.ta.model.Attachment;
+import com.ta.model.HiringHistoryRecord;
 import com.ta.model.JobPosting;
 import com.ta.model.StudentProfile;
 import com.ta.util.JsonUtility;
@@ -16,11 +17,15 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -35,7 +40,11 @@ import java.util.stream.Collectors;
  */
 public class MoApplicationService {
 
-    public MoApplicationListResponse listApplications(ServletContext context, String moId, String jobIdFilter) {
+    private static final int MAX_DECISION_FEEDBACK_CHARS = 200;
+    /** Query param value: show no applicants (all status checkboxes off in MO UI). */
+    static final String STATUS_FILTER_NONE_SENTINEL = "__none__";
+
+    public MoApplicationListResponse listApplications(ServletContext context, String moId, String jobIdFilter, String statusFilterCsv) {
         try {
             List<JobPosting> jobs = JsonUtility.loadJobs(context);
             Set<String> ownedJobIds = jobs.stream()
@@ -68,6 +77,8 @@ public class MoApplicationService {
                     .filter(p -> p.getUserId() != null)
                     .collect(Collectors.toMap(StudentProfile::getUserId, Function.identity(), (a, b) -> a));
 
+            Set<String> statusTokens = parseStatusFilter(statusFilterCsv);
+
             List<MoApplicationListItemResponse> items = new ArrayList<>();
 
             for (ApplicationRecord a : applications) {
@@ -80,10 +91,15 @@ public class MoApplicationService {
                 if (jobIdFilter != null && !jobIdFilter.isBlank() && !jobIdFilter.equals(a.getJobId())) {
                     continue;
                 }
+                if (statusTokens != null && !matchesStatusFilter(normalizeStatus(a.getStatus()), statusTokens)) {
+                    continue;
+                }
                 MoApplicationListItemResponse item = toListItem(a);
                 enrichFromProfile(item, profileByUserId.get(a.getStudentId()));
                 items.add(item);
             }
+
+            items.sort(Comparator.comparing(MoApplicationListItemResponse::getAppliedAt, Comparator.nullsLast(String::compareTo)).reversed());
 
             MoApplicationListResponse response = new MoApplicationListResponse();
             response.setItems(items);
@@ -94,7 +110,95 @@ public class MoApplicationService {
     }
 
     /**
-     * MO sets shortlisted / hired / rejected. Persists to applications.json.
+     * Admin read-only: all active applications (optional job filter), including MO-only fields for archiving.
+     */
+    public MoApplicationListResponse listApplicationsForAdmin(ServletContext context, String jobIdFilter) {
+        try {
+            List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            List<StudentProfile> profiles = JsonUtility.loadStudents(context);
+            Map<String, StudentProfile> profileByUserId = profiles.stream()
+                    .filter(p -> p.getUserId() != null)
+                    .collect(Collectors.toMap(StudentProfile::getUserId, Function.identity(), (a, b) -> a));
+
+            List<MoApplicationListItemResponse> items = new ArrayList<>();
+            for (ApplicationRecord a : applications) {
+                if (!a.isActive()) {
+                    continue;
+                }
+                if (jobIdFilter != null && !jobIdFilter.isBlank() && !jobIdFilter.equals(a.getJobId())) {
+                    continue;
+                }
+                MoApplicationListItemResponse item = toListItem(a);
+                enrichFromProfile(item, profileByUserId.get(a.getStudentId()));
+                items.add(item);
+            }
+            items.sort(Comparator.comparing(MoApplicationListItemResponse::getAppliedAt, Comparator.nullsLast(String::compareTo)).reversed());
+            MoApplicationListResponse response = new MoApplicationListResponse();
+            response.setItems(items);
+            return response;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to list applications for admin.", e);
+        }
+    }
+
+    /**
+     * @param statusFilterCsv comma-separated tokens: pending, shortlisted, rejected, hired.
+     *                        Token "pending" matches records in pending or viewed.
+     *                        Special value "__none__": match no records (UI: zero checkboxes).
+     *                        Omit param or all four tokens: no status filter (show all).
+     */
+    static Set<String> parseStatusFilter(String statusFilterCsv) {
+        if (statusFilterCsv == null || statusFilterCsv.isBlank()) {
+            return null;
+        }
+        String trimmedIn = statusFilterCsv.trim();
+        if (STATUS_FILTER_NONE_SENTINEL.equalsIgnoreCase(trimmedIn)) {
+            return Collections.emptySet();
+        }
+        Set<String> raw = new LinkedHashSet<>();
+        for (String part : statusFilterCsv.split(",")) {
+            if (part == null) {
+                continue;
+            }
+            String t = part.trim().toLowerCase();
+            if (!t.isEmpty()) {
+                raw.add(t);
+            }
+        }
+        if (raw.isEmpty()) {
+            return null;
+        }
+        Set<String> allFour = Set.of("pending", "shortlisted", "rejected", "hired");
+        if (raw.size() == 4 && raw.containsAll(allFour)) {
+            return null;
+        }
+        return raw;
+    }
+
+    static boolean matchesStatusFilter(String normalizedRecordStatus, Set<String> filterTokens) {
+        if (filterTokens == null) {
+            return true;
+        }
+        if (filterTokens.isEmpty()) {
+            return false;
+        }
+        for (String token : filterTokens) {
+            if ("pending".equals(token) && ("pending".equals(normalizedRecordStatus) || "viewed".equals(normalizedRecordStatus))) {
+                return true;
+            }
+            if (token.equals(normalizedRecordStatus)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String normalizeStatus(String s) {
+        return s == null ? "" : s.trim().toLowerCase();
+    }
+
+    /**
+     * MO sets shortlisted / hired / rejected / pending / viewed (undo). Persists to applications.json.
      */
     public MoApplicationListItemResponse updateApplicationStatus(ServletContext context,
                                                                   String moId,
@@ -107,11 +211,11 @@ public class MoApplicationService {
                     HttpServletResponse.SC_BAD_REQUEST
             );
         }
-        String normalized = newStatus == null ? "" : newStatus.trim().toLowerCase();
-        if (!Set.of("shortlisted", "hired", "rejected", "viewed").contains(normalized)) {
+        String normalized = normalizeStatus(newStatus);
+        if (!Set.of("shortlisted", "hired", "rejected", "viewed", "pending").contains(normalized)) {
             throw new MoBusinessException(
                     ErrorCodes.VALIDATION_ERROR,
-                    "status must be shortlisted, hired, rejected, or viewed (undo reject only).",
+                    "status must be pending, shortlisted, hired, rejected, or viewed (undo reject only).",
                     HttpServletResponse.SC_BAD_REQUEST
             );
         }
@@ -152,38 +256,12 @@ public class MoApplicationService {
                         HttpServletResponse.SC_FORBIDDEN
                 );
             }
-            if (Boolean.TRUE.equals(job.getRecruitmentClosed())) {
-                throw new MoBusinessException(
-                        ErrorCodes.JOB_RECRUITMENT_CLOSED,
-                        "Recruitment is closed for this job (read-only).",
-                        HttpServletResponse.SC_BAD_REQUEST
-                );
+
+            applyMoApplicationStatusTransition(record, job, normalized);
+            if ("hired".equals(normalized)) {
+                appendManualHireHistory(context, moId, record);
             }
-
-            String current = record.getStatus() == null ? "" : record.getStatus().trim().toLowerCase();
-
-            if ("viewed".equals(normalized)) {
-                if (!"rejected".equals(current)) {
-                    throw new MoBusinessException(
-                            ErrorCodes.VALIDATION_ERROR,
-                            "Only rejected applications can be restored to viewed (undo reject).",
-                            HttpServletResponse.SC_BAD_REQUEST
-                    );
-                }
-                record.setStatus("viewed");
-                JsonUtility.saveApplications(context, applications);
-            } else {
-                if ("hired".equals(current) || "rejected".equals(current)) {
-                    throw new MoBusinessException(
-                            ErrorCodes.VALIDATION_ERROR,
-                            "Application status is final and cannot be changed.",
-                            HttpServletResponse.SC_BAD_REQUEST
-                    );
-                }
-
-                record.setStatus(normalized);
-                JsonUtility.saveApplications(context, applications);
-            }
+            JsonUtility.saveApplications(context, applications);
 
             MoApplicationListItemResponse item = toListItem(record);
             List<StudentProfile> profiles = JsonUtility.loadStudents(context);
@@ -196,6 +274,288 @@ public class MoApplicationService {
         } catch (IOException e) {
             throw new RuntimeException("Failed to update application status.", e);
         }
+    }
+
+    /**
+     * Batch status update: validate all, then one save (all-or-nothing for this process).
+     */
+    public Map<String, Object> batchUpdateApplicationStatus(ServletContext context,
+                                                            String moId,
+                                                            List<String> applicationIds,
+                                                            String newStatus) {
+        if (applicationIds == null || applicationIds.isEmpty()) {
+            throw new MoBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    "ids must be a non-empty array.",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+        String normalized = normalizeStatus(newStatus);
+        if (!Set.of("shortlisted", "hired", "rejected", "viewed", "pending").contains(normalized)) {
+            throw new MoBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    "status must be pending, shortlisted, hired, rejected, or viewed (undo reject only).",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+
+        try {
+            List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            Map<String, JobPosting> jobById = jobs.stream()
+                    .filter(j -> j.getId() != null)
+                    .collect(Collectors.toMap(JobPosting::getId, Function.identity(), (a, b) -> a));
+
+            List<ApplicationRecord> targets = new ArrayList<>();
+            for (String id : applicationIds) {
+                if (id == null || id.isBlank()) {
+                    throw new MoBusinessException(
+                            ErrorCodes.VALIDATION_ERROR,
+                            "Each id must be non-blank.",
+                            HttpServletResponse.SC_BAD_REQUEST
+                    );
+                }
+                ApplicationRecord record = applications.stream()
+                        .filter(a -> id.equals(a.getId()))
+                        .findFirst()
+                        .orElseThrow(() -> new MoBusinessException(
+                                ErrorCodes.APPLICATION_NOT_FOUND,
+                                "Application not found: " + id,
+                                HttpServletResponse.SC_NOT_FOUND
+                        ));
+                if (!record.isActive()) {
+                    throw new MoBusinessException(
+                            ErrorCodes.APPLICATION_NOT_FOUND,
+                            "Application not found: " + id,
+                            HttpServletResponse.SC_NOT_FOUND
+                    );
+                }
+                JobPosting job = jobById.get(record.getJobId());
+                if (job == null) {
+                    throw new MoBusinessException(ErrorCodes.JOB_NOT_FOUND, "Job not found.", HttpServletResponse.SC_NOT_FOUND);
+                }
+                if (!moId.equals(job.getTeacherId())) {
+                    throw new MoBusinessException(
+                            ErrorCodes.FORBIDDEN_NOT_OWNER,
+                            "You can only update applications for your own jobs.",
+                            HttpServletResponse.SC_FORBIDDEN
+                    );
+                }
+                targets.add(record);
+            }
+
+            for (int i = 0; i < targets.size(); i++) {
+                ApplicationRecord record = targets.get(i);
+                JobPosting job = jobById.get(record.getJobId());
+                applyMoApplicationStatusTransition(record, job, normalized);
+            }
+
+            JsonUtility.saveApplications(context, applications);
+            return Map.of("updated", targets.size());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to batch update application status.", e);
+        }
+    }
+
+    public void updateEvaluationNotes(ServletContext context, String moId, String applicationId, String evaluationNotes) {
+        if (applicationId == null || applicationId.isBlank()) {
+            throw new MoBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    "applicationId is required.",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+        String notes = evaluationNotes == null ? "" : evaluationNotes;
+        try {
+            List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            ApplicationRecord record = applications.stream()
+                    .filter(a -> applicationId.equals(a.getId()))
+                    .findFirst()
+                    .orElseThrow(() -> new MoBusinessException(
+                            ErrorCodes.APPLICATION_NOT_FOUND,
+                            "Application not found.",
+                            HttpServletResponse.SC_NOT_FOUND
+                    ));
+            if (!record.isActive()) {
+                throw new MoBusinessException(
+                        ErrorCodes.APPLICATION_NOT_FOUND,
+                        "Application not found.",
+                        HttpServletResponse.SC_NOT_FOUND
+                );
+            }
+            JobPosting job = requireOwnedJob(context, moId, record.getJobId());
+            if (Boolean.TRUE.equals(job.getRecruitmentClosed())) {
+                throw new MoBusinessException(
+                        ErrorCodes.JOB_RECRUITMENT_CLOSED,
+                        "Recruitment is closed for this job (read-only).",
+                        HttpServletResponse.SC_BAD_REQUEST
+                );
+            }
+            record.setEvaluationNotes(notes);
+            JsonUtility.saveApplications(context, applications);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to save evaluation notes.", e);
+        }
+    }
+
+    public void updateDecisionFeedback(ServletContext context, String moId, String applicationId, String decisionFeedback) {
+        if (applicationId == null || applicationId.isBlank()) {
+            throw new MoBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    "applicationId is required.",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+        String text = decisionFeedback == null ? "" : decisionFeedback;
+        if (text.length() > MAX_DECISION_FEEDBACK_CHARS) {
+            throw new MoBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    "Feedback must not exceed 200 characters.",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+        try {
+            List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            ApplicationRecord record = applications.stream()
+                    .filter(a -> applicationId.equals(a.getId()))
+                    .findFirst()
+                    .orElseThrow(() -> new MoBusinessException(
+                            ErrorCodes.APPLICATION_NOT_FOUND,
+                            "Application not found.",
+                            HttpServletResponse.SC_NOT_FOUND
+                    ));
+            if (!record.isActive()) {
+                throw new MoBusinessException(
+                        ErrorCodes.APPLICATION_NOT_FOUND,
+                        "Application not found.",
+                        HttpServletResponse.SC_NOT_FOUND
+                );
+            }
+            JobPosting job = requireOwnedJob(context, moId, record.getJobId());
+            if (Boolean.TRUE.equals(job.getRecruitmentClosed())) {
+                throw new MoBusinessException(
+                        ErrorCodes.JOB_RECRUITMENT_CLOSED,
+                        "Recruitment is closed for this job (read-only).",
+                        HttpServletResponse.SC_BAD_REQUEST
+                );
+            }
+            String st = normalizeStatus(record.getStatus());
+            if (!Set.of("hired", "shortlisted", "rejected").contains(st)) {
+                throw new MoBusinessException(
+                        ErrorCodes.VALIDATION_ERROR,
+                        "Feedback is only allowed for hired, shortlisted, or rejected applicants.",
+                        HttpServletResponse.SC_BAD_REQUEST
+                );
+            }
+            record.setDecisionFeedback(text);
+            JsonUtility.saveApplications(context, applications);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to save decision feedback.", e);
+        }
+    }
+
+    private JobPosting requireOwnedJob(ServletContext context, String moId, String jobId) throws IOException {
+        List<JobPosting> jobs = JsonUtility.loadJobs(context);
+        JobPosting job = jobs.stream()
+                .filter(j -> jobId != null && jobId.equals(j.getId()))
+                .findFirst()
+                .orElseThrow(() -> new MoBusinessException(
+                        ErrorCodes.JOB_NOT_FOUND,
+                        "Job not found.",
+                        HttpServletResponse.SC_NOT_FOUND
+                ));
+        if (!moId.equals(job.getTeacherId())) {
+            throw new MoBusinessException(
+                    ErrorCodes.FORBIDDEN_NOT_OWNER,
+                    "You can only update applications for your own jobs.",
+                    HttpServletResponse.SC_FORBIDDEN
+            );
+        }
+        return job;
+    }
+
+    static void applyMoApplicationStatusTransition(ApplicationRecord record, JobPosting job, String normalized) {
+        if (Boolean.TRUE.equals(job.getRecruitmentClosed())) {
+            throw new MoBusinessException(
+                    ErrorCodes.JOB_RECRUITMENT_CLOSED,
+                    "Recruitment is closed for this job (read-only).",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+
+        String current = normalizeStatus(record.getStatus());
+
+        if ("viewed".equals(normalized)) {
+            if (!"rejected".equals(current)) {
+                throw new MoBusinessException(
+                        ErrorCodes.VALIDATION_ERROR,
+                        "viewed is only allowed when undoing a reject.",
+                        HttpServletResponse.SC_BAD_REQUEST
+                );
+            }
+            record.setStatus("viewed");
+            record.setDecisionFeedback("");
+            return;
+        }
+
+        if ("pending".equals(normalized)) {
+            if ("hired".equals(current)) {
+                throw new MoBusinessException(
+                        ErrorCodes.VALIDATION_ERROR,
+                        "Application status is final and cannot be changed.",
+                        HttpServletResponse.SC_BAD_REQUEST
+                );
+            }
+            if ("pending".equals(current)) {
+                return;
+            }
+            if (!Set.of("shortlisted", "viewed", "rejected").contains(current)) {
+                throw new MoBusinessException(
+                        ErrorCodes.VALIDATION_ERROR,
+                        "Cannot set pending from the current status.",
+                        HttpServletResponse.SC_BAD_REQUEST
+                );
+            }
+            record.setStatus("pending");
+            record.setDecisionFeedback("");
+            return;
+        }
+
+        if (current.equals(normalized)) {
+            return;
+        }
+
+        if ("hired".equals(current)) {
+            throw new MoBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    "Application status is final and cannot be changed.",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+        if ("rejected".equals(current)) {
+            throw new MoBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    "Undo reject (viewed) or set to pending before changing status.",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+
+        record.setStatus(normalized);
+    }
+
+    private void appendManualHireHistory(ServletContext context, String moId, ApplicationRecord hiredRecord) throws IOException {
+        List<HiringHistoryRecord> history = JsonUtility.loadHiringHistory(context);
+        HiringHistoryRecord record = new HiringHistoryRecord();
+        record.setId("hist_" + UUID.randomUUID().toString().replace("-", ""));
+        record.setAction("manual_hire");
+        record.setJobId(hiredRecord.getJobId());
+        record.setMoId(moId);
+        record.setSubmittedAt(Instant.now().toString());
+        record.setHiredApplicationIds(List.of(hiredRecord.getId()));
+        String studentName = hiredRecord.getStudentName() == null ? hiredRecord.getStudentId() : hiredRecord.getStudentName();
+        record.setHiredStudentNames(List.of(studentName));
+        history.add(record);
+        JsonUtility.saveHiringHistory(context, history);
     }
 
     public MoApplicationDetailResponse getDetailAndMarkViewed(ServletContext context, String moId, String applicationId) {
@@ -262,7 +622,13 @@ public class MoApplicationService {
         item.setCourseGrade(a.getCourseGrade());
         item.setAppliedAt(a.getAppliedAt());
         item.setStatus(a.getStatus());
+        item.setEvaluationNotes(blankToEmpty(a.getEvaluationNotes()));
+        item.setDecisionFeedback(blankToEmpty(a.getDecisionFeedback()));
         return item;
+    }
+
+    private static String blankToEmpty(String s) {
+        return s == null ? "" : s;
     }
 
     private static void enrichFromProfile(MoApplicationListItemResponse item, StudentProfile p) {
@@ -284,6 +650,8 @@ public class MoApplicationService {
         d.setCourseGrade(a.getCourseGrade());
         d.setAppliedAt(a.getAppliedAt());
         d.setStatus(a.getStatus());
+        d.setEvaluationNotes(blankToEmpty(a.getEvaluationNotes()));
+        d.setDecisionFeedback(blankToEmpty(a.getDecisionFeedback()));
         return d;
     }
 

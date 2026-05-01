@@ -19,6 +19,8 @@ public class MoApplicationDetailResponse {
     private String appliedAt;
     private String status;
     private String updatedAt;
+    private String evaluationNotes;
+    private String decisionFeedback;
     private List<MoApplicationAttachmentResponse> attachments = new ArrayList<>();
 
     public String getApplicationId() {
@@ -91,6 +93,22 @@ public class MoApplicationDetailResponse {
 
     public void setUpdatedAt(String updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getEvaluationNotes() {
+        return evaluationNotes;
+    }
+
+    public void setEvaluationNotes(String evaluationNotes) {
+        this.evaluationNotes = evaluationNotes;
+    }
+
+    public String getDecisionFeedback() {
+        return decisionFeedback;
+    }
+
+    public void setDecisionFeedback(String decisionFeedback) {
+        this.decisionFeedback = decisionFeedback;
     }
 
     public List<MoApplicationAttachmentResponse> getAttachments() {
