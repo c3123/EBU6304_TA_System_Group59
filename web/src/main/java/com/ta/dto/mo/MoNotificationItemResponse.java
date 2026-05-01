@@ -7,6 +7,7 @@ public class MoNotificationItemResponse {
     private String jobName;
     private String applicationTime;
     private String applicationId;
+    private String message;
     private Boolean read;
 
     public String getNotificationId() {
@@ -55,6 +56,14 @@ public class MoNotificationItemResponse {
 
     public void setApplicationId(String applicationId) {
         this.applicationId = applicationId;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
     }
 
     public Boolean getRead() {

@@ -4,6 +4,18 @@
     "studentId": "201234567",
     "name": "Alex Chen",
     "email": "student@demo.com",
-    "programme": "MSc Computer Science"
+    "programme": "MSc Computer Science",
+    "skills": "",
+    "experience": "",
+    "attachments": [
+      {
+        "id": "16643a84-4bb7-42a6-b2e4-ef9a06443014.docx",
+        "fileName": "First Brief Report Template.docx",
+        "fileType": "docx",
+        "label": "Resume",
+        "fileSize": 20456,
+        "uploadedAt": "2026-04-30T04:54:48.402903600Z"
+      }
+    ]
   }
 ]

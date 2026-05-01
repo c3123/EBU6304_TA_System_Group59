@@ -453,6 +453,10 @@ async function loadNotifications() {
   }
 }
 
+function startNotificationPolling() {
+  window.setInterval(loadNotifications, 10000);
+}
+
 function renderNotifications() {
   const dot = byId("notificationDot");
   const panel = byId("notificationPanel");
@@ -469,7 +473,9 @@ function renderNotifications() {
   panel.innerHTML = teacherState.notifications.map((n) => `
     <div class="mo-notification-item">
       <div style="min-width:0">
-        <div><strong>${teacherEscapeHtml(teacherSafeText(n.applicantName))}</strong> applied to <strong>${teacherEscapeHtml(teacherSafeText(n.jobName || n.jobId))}</strong></div>
+        <div>${n.message
+          ? teacherEscapeHtml(n.message)
+          : `<strong>${teacherEscapeHtml(teacherSafeText(n.applicantName))}</strong> applied to <strong>${teacherEscapeHtml(teacherSafeText(n.jobName || n.jobId))}</strong>`}</div>
         <div style="font-size:12px;color:#64748b">${teacherEscapeHtml(teacherSafeText(n.applicationTime))}</div>
       </div>
       <div class="row">
@@ -700,6 +706,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   byId("notificationBtn").addEventListener("click", () => {
     const panel = byId("notificationPanel");
     panel.style.display = panel.style.display === "block" ? "none" : "block";
+    loadNotifications();
   });
   byId("notificationPanel").addEventListener("click", async (event) => {
     const markBtn = event.target.closest("[data-mark-read]");
@@ -710,4 +717,5 @@ document.addEventListener("DOMContentLoaded", async () => {
   bindHistoryActions();
   await reloadTeacherWorkflow();
   await loadNotifications();
+  startNotificationPolling();
 });

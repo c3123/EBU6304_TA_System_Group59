@@ -59,6 +59,9 @@ public class MoNotificationService {
                 created.setApplicationTime(app.getAppliedAt());
                 created.setCreatedAt(Instant.now().toString());
                 created.setRead(false);
+                created.setRecipientId(moId);
+                created.setRecipientRole("mo");
+                created.setMessage(app.getStudentName() + " applied to " + job.getTitle() + ".");
                 notifications.add(created);
                 byApplication.put(app.getId(), created);
                 dirty = true;
@@ -81,6 +84,7 @@ public class MoNotificationService {
                 item.setJobName(job == null ? record.getJobId() : job.getTitle());
                 item.setApplicationTime(record.getApplicationTime());
                 item.setApplicationId(record.getApplicationId());
+                item.setMessage(record.getMessage());
                 item.setRead(record.isRead());
                 if (!record.isRead()) {
                     unread += 1;
@@ -90,6 +94,7 @@ public class MoNotificationService {
 
             MoNotificationListResponse response = new MoNotificationListResponse();
             response.setUnreadCount(unread);
+            items.sort((a, b) -> String.valueOf(b.getApplicationTime()).compareTo(String.valueOf(a.getApplicationTime())));
             response.setItems(items);
             return response;
         } catch (IOException e) {

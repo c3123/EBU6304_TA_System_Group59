@@ -1,1 +1,54 @@
-[]
+[
+  {
+    "id": "noti_withdraw_app_1777524893805",
+    "moId": "mo001",
+    "jobId": "102",
+    "applicationId": "app_1777524893805",
+    "applicantName": "Alex Chen",
+    "applicationTime": "2026-04-30T05:56:26.766325700Z",
+    "createdAt": "2026-04-30T05:56:26.766325700Z",
+    "read": true,
+    "recipientId": "mo001",
+    "recipientRole": "mo",
+    "message": "Alex Chen withdrew the application for Machine Learning Teaching Assistant."
+  },
+  {
+    "id": "noti_app001",
+    "moId": "mo001",
+    "jobId": "101",
+    "applicationId": "app001",
+    "applicantName": "Alex Chen",
+    "applicationTime": "2026-04-01T10:00:00Z",
+    "createdAt": "2026-04-30T07:13:03.499961500Z",
+    "read": false,
+    "recipientId": "mo001",
+    "recipientRole": "mo",
+    "message": "Alex Chen applied to Software Engineering Teaching Assistant."
+  },
+  {
+    "id": "noti_apply_app_1777533721942",
+    "moId": "mo001",
+    "jobId": "102",
+    "applicationId": "app_1777533721942",
+    "applicantName": "Alex Chen",
+    "applicationTime": "2026-04-30T07:22:01.942186200Z",
+    "createdAt": "2026-04-30T07:22:01.942186200Z",
+    "read": false,
+    "recipientId": "mo001",
+    "recipientRole": "mo",
+    "message": "Alex Chen applied to Machine Learning Teaching Assistant."
+  },
+  {
+    "id": "noti_withdraw_app_1777533721942",
+    "moId": "mo001",
+    "jobId": "102",
+    "applicationId": "app_1777533721942",
+    "applicantName": "Alex Chen",
+    "applicationTime": "2026-04-30T07:22:35.059753Z",
+    "createdAt": "2026-04-30T07:22:35.059753Z",
+    "read": false,
+    "recipientId": "mo001",
+    "recipientRole": "mo",
+    "message": "Alex Chen withdrew the application for Machine Learning Teaching Assistant."
+  }
+]

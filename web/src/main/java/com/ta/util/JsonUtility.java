@@ -113,20 +113,27 @@ public final class JsonUtility {
     }
 
     private static File resolveDataFile(ServletContext context, String fileName) throws IOException {
-        String resourcePath = DATA_ROOT + fileName;
-        String realPath = context.getRealPath(resourcePath);
-        if (realPath == null) {
-            String contextRoot = context.getRealPath("/");
-            if (contextRoot != null) {
-                realPath = contextRoot + DATA_ROOT.substring(1) + fileName;
+        String configuredDataDir = System.getProperty("ta.data.dir");
+        File dataFile;
+
+        if (configuredDataDir != null && !configuredDataDir.isBlank()) {
+            dataFile = new File(configuredDataDir, fileName);
+        } else {
+            String resourcePath = DATA_ROOT + fileName;
+            String realPath = context.getRealPath(resourcePath);
+            if (realPath == null) {
+                String contextRoot = context.getRealPath("/");
+                if (contextRoot != null) {
+                    realPath = contextRoot + DATA_ROOT.substring(1) + fileName;
+                }
             }
+
+            if (realPath == null) {
+                throw new IOException("Unable to resolve data file path for " + fileName);
+            }
+            dataFile = new File(realPath);
         }
 
-        if (realPath == null) {
-            throw new IOException("Unable to resolve data file path for " + fileName);
-        }
-
-        File dataFile = new File(realPath);
         File dataDir = dataFile.getParentFile();
         if (dataDir != null && !dataDir.exists()) {
             Files.createDirectories(dataDir.toPath());
