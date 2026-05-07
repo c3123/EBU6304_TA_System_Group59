@@ -239,7 +239,7 @@ function renderStatusSelect(item, closed) {
   const st = String(item.status || "").toLowerCase();
   const id = escapeHtml(item.applicationId);
   const selVal = statusSelectValue(item.status);
-  const selDis = closed || st === "hired" ? "disabled" : "";
+  const selDis = closed && st !== "hired" ? "disabled" : "";
   return `<select class="mo-status-select" data-mo-status data-app-id="${id}" data-prev="${escapeHtml(selVal)}" ${selDis}>
     <option value="pending" ${selVal === "pending" ? "selected" : ""}>Pending</option>
     <option value="shortlisted" ${selVal === "shortlisted" ? "selected" : ""}>Shortlisted</option>
