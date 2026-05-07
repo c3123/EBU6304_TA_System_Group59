@@ -8,6 +8,10 @@ function teacherApiBase() {
   return `${window.location.origin}${getTeacherContextPath()}/api/mo`;
 }
 
+function accountApiBase() {
+  return `${window.location.origin}${getTeacherContextPath()}/api/account`;
+}
+
 function teacherSafeText(value) {
   if (value === null || value === undefined || value === "") return "-";
   return String(value);
@@ -70,6 +74,8 @@ function teacherSetButtonLoading(button, loadingText, fallbackText, isLoading) {
 
 const teacherState = {
   items: [],
+  historyItems: [],
+  currentHistoryJobId: null,
   pollingTimer: null,
   notifications: [],
   unreadCount: 0
@@ -101,6 +107,64 @@ async function loadTeacherJobs() {
   renderTeacherJobs();
 }
 
+async function loadJobHistory() {
+  const data = await teacherRequest(`${teacherApiBase()}/jobs/history`, { method: "GET" });
+  teacherState.historyItems = data && Array.isArray(data.items) ? data.items : [];
+  renderJobHistory();
+}
+
+function historyStatusTag(status) {
+  const normalized = String(status || "").toLowerCase();
+  if (normalized === "recruitment_closed") return '<span class="mo-status-pill mo-status-withdrawn">recruitment closed</span>';
+  if (normalized === "withdrawn") return '<span class="mo-status-pill mo-status-withdrawn">withdrawn</span>';
+  if (normalized === "open" || normalized === "published") return '<span class="mo-status-pill mo-status-published">published</span>';
+  if (normalized === "approved") return '<span class="mo-status-pill mo-status-approved">approved</span>';
+  if (normalized === "rejected") return '<span class="mo-status-pill mo-status-rejected">rejected</span>';
+  return '<span class="mo-status-pill mo-status-pending">draft</span>';
+}
+
+function renderJobHistory() {
+  const body = byId("historyTableBody");
+  const empty = byId("historyEmpty");
+  const tableWrap = document.querySelector(".mo-history-table-wrap");
+
+  if (!teacherState.historyItems.length) {
+    body.innerHTML = "";
+    empty.style.display = "block";
+    if (tableWrap) tableWrap.style.display = "none";
+    return;
+  }
+
+  empty.style.display = "none";
+  if (tableWrap) tableWrap.style.display = "block";
+  body.innerHTML = teacherState.historyItems.map((item) => renderHistoryRow(item)).join("");
+}
+
+function renderHistoryRow(item) {
+  const jobId = teacherEscapeHtml(teacherSafeText(item.jobId));
+  return `
+    <tr data-history-job-id="${jobId}">
+      <td>
+        <strong>${teacherEscapeHtml(teacherSafeText(item.courseName))}</strong>
+        <div style="font-size:12px;color:#64748b">${teacherEscapeHtml(teacherSafeText(item.department))}</div>
+      </td>
+      <td>${historyStatusTag(item.status)}</td>
+      <td><span class="mo-history-counts"><span>${teacherEscapeHtml(teacherSafeText(item.applicantCount))}</span></span></td>
+      <td><span class="mo-history-counts"><span>${teacherEscapeHtml(teacherSafeText(item.hireCount))}</span></span></td>
+      <td>${teacherEscapeHtml(teacherFormatDateTime(item.releaseTime))}</td>
+      <td>${teacherEscapeHtml(teacherSafeText(item.deadline))}</td>
+      <td>
+        <div class="mo-history-actions">
+          <button class="btn btn-outline" type="button" data-history-details="${jobId}">View Details</button>
+          <button class="btn btn-outline" type="button" data-history-reuse="${jobId}">Reuse</button>
+          <button class="btn btn-outline" type="button" data-history-export="${jobId}" data-scope="all" data-format="csv">Export All</button>
+          <button class="btn btn-outline" type="button" data-history-export="${jobId}" data-scope="shortlisted" data-format="csv">Export Shortlisted</button>
+        </div>
+      </td>
+    </tr>
+  `;
+}
+
 function renderTeacherJobs() {
   const feed = byId("jobsFeed");
   const empty = byId("jobsEmpty");
@@ -112,25 +176,27 @@ function renderTeacherJobs() {
   }
 
   empty.style.display = "none";
-  feed.innerHTML = teacherState.items.map(item => renderTeacherJobCard(item)).join("");
+  feed.innerHTML = teacherState.items.map((item) => renderTeacherJobCard(item)).join("");
 }
 
 function renderTeacherJobCard(item) {
   const isClosed = item.recruitmentClosed === true;
   const isPublished = item.published === true;
-  const isWithdrawn = item.withdrawn === true;
   const canPublish = String(item.approvalStatus || "").toLowerCase() === "approved" && !isPublished && !isClosed;
   const publishLocked = isPublished ? "Published" : "Publish job";
   const publishDisabled = canPublish ? "" : "disabled";
   const canEdit = !isClosed && !isPublished;
   const canDelete = !isClosed && !isPublished;
   const canTakeOffline = isPublished && !isClosed;
+
   const detailBlock = item.published === true
     ? `
       <div class="mo-inline-form open" style="display:block">
         <div class="mo-publish-grid">
           <div><span>Published</span><div>${teacherStatusTag(item)}</div></div>
-          <div><span>Withdrawn</span><div>${teacherSafeText(item.withdrawn)}</div></div>
+          <div><span>Schedule</span><div>${teacherEscapeHtml(teacherSafeText(item.schedule))}</div></div>
+          <div><span>Location</span><div>${teacherEscapeHtml(teacherSafeText(item.location))}</div></div>
+          <div><span>Deadline</span><div>${teacherEscapeHtml(teacherSafeText(item.deadline))}</div></div>
           <div><span>Created At</span><div>${teacherEscapeHtml(teacherFormatDateTime(item.createdAt))}</div></div>
           <div><span>Updated At</span><div>${teacherEscapeHtml(teacherFormatDateTime(item.updatedAt))}</div></div>
         </div>
@@ -149,6 +215,10 @@ function renderTeacherJobCard(item) {
           <div class="field">
             <label>Deadline</label>
             <input name="deadline" type="date" required />
+          </div>
+          <div class="field">
+            <label>Schedule</label>
+            <input name="schedule" type="text" placeholder="e.g. Wed 14:00-16:00" required />
           </div>
         </div>
         <div class="field">
@@ -171,6 +241,10 @@ function renderTeacherJobCard(item) {
             <input name="courseName" type="text" required value="${teacherEscapeHtml(teacherSafeText(item.courseName))}" />
           </div>
           <div class="field">
+            <label>Department</label>
+            <input name="department" type="text" required value="${teacherEscapeHtml(teacherSafeText(item.department))}" />
+          </div>
+          <div class="field">
             <label>Planned Count</label>
             <input name="plannedCount" type="number" min="1" required value="${teacherEscapeHtml(teacherSafeText(item.plannedCount))}" />
           </div>
@@ -189,6 +263,7 @@ function renderTeacherJobCard(item) {
         </div>
       </form>
     ` : "";
+
   return `
     <article class="mo-job-card" data-job-id="${teacherEscapeHtml(item.jobId)}">
       <div class="mo-job-card-head">
@@ -201,12 +276,14 @@ function renderTeacherJobCard(item) {
 
       <div class="mo-demand-meta">
         <div><span>Planned Count</span><strong>${teacherEscapeHtml(teacherSafeText(item.plannedCount))}</strong></div>
+        <div><span>Department</span><strong>${teacherEscapeHtml(teacherSafeText(item.department))}</strong></div>
         <div><span>Hours</span><strong>${teacherEscapeHtml(teacherSafeText(item.hourMin))} - ${teacherEscapeHtml(teacherSafeText(item.hourMax))}</strong></div>
         <div><span>Created</span><strong>${teacherEscapeHtml(teacherFormatDateTime(item.createdAt))}</strong></div>
         <div><span>Updated</span><strong>${teacherEscapeHtml(teacherFormatDateTime(item.updatedAt))}</strong></div>
       </div>
 
       <p class="notice">Approval status: <strong>${teacherEscapeHtml(teacherSafeText(item.approvalStatus || "pending"))}</strong>. Job status: <strong>${teacherEscapeHtml(teacherSafeText(item.status || "-"))}</strong>. Published: <strong>${teacherEscapeHtml(String(item.published === true))}</strong>. Withdrawn: <strong>${teacherEscapeHtml(String(item.withdrawn === true))}</strong>.</p>
+      <p class="notice">Schedule: <strong>${teacherEscapeHtml(teacherSafeText(item.schedule))}</strong>. Location: <strong>${teacherEscapeHtml(teacherSafeText(item.location))}</strong>. Deadline: <strong>${teacherEscapeHtml(teacherSafeText(item.deadline))}</strong>.</p>
 
       <div class="mo-demand-actions">
         <button class="btn btn-primary" type="button" data-open-publish="${teacherEscapeHtml(item.jobId)}" ${publishDisabled}>${publishLocked}</button>
@@ -231,6 +308,7 @@ async function submitDemandForm(event) {
   try {
     const payload = {
       courseName: byId("courseName").value.trim(),
+      department: byId("department").value.trim(),
       plannedCount: Number(byId("plannedCount").value),
       hourMin: Number(byId("hourMin").value),
       hourMax: Number(byId("hourMax").value)
@@ -261,6 +339,7 @@ async function submitPublishForm(form) {
     const payload = {
       location: form.location.value,
       deadline: form.deadline.value,
+      schedule: form.schedule.value.trim(),
       requirements: form.requirements.value.trim()
     };
     await teacherRequest(`${teacherApiBase()}/jobs/publish/${encodeURIComponent(jobId)}`, {
@@ -293,7 +372,7 @@ async function takeOffline(jobId, button) {
 }
 
 function openPublishForm(jobId) {
-  document.querySelectorAll(".mo-inline-form").forEach(el => el.classList.remove("open"));
+  document.querySelectorAll(".mo-inline-form").forEach((el) => el.classList.remove("open"));
   const form = document.querySelector(`[data-publish-form="${CSS.escape(jobId)}"]`);
   if (form) {
     form.classList.add("open");
@@ -309,7 +388,7 @@ function resetPublishForm(jobId) {
 }
 
 function openEditForm(jobId) {
-  document.querySelectorAll("[data-edit-form]").forEach(el => el.classList.remove("open"));
+  document.querySelectorAll("[data-edit-form]").forEach((el) => el.classList.remove("open"));
   const form = document.querySelector(`[data-edit-form="${CSS.escape(jobId)}"]`);
   if (form) form.classList.add("open");
 }
@@ -329,6 +408,7 @@ async function submitEditForm(form) {
   try {
     const payload = {
       courseName: form.courseName.value.trim(),
+      department: form.department.value.trim(),
       plannedCount: Number(form.plannedCount.value),
       hourMin: Number(form.hourMin.value),
       hourMax: Number(form.hourMax.value)
@@ -373,6 +453,10 @@ async function loadNotifications() {
   }
 }
 
+function startNotificationPolling() {
+  window.setInterval(loadNotifications, 10000);
+}
+
 function renderNotifications() {
   const dot = byId("notificationDot");
   const panel = byId("notificationPanel");
@@ -386,10 +470,12 @@ function renderNotifications() {
     panel.innerHTML = '<p class="notice" style="margin:0">No notifications.</p>';
     return;
   }
-  panel.innerHTML = teacherState.notifications.map(n => `
+  panel.innerHTML = teacherState.notifications.map((n) => `
     <div class="mo-notification-item">
       <div style="min-width:0">
-        <div><strong>${teacherEscapeHtml(teacherSafeText(n.applicantName))}</strong> applied to <strong>${teacherEscapeHtml(teacherSafeText(n.jobName || n.jobId))}</strong></div>
+        <div>${n.message
+          ? teacherEscapeHtml(n.message)
+          : `<strong>${teacherEscapeHtml(teacherSafeText(n.applicantName))}</strong> applied to <strong>${teacherEscapeHtml(teacherSafeText(n.jobName || n.jobId))}</strong>`}</div>
         <div style="font-size:12px;color:#64748b">${teacherEscapeHtml(teacherSafeText(n.applicationTime))}</div>
       </div>
       <div class="row">
@@ -404,9 +490,151 @@ async function markNotificationRead(notificationId) {
   await loadNotifications();
 }
 
+async function changeTeacherPassword(event) {
+  event.preventDefault();
+  const button = byId("teacherChangePasswordBtn");
+  teacherSetButtonLoading(button, "Changing...", "Change Password", true);
+  try {
+    await teacherRequest(`${accountApiBase()}/change-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=UTF-8" },
+      body: JSON.stringify({
+        oldPassword: byId("teacherOldPassword").value.trim(),
+        newPassword: byId("teacherNewPassword").value.trim(),
+        confirmPassword: byId("teacherConfirmPassword").value.trim()
+      })
+    });
+    byId("teacherChangePasswordForm").reset();
+    teacherSetNotice("globalNotice", "Password changed successfully.", false);
+  } catch (err) {
+    teacherSetNotice("globalNotice", `${err.code || "REQUEST_ERROR"}: ${err.message}`, true);
+  } finally {
+    teacherSetButtonLoading(button, "Changing...", "Change Password", false);
+  }
+}
+
+function exportApplicants(jobId, scope, format) {
+  const params = new URLSearchParams({ jobId, scope, format });
+  window.location.href = `${teacherApiBase()}/applications/export?${params.toString()}`;
+}
+
+async function reuseHistoryJob(jobId, button) {
+  if (!window.confirm("Create a new draft job by reusing this historical job?")) {
+    return;
+  }
+  teacherSetButtonLoading(button, "Reusing...", "Reuse", true);
+  try {
+    const params = new URLSearchParams({ jobId });
+    const data = await teacherRequest(`${teacherApiBase()}/jobs/reuse?${params.toString()}`, { method: "POST" });
+    teacherSetNotice("historyNotice", `Created new draft job ${data.jobId}.`, false);
+    await loadTeacherJobs();
+    await loadJobHistory();
+  } catch (err) {
+    teacherSetNotice("historyNotice", `${err.code || "REQUEST_ERROR"}: ${err.message}`, true);
+  } finally {
+    teacherSetButtonLoading(button, "Reusing...", "Reuse", false);
+  }
+}
+
+async function openHistoryDetails(jobId) {
+  teacherState.currentHistoryJobId = jobId;
+  const item = teacherState.historyItems.find((it) => it.jobId === jobId);
+  byId("historyDetailsTitle").textContent = item ? teacherSafeText(item.courseName) : "Job Details";
+  byId("historyDetailsSubtitle").textContent = `Job ID: ${jobId}`;
+  byId("historyDetailsBody").innerHTML = "";
+  byId("historyDetailsModal").classList.add("open");
+  teacherSetNotice("historyDetailsNotice", "Loading applicants...", false);
+
+  try {
+    const params = new URLSearchParams({ jobId });
+    const data = await teacherRequest(`${teacherApiBase()}/applications?${params.toString()}`, { method: "GET" });
+    const items = data && Array.isArray(data.items) ? data.items : [];
+    renderHistoryDetails(items);
+    teacherSetNotice("historyDetailsNotice", `Loaded ${items.length} applicant record(s).`, false);
+  } catch (err) {
+    teacherSetNotice("historyDetailsNotice", `${err.code || "REQUEST_ERROR"}: ${err.message}`, true);
+  }
+}
+
+function renderHistoryDetails(items) {
+  const body = byId("historyDetailsBody");
+  if (!items.length) {
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#64748b">No applicants for this job.</td></tr>';
+    return;
+  }
+  body.innerHTML = items.map((item) => `
+    <tr>
+      <td>${teacherEscapeHtml(teacherSafeText(item.studentName))}</td>
+      <td>${teacherEscapeHtml(teacherSafeText(item.studentNo || item.studentId))}</td>
+      <td>${teacherEscapeHtml(teacherSafeText(item.programme))}</td>
+      <td>${teacherEscapeHtml(teacherFormatDateTime(item.appliedAt))}</td>
+      <td>${teacherEscapeHtml(teacherSafeText(item.status))}</td>
+      <td>${teacherEscapeHtml(teacherSafeText(item.skills))}</td>
+    </tr>
+  `).join("");
+}
+
+function closeHistoryDetails() {
+  teacherState.currentHistoryJobId = null;
+  byId("historyDetailsModal").classList.remove("open");
+}
+
+function bindHistoryActions() {
+  byId("historyReloadBtn").addEventListener("click", reloadJobHistory);
+  byId("historyTableBody").addEventListener("click", async (event) => {
+    const detailsBtn = event.target.closest("[data-history-details]");
+    if (detailsBtn) {
+      await openHistoryDetails(detailsBtn.getAttribute("data-history-details"));
+      return;
+    }
+
+    const reuseBtn = event.target.closest("[data-history-reuse]");
+    if (reuseBtn) {
+      await reuseHistoryJob(reuseBtn.getAttribute("data-history-reuse"), reuseBtn);
+      return;
+    }
+
+    const exportBtn = event.target.closest("[data-history-export]");
+    if (exportBtn) {
+      exportApplicants(
+        exportBtn.getAttribute("data-history-export"),
+        exportBtn.getAttribute("data-scope") || "all",
+        exportBtn.getAttribute("data-format") || "csv"
+      );
+    }
+  });
+
+  byId("historyDetailsCloseBtn").addEventListener("click", closeHistoryDetails);
+  byId("historyDetailsModal").addEventListener("click", (event) => {
+    if (event.target.id === "historyDetailsModal") closeHistoryDetails();
+  });
+  byId("modalExportAllCsvBtn").addEventListener("click", () => {
+    if (teacherState.currentHistoryJobId) exportApplicants(teacherState.currentHistoryJobId, "all", "csv");
+  });
+  byId("modalExportShortlistedCsvBtn").addEventListener("click", () => {
+    if (teacherState.currentHistoryJobId) exportApplicants(teacherState.currentHistoryJobId, "shortlisted", "csv");
+  });
+  byId("modalExportAllJsonBtn").addEventListener("click", () => {
+    if (teacherState.currentHistoryJobId) exportApplicants(teacherState.currentHistoryJobId, "all", "json");
+  });
+  byId("modalExportShortlistedJsonBtn").addEventListener("click", () => {
+    if (teacherState.currentHistoryJobId) exportApplicants(teacherState.currentHistoryJobId, "shortlisted", "json");
+  });
+}
+
+async function reloadJobHistory() {
+  try {
+    teacherSetNotice("historyNotice", "Loading job history...", false);
+    await loadJobHistory();
+    teacherSetNotice("historyNotice", `Loaded ${teacherState.historyItems.length} historical job record(s).`, false);
+  } catch (err) {
+    teacherSetNotice("historyNotice", `${err.code || "REQUEST_ERROR"}: ${err.message}`, true);
+  }
+}
+
 function bindTeacherFeedActions() {
   const feed = byId("jobsFeed");
-  feed.addEventListener("click", async event => {
+  feed.addEventListener("click", async (event) => {
     const openBtn = event.target.closest("[data-open-publish]");
     if (openBtn) {
       openPublishForm(openBtn.getAttribute("data-open-publish"));
@@ -445,7 +673,7 @@ function bindTeacherFeedActions() {
     }
   });
 
-  feed.addEventListener("submit", async event => {
+  feed.addEventListener("submit", async (event) => {
     const form = event.target.closest("[data-publish-form]");
     if (form) {
       event.preventDefault();
@@ -464,6 +692,7 @@ async function reloadTeacherWorkflow() {
   try {
     teacherSetNotice("jobsNotice", "Loading demand list...", false);
     await loadTeacherJobs();
+    await loadJobHistory();
     teacherSetNotice("jobsNotice", `Loaded ${teacherState.items.length} job record(s).`, false);
   } catch (err) {
     teacherSetNotice("jobsNotice", `${err.code || "REQUEST_ERROR"}: ${err.message}`, true);
@@ -472,17 +701,21 @@ async function reloadTeacherWorkflow() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   byId("demandForm").addEventListener("submit", submitDemandForm);
+  byId("teacherChangePasswordForm").addEventListener("submit", changeTeacherPassword);
   byId("reloadBtn").addEventListener("click", reloadTeacherWorkflow);
   byId("notificationBtn").addEventListener("click", () => {
     const panel = byId("notificationPanel");
     panel.style.display = panel.style.display === "block" ? "none" : "block";
+    loadNotifications();
   });
-  byId("notificationPanel").addEventListener("click", async event => {
+  byId("notificationPanel").addEventListener("click", async (event) => {
     const markBtn = event.target.closest("[data-mark-read]");
     if (!markBtn) return;
     await markNotificationRead(markBtn.getAttribute("data-mark-read"));
   });
   bindTeacherFeedActions();
+  bindHistoryActions();
   await reloadTeacherWorkflow();
   await loadNotifications();
+  startNotificationPolling();
 });

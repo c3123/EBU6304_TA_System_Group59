@@ -4,6 +4,8 @@ import com.ta.constant.ErrorCodes;
 import com.ta.dto.student.StudentApplicationCreateRequest;
 import com.ta.dto.student.StudentApplicationItemResponse;
 import com.ta.dto.student.StudentApplicationListResponse;
+import com.ta.dto.student.StudentAssignedJobItemResponse;
+import com.ta.dto.student.StudentAssignedJobListResponse;
 import com.ta.dto.student.StudentJobItemResponse;
 import com.ta.dto.student.StudentJobListResponse;
 import com.ta.dto.student.StudentProfileResponse;
@@ -11,10 +13,12 @@ import com.ta.dto.student.StudentProfileUpdateRequest;
 import com.ta.model.ApplicationRecord;
 import com.ta.model.Attachment;
 import com.ta.model.JobPosting;
+import com.ta.model.NotificationRecord;
 import com.ta.model.StudentProfile;
 import com.ta.model.User;
 import com.ta.util.JsonUtility;
 import com.ta.util.FileStorageUtil;
+import com.ta.util.JobHoursUtil;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -76,6 +80,9 @@ public class StudentService {
                 item.setId(record.getId());
                 item.setJobId(record.getJobId());
                 item.setJobTitle(job != null ? job.getTitle() : "Unknown Job");
+                item.setModuleCode(job != null ? job.getModuleCode() : "");
+                item.setTeacherName(job != null ? job.getTeacherName() : "");
+                item.setHours(job != null ? job.getHours() : 0);
                 item.setAppliedAt(extractDate(record.getAppliedAt()));
                 item.setStatus(toStudentStatus(record.getStatus()));
                 item.setFeedback("");
@@ -89,6 +96,54 @@ public class StudentService {
             return response;
         } catch (IOException e) {
             throw new RuntimeException("Failed to load applications.", e);
+        }
+    }
+
+    public StudentAssignedJobListResponse listMyAssignedJobs(ServletContext context, String studentUserId) {
+        try {
+            List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            Map<String, JobPosting> jobsById = new HashMap<>();
+            for (JobPosting job : jobs) {
+                jobsById.put(job.getId(), job);
+            }
+
+            List<StudentAssignedJobItemResponse> items = new ArrayList<>();
+            for (ApplicationRecord record : applications) {
+                if (!studentUserId.equals(record.getStudentId())) {
+                    continue;
+                }
+                if (!record.isActive() || !"hired".equalsIgnoreCase(record.getStatus())) {
+                    continue;
+                }
+
+                JobPosting job = jobsById.get(record.getJobId());
+                if (job == null) {
+                    continue;
+                }
+
+                StudentAssignedJobItemResponse item = new StudentAssignedJobItemResponse();
+                item.setApplicationId(record.getId());
+                item.setJobId(job.getId());
+                item.setModuleCode(job.getModuleCode());
+                item.setTitle(job.getTitle());
+                item.setTeacherName(job.getTeacherName());
+                item.setWeeklyHours(JobHoursUtil.resolveWeeklyHours(job));
+                item.setSchedule(displayValue(job.getSchedule()));
+                item.setLocation(displayValue(job.getLocation()));
+                item.setDeadline(displayValue(job.getDeadline()));
+                item.setRecruitmentClosed(Boolean.TRUE.equals(job.getRecruitmentClosed()));
+                items.add(item);
+            }
+
+            items.sort(Comparator.comparing(StudentAssignedJobItemResponse::getDeadline, Comparator.nullsLast(String::compareTo))
+                    .thenComparing(StudentAssignedJobItemResponse::getTitle, Comparator.nullsLast(String::compareToIgnoreCase)));
+
+            StudentAssignedJobListResponse response = new StudentAssignedJobListResponse();
+            response.setItems(items);
+            return response;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load assigned jobs.", e);
         }
     }
 
@@ -192,10 +247,31 @@ public class StudentService {
             applications.add(record);
             JsonUtility.saveApplications(context, applications);
 
+            if (job.getTeacherId() != null && !job.getTeacherId().isBlank()) {
+                List<NotificationRecord> notifications = JsonUtility.loadNotifications(context);
+                NotificationRecord notification = new NotificationRecord();
+                notification.setId("noti_apply_" + record.getId());
+                notification.setMoId(job.getTeacherId());
+                notification.setJobId(record.getJobId());
+                notification.setApplicationId(record.getId());
+                notification.setApplicantName(record.getStudentName());
+                notification.setApplicationTime(now);
+                notification.setCreatedAt(now);
+                notification.setRead(false);
+                notification.setRecipientId(job.getTeacherId());
+                notification.setRecipientRole("mo");
+                notification.setMessage(record.getStudentName() + " applied to " + job.getTitle() + ".");
+                notifications.add(notification);
+                JsonUtility.saveNotifications(context, notifications);
+            }
+
             StudentApplicationItemResponse response = new StudentApplicationItemResponse();
             response.setId(record.getId());
             response.setJobId(record.getJobId());
             response.setJobTitle(job.getTitle());
+            response.setModuleCode(job.getModuleCode());
+            response.setTeacherName(job.getTeacherName());
+            response.setHours(job.getHours());
             response.setAppliedAt(extractDate(record.getAppliedAt()));
             response.setStatus("pending");
             response.setFeedback("");
@@ -280,12 +356,14 @@ public class StudentService {
         item.setId(job.getId());
         item.setModuleCode(job.getModuleCode());
         item.setTitle(job.getTitle());
-        item.setHours(job.getHours());
+        item.setHours(JobHoursUtil.resolveWeeklyHours(job));
         item.setPositions(job.getPositions());
         item.setStatus(job.getStatus());
         item.setDeadline(job.getDeadline());
         item.setTeacherName(job.getTeacherName());
         item.setRequirements(job.getRequirements());
+        item.setSchedule(displayValue(job.getSchedule()));
+        item.setLocation(displayValue(job.getLocation()));
         return item;
     }
 
@@ -369,6 +447,11 @@ public class StudentService {
 
     private String trimToEmpty(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private String displayValue(String value) {
+        String trimmed = trimToEmpty(value);
+        return trimmed.isBlank() ? "-" : trimmed;
     }
 
     /**
@@ -493,7 +576,7 @@ public class StudentService {
     }
 
     /**
-     * Withdraw an application (set active = false)
+     * Withdraw an application by deleting it and notifying the job owner.
      */
     public void withdrawApplication(ServletContext context, String studentUserId, String applicationId) throws IOException {
         try {
@@ -526,8 +609,42 @@ public class StudentService {
                 );
             }
 
-            record.setActive(false);
+            List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            JobPosting job = jobs.stream()
+                    .filter(j -> record.getJobId().equals(j.getId()))
+                    .findFirst()
+                    .orElse(null);
+
+            boolean removed = applications.removeIf(a -> applicationId.equals(a.getId()) && studentUserId.equals(a.getStudentId()));
+            if (!removed) {
+                throw new StudentBusinessException(
+                        ErrorCodes.VALIDATION_ERROR,
+                        "Application not found.",
+                        HttpServletResponse.SC_NOT_FOUND
+                );
+            }
             JsonUtility.saveApplications(context, applications);
+
+            if (job != null && job.getTeacherId() != null && !job.getTeacherId().isBlank()) {
+                List<NotificationRecord> notifications = JsonUtility.loadNotifications(context);
+                String now = Instant.now().toString();
+
+                NotificationRecord notification = new NotificationRecord();
+                notification.setId("noti_withdraw_" + applicationId);
+                notification.setMoId(job.getTeacherId());
+                notification.setJobId(record.getJobId());
+                notification.setApplicationId(applicationId);
+                notification.setApplicantName(record.getStudentName());
+                notification.setApplicationTime(now);
+                notification.setCreatedAt(now);
+                notification.setRead(false);
+                notification.setRecipientId(job.getTeacherId());
+                notification.setRecipientRole("mo");
+                notification.setMessage(record.getStudentName() + " withdrew the application for " + job.getTitle() + ".");
+                notifications.add(notification);
+
+                JsonUtility.saveNotifications(context, notifications);
+            }
         } catch (StudentBusinessException e) {
             throw e;
         } catch (Exception e) {

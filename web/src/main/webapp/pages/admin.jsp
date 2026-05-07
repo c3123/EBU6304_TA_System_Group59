@@ -38,6 +38,7 @@
       <button class="admin-tab" data-admin-tab="workload" role="tab" aria-selected="false">Workload</button>
       <button class="admin-tab" data-admin-tab="users" role="tab" aria-selected="false">Users</button>
       <button class="admin-tab" data-admin-tab="jobs" role="tab" aria-selected="false">Jobs</button>
+      <button class="admin-tab" data-admin-tab="account" role="tab" aria-selected="false">My Account</button>
     </nav>
 
     <section class="admin-panel" data-admin-panel="overview">
@@ -89,12 +90,30 @@
           <p class="admin-section-desc">View all teaching assistants' weekly hours and assignments.</p>
         </div>
       </div>
+      <div class="card" style="margin-bottom:16px;">
+        <h3 class="admin-subtitle">Workload Threshold</h3>
+        <form id="adminThresholdForm">
+          <div class="admin-form-grid">
+            <div class="field">
+              <label for="adminThresholdHours">Threshold Hours</label>
+              <input id="adminThresholdHours" type="number" min="1" required />
+            </div>
+            <div class="field">
+              <label for="adminThresholdUpdatedAt">Last Updated</label>
+              <input id="adminThresholdUpdatedAt" type="text" readonly />
+            </div>
+          </div>
+          <div class="row" style="margin-top:16px;">
+            <button id="adminThresholdSaveBtn" type="submit" class="btn btn-primary">Save Threshold</button>
+          </div>
+        </form>
+      </div>
       <div id="adminWorkloadCards" class="admin-feed"></div>
       <div class="card">
         <h3 class="admin-subtitle">Workload Monitoring (Table)</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Student ID</th><th>Name</th><th>Active Applications</th><th>Weekly Hours</th></tr></thead>
+            <thead><tr><th>Student ID</th><th>Name</th><th>Hired Jobs</th><th>Weekly Hours</th><th>Threshold</th><th>Warning</th></tr></thead>
             <tbody id="adminWorkloadBody"></tbody>
           </table>
         </div>
@@ -165,15 +184,72 @@
           <p class="admin-section-desc">View and manage all teaching assistant positions.</p>
         </div>
       </div>
+      <div class="card" style="margin-bottom:16px;">
+        <h3 class="admin-subtitle">Job Filters and Export</h3>
+        <div class="admin-form-grid">
+          <div class="field">
+            <label for="adminJobStatusFilter">Status</label>
+            <select id="adminJobStatusFilter">
+              <option value="all">All</option>
+              <option value="draft">Draft</option>
+              <option value="open">Open</option>
+              <option value="closed">Closed</option>
+              <option value="withdrawn">Withdrawn</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="adminJobDepartmentFilter">Department</label>
+            <input id="adminJobDepartmentFilter" type="text" list="adminDepartmentOptions" placeholder="all" />
+            <datalist id="adminDepartmentOptions"></datalist>
+          </div>
+        </div>
+        <div class="row" style="margin-top:16px;">
+          <button id="adminApplyFiltersBtn" type="button" class="btn btn-primary">Apply Filters</button>
+          <button id="adminResetFiltersBtn" type="button" class="btn btn-outline">Reset</button>
+          <button id="adminExportCsvBtn" type="button" class="btn btn-outline">Export CSV</button>
+          <button id="adminExportTxtBtn" type="button" class="btn btn-outline">Export TXT</button>
+        </div>
+      </div>
       <div id="adminJobsCards" class="admin-feed"></div>
       <div class="card">
         <h3 class="admin-subtitle">Job Overview (Table)</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Code</th><th>Position</th><th>Teacher</th><th>Status</th><th>Recruitment</th><th>Slots</th><th>Action</th></tr></thead>
+            <thead><tr><th>Code</th><th>Position</th><th>Department</th><th>Teacher</th><th>Status</th><th>Recruitment</th><th>Slots</th><th>Action</th></tr></thead>
             <tbody id="adminJobsBody"></tbody>
           </table>
         </div>
+      </div>
+    </section>
+
+    <section class="admin-panel admin-hidden" data-admin-panel="account">
+      <div class="admin-headline">
+        <div>
+          <h2 class="admin-section-title">My Account</h2>
+          <p class="admin-section-desc">Change your own password without using the admin reset flow.</p>
+        </div>
+      </div>
+      <div class="card">
+        <h3 class="admin-subtitle">Change Password</h3>
+        <form id="adminChangePasswordForm">
+          <div class="admin-form-grid">
+            <div class="field">
+              <label for="adminOldPassword">Current Password</label>
+              <input id="adminOldPassword" type="password" required />
+            </div>
+            <div class="field">
+              <label for="adminNewPassword">New Password</label>
+              <input id="adminNewPassword" type="password" required />
+            </div>
+            <div class="field">
+              <label for="adminConfirmPassword">Confirm New Password</label>
+              <input id="adminConfirmPassword" type="password" required />
+            </div>
+          </div>
+          <div class="row" style="margin-top:16px;">
+            <button id="adminChangePasswordBtn" type="submit" class="btn btn-primary">Change Password</button>
+          </div>
+        </form>
       </div>
     </section>
 

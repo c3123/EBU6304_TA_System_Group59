@@ -63,14 +63,16 @@
     
     <div class="auth-split-form">
       <h2>Sign In</h2>
-      <form method="post" action="<%= request.getContextPath() %>/login">
+      <form method="post" action="<%= request.getContextPath() %>/login" id="loginForm" autocomplete="off">
+        <input type="text" name="fakeUsername" autocomplete="username" style="display:none" />
+        <input type="password" name="fakePassword" autocomplete="new-password" style="display:none" />
         <div class="field">
           <label>User ID or Email</label>
-          <input name="identifier" type="text" placeholder="stu001 or your.email@university.edu" />
+          <input name="identifier" type="text" placeholder="stu001 or your.email@university.edu" autocomplete="off" />
         </div>
         <div class="field">
           <label>Password</label>
-          <input name="password" type="password" placeholder="Enter your password" />
+          <input name="password" type="password" placeholder="Enter your password" autocomplete="new-password" />
         </div>
         <div class="auth-btn-row">
           <button class="btn btn-primary btn-large" style="width:100%" type="submit">Login</button>

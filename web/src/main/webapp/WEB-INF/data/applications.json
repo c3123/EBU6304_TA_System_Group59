@@ -7,10 +7,9 @@
     "studentNo": "201234567",
     "courseGrade": "A",
     "appliedAt": "2026-04-01T10:00:00Z",
-    "status": "pending",
+    "status": "hired",
     "active": true,
-    "evaluationNotes": "",
-    "decisionFeedback": ""
+    "selectedAttachmentIds": []
   },
   {
     "id": "app002",
@@ -22,7 +21,6 @@
     "appliedAt": "2026-03-28T10:00:00Z",
     "status": "pending",
     "active": false,
-    "evaluationNotes": "",
-    "decisionFeedback": ""
+    "selectedAttachmentIds": []
   }
 ]
