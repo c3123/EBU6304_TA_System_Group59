@@ -4,6 +4,7 @@ import com.ta.constant.ErrorCodes;
 import com.ta.dto.admin.AdminDashboardJobItemResponse;
 import com.ta.dto.admin.AdminDashboardResponse;
 import com.ta.dto.admin.AdminDashboardUserItemResponse;
+import com.ta.dto.admin.AdminDashboardWorkloadJobResponse;
 import com.ta.dto.admin.AdminDashboardWorkloadItemResponse;
 import com.ta.model.ApplicationRecord;
 import com.ta.model.JobPosting;
@@ -43,7 +44,7 @@ public class AdminDashboardService {
             data.setTotalJobs(filteredJobs.size());
             data.setTotalApplications((int) applications.stream().filter(ApplicationRecord::isActive).count());
             data.setUsers(toUsers(users));
-            data.setJobs(toJobs(filteredJobs));
+            data.setJobs(toJobs(filteredJobs, applications));
             data.setWorkload(toWorkload(applications, jobs, settings.getWorkloadThresholdHours()));
             return data;
         } catch (IOException e) {
@@ -149,7 +150,19 @@ public class AdminDashboardService {
         return items;
     }
 
-    private List<AdminDashboardJobItemResponse> toJobs(List<JobPosting> jobs) {
+    private List<AdminDashboardJobItemResponse> toJobs(List<JobPosting> jobs, List<ApplicationRecord> applications) {
+        Map<String, Integer> applicantCountByJob = new LinkedHashMap<>();
+        Map<String, Integer> hiredCountByJob = new LinkedHashMap<>();
+        for (ApplicationRecord app : applications) {
+            if (!app.isActive() || app.getJobId() == null || app.getJobId().isBlank()) {
+                continue;
+            }
+            applicantCountByJob.put(app.getJobId(), applicantCountByJob.getOrDefault(app.getJobId(), 0) + 1);
+            if ("hired".equalsIgnoreCase(app.getStatus())) {
+                hiredCountByJob.put(app.getJobId(), hiredCountByJob.getOrDefault(app.getJobId(), 0) + 1);
+            }
+        }
+
         List<AdminDashboardJobItemResponse> items = new ArrayList<>();
         for (JobPosting job : jobs) {
             AdminDashboardJobItemResponse item = new AdminDashboardJobItemResponse();
@@ -160,6 +173,15 @@ public class AdminDashboardService {
             item.setDepartment(job.getDepartment());
             item.setStatus(job.getStatus());
             item.setPositions(job.getPositions());
+            item.setApplicantCount(applicantCountByJob.getOrDefault(job.getId(), 0));
+            item.setHiredCount(hiredCountByJob.getOrDefault(job.getId(), 0));
+            item.setWeeklyHours(JobHoursUtil.resolveWeeklyHours(job));
+            item.setDeadline(job.getDeadline());
+            item.setPublishedAt(job.getPublishedAt());
+            item.setCreatedAt(job.getCreatedAt());
+            item.setRequirements(job.getRequirements());
+            item.setSchedule(job.getSchedule());
+            item.setLocation(job.getLocation());
             item.setRecruitmentClosed(Boolean.TRUE.equals(job.getRecruitmentClosed()));
             item.setClosedAt(job.getClosedAt());
             items.add(item);
@@ -173,9 +195,11 @@ public class AdminDashboardService {
         // Threshold value is normalized by JsonUtility.loadSystemSettings.
         int threshold = thresholdHours;
         Map<String, Integer> jobHoursById = new LinkedHashMap<>();
+        Map<String, JobPosting> jobById = new LinkedHashMap<>();
         for (JobPosting job : jobs) {
             if (job.getId() != null) {
                 jobHoursById.put(job.getId(), JobHoursUtil.resolveWeeklyHours(job));
+                jobById.put(job.getId(), job);
             }
         }
 
@@ -197,18 +221,58 @@ public class AdminDashboardService {
                 created.setWeeklyHours(0);
                 created.setThresholdHours(threshold);
                 created.setWarning(false);
+                applyWorkloadLevel(created, threshold);
                 return created;
             });
 
             item.setHiredCount(item.getHiredCount() + 1);
             item.setWeeklyHours(item.getWeeklyHours() + jobHours);
             item.setThresholdHours(threshold);
-            item.setWarning(item.getWeeklyHours() > threshold);
+            item.setWarning(item.getWeeklyHours() >= threshold);
+            JobPosting job = jobById.get(app.getJobId());
+            if (job != null) {
+                item.getAssignedJobs().add(toWorkloadJob(job, jobHours));
+            }
+            applyWorkloadLevel(item, threshold);
         }
 
         List<AdminDashboardWorkloadItemResponse> items = new ArrayList<>(workloadByStudent.values());
         items.sort(Comparator.comparingInt(AdminDashboardWorkloadItemResponse::getWeeklyHours).reversed());
         return items;
+    }
+
+    private AdminDashboardWorkloadJobResponse toWorkloadJob(JobPosting job, int weeklyHours) {
+        AdminDashboardWorkloadJobResponse item = new AdminDashboardWorkloadJobResponse();
+        item.setJobId(job.getId());
+        item.setModuleCode(job.getModuleCode());
+        item.setTitle(job.getTitle());
+        item.setWeeklyHours(weeklyHours);
+        return item;
+    }
+
+    private void applyWorkloadLevel(AdminDashboardWorkloadItemResponse item, int threshold) {
+        int hours = item.getWeeklyHours();
+        if (hours >= threshold) {
+            item.setWorkloadLevel("overload");
+            item.setWorkloadLabel("Overload");
+            item.setWarning(true);
+            return;
+        }
+        if (hours >= 15) {
+            item.setWorkloadLevel("warning");
+            item.setWorkloadLabel("Warning");
+            item.setWarning(true);
+            return;
+        }
+        if (hours >= 10) {
+            item.setWorkloadLevel("normal");
+            item.setWorkloadLabel("Normal");
+            item.setWarning(false);
+            return;
+        }
+        item.setWorkloadLevel("low");
+        item.setWorkloadLabel("Low");
+        item.setWarning(false);
     }
 
     private String trimToEmpty(String value) {
