@@ -41,7 +41,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const currentUserName = portal?.getAttribute("data-current-user-name") || "Admin User";
 
   let latestData = null;
-  let openWorkloadRowIdx = null;
+  /** When set, workload table re-expands this student after dashboard reload (e.g. save threshold). */
+  let openWorkloadStudentId = null;
   let knownDepartments = [];
   const filters = {
     status: "all",
@@ -213,8 +214,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     return isoDate ? isoDate[1] : text;
   }
 
+  function hiredAtSortKey(value) {
+    const raw = String(value || "").trim();
+    return raw || "\u0000";
+  }
+
+  function sortAssignedJobsForDisplay(assignedJobs) {
+    const jobs = Array.isArray(assignedJobs) ? assignedJobs.slice() : [];
+    jobs.sort((a, b) => hiredAtSortKey(b.hiredAt).localeCompare(hiredAtSortKey(a.hiredAt))
+      || String(a.moduleCode || "").localeCompare(String(b.moduleCode || ""), undefined, { sensitivity: "base" }));
+    return jobs;
+  }
+
   function renderWorkloadAssignedRows(assignedJobs) {
-    const jobs = Array.isArray(assignedJobs) ? assignedJobs : [];
+    const jobs = sortAssignedJobsForDisplay(assignedJobs);
     if (!jobs.length) {
       return `<tr><td colspan="4">No per-job breakdown (missing job link).</td></tr>`;
     }
@@ -265,14 +278,60 @@ document.addEventListener("DOMContentLoaded", async () => {
     `).join("");
   }
 
-  function renderWorkload(workload) {
-    openWorkloadRowIdx = null;
+  function resolveExpandedWorkloadIndex(workload) {
+    if (!openWorkloadStudentId) {
+      return -1;
+    }
+    const sid = String(openWorkloadStudentId);
+    return workload.findIndex((w) => String(w.studentId) === sid);
+  }
 
-    workloadCards.innerHTML = workload.map((item) => {
+  function setWorkloadTableExpanded(idx, expand) {
+    const workload = latestData && Array.isArray(latestData.workload) ? latestData.workload : [];
+    const detail = workloadBody.querySelector(`[data-workload-detail="${idx}"]`);
+    const btn = workloadBody.querySelector(`[data-workload-expand="${idx}"]`);
+    if (!detail || !btn) return;
+
+    workloadBody.querySelectorAll("[data-workload-detail]").forEach((row) => row.classList.add("admin-hidden"));
+    workloadBody.querySelectorAll(".admin-workload-expand-btn").forEach((b) => {
+      b.setAttribute("aria-expanded", "false");
+      b.textContent = "Show";
+    });
+
+    if (expand) {
+      detail.classList.remove("admin-hidden");
+      btn.setAttribute("aria-expanded", "true");
+      btn.textContent = "Hide";
+      const row = workload[idx];
+      openWorkloadStudentId = row && row.studentId != null ? String(row.studentId) : null;
+    } else {
+      openWorkloadStudentId = null;
+    }
+  }
+
+  function toggleWorkloadTableAtIndex(idx) {
+    const detail = workloadBody.querySelector(`[data-workload-detail="${idx}"]`);
+    if (!detail) return;
+    const willExpand = detail.classList.contains("admin-hidden");
+    if (willExpand) {
+      setWorkloadTableExpanded(idx, true);
+    } else {
+      setWorkloadTableExpanded(idx, false);
+    }
+  }
+
+  function renderWorkload(workload) {
+    const list = Array.isArray(workload) ? workload : [];
+    let expandedIdx = resolveExpandedWorkloadIndex(list);
+    if (expandedIdx < 0) {
+      openWorkloadStudentId = null;
+    }
+
+    workloadCards.innerHTML = list.map((item, idx) => {
       const tag = item.warning
         ? { label: `Warning > ${item.thresholdHours || 0}h`, cls: "danger" }
         : { label: `Within ${item.thresholdHours || 0}h`, cls: "ok" };
-      const assignedJobs = Array.isArray(item.assignedJobs) ? item.assignedJobs : [];
+      const assignedJobs = sortAssignedJobsForDisplay(item.assignedJobs);
       const cardJobLines = assignedJobs.length
         ? `<ul>${assignedJobs.map((job) => `
           <li>${escapeHtml(job.moduleCode || job.jobId || "Job")}: ${escapeHtml(job.title || "")} — ${escapeHtml(String(job.weeklyHours ?? 0))}h/wk, hired ${escapeHtml(formatHiredAtDisplay(job.hiredAt))}</li>
@@ -293,23 +352,34 @@ document.addEventListener("DOMContentLoaded", async () => {
           </div>
           <p class="admin-list-meta">Hired Jobs: ${escapeHtml(String(item.hiredCount || 0))} | Threshold: ${escapeHtml(String(item.thresholdHours || 0))}h</p>
           <div class="admin-workload-card-jobs">
-            <strong class="admin-list-meta">By position</strong>
-            ${cardJobLines}
+            <div class="admin-workload-card-jobs-head">
+              <strong class="admin-list-meta">By position</strong>
+              <button type="button" class="btn btn-outline admin-workload-card-toggle"
+                data-workload-card-expand="${idx}"
+                aria-expanded="false"
+                aria-controls="admin-wl-card-${idx}">
+                Show positions
+              </button>
+            </div>
+            <div id="admin-wl-card-${idx}" class="admin-workload-card-body admin-hidden">
+              ${cardJobLines}
+            </div>
           </div>
         </article>
       `;
     }).join("") || `<div class="card"><p class="admin-empty-text">No hired records yet.</p></div>`;
 
-    workloadBody.innerHTML = workload.map((item, idx) => {
-      const expanded = openWorkloadRowIdx === idx;
-      const assignedJobs = Array.isArray(item.assignedJobs) ? item.assignedJobs : [];
+    workloadBody.innerHTML = list.map((item, idx) => {
+      const expanded = expandedIdx === idx;
+      const assignedJobs = item.assignedJobs;
       const detailHidden = expanded ? "" : " admin-hidden";
       const ariaExpanded = expanded ? "true" : "false";
       return `
-      <tr class="admin-workload-summary-row" data-workload-summary="${idx}">
+      <tr class="admin-workload-summary-row" data-workload-summary="${idx}" title="Click row to show or hide job breakdown">
         <td>
           <button type="button" class="btn btn-outline admin-workload-expand-btn"
             data-workload-expand="${idx}"
+            data-workload-student-id="${escapeHtml(item.studentId)}"
             aria-expanded="${ariaExpanded}"
             aria-controls="admin-wl-detail-${idx}">
             ${expanded ? "Hide" : "Show"}
@@ -339,32 +409,35 @@ document.addEventListener("DOMContentLoaded", async () => {
     `;
   }
 
-  function onWorkloadTableClick(event) {
-    const btn = event.target.closest("[data-workload-expand]");
-    if (!btn || !workloadBody.contains(btn)) return;
-    const idx = Number(btn.getAttribute("data-workload-expand"), 10);
+  function onWorkloadCardClick(event) {
+    const btn = event.target.closest("[data-workload-card-expand]");
+    if (!btn || !workloadCards.contains(btn)) return;
+    const idx = Number(btn.getAttribute("data-workload-card-expand"), 10);
     if (Number.isNaN(idx)) return;
+    const panel = workloadCards.querySelector(`#admin-wl-card-${idx}`);
+    if (!panel) return;
+    const willShow = panel.classList.contains("admin-hidden");
+    panel.classList.toggle("admin-hidden", !willShow);
+    btn.setAttribute("aria-expanded", willShow ? "true" : "false");
+    btn.textContent = willShow ? "Hide positions" : "Show positions";
+  }
 
-    const detail = workloadBody.querySelector(`[data-workload-detail="${idx}"]`);
-    if (!detail) return;
-
-    const willExpand = detail.classList.contains("admin-hidden");
-    workloadBody.querySelectorAll("[data-workload-detail]").forEach((row) => {
-      row.classList.add("admin-hidden");
-    });
-    workloadBody.querySelectorAll(".admin-workload-expand-btn").forEach((b) => {
-      b.setAttribute("aria-expanded", "false");
-      b.textContent = "Show";
-    });
-
-    if (willExpand) {
-      detail.classList.remove("admin-hidden");
-      btn.setAttribute("aria-expanded", "true");
-      btn.textContent = "Hide";
-      openWorkloadRowIdx = idx;
-    } else {
-      openWorkloadRowIdx = null;
+  function onWorkloadTableClick(event) {
+    const expandBtn = event.target.closest("[data-workload-expand]");
+    if (expandBtn && workloadBody.contains(expandBtn)) {
+      const idx = Number(expandBtn.getAttribute("data-workload-expand"), 10);
+      if (!Number.isNaN(idx)) {
+        toggleWorkloadTableAtIndex(idx);
+      }
+      return;
     }
+
+    const summaryRow = event.target.closest("[data-workload-summary]");
+    if (!summaryRow || !workloadBody.contains(summaryRow)) return;
+    if (event.target.closest("button")) return;
+    const idx = Number(summaryRow.getAttribute("data-workload-summary"), 10);
+    if (Number.isNaN(idx)) return;
+    toggleWorkloadTableAtIndex(idx);
   }
 
   async function createUser(event) {
@@ -614,6 +687,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   jobsBody.addEventListener("click", onReopen);
   jobsCards.addEventListener("click", onReopen);
   workloadBody.addEventListener("click", onWorkloadTableClick);
+  workloadCards.addEventListener("click", onWorkloadCardClick);
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => activateTab(tab.getAttribute("data-admin-tab")));
   });

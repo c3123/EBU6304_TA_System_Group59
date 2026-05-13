@@ -984,6 +984,19 @@ th { background: #f8fbff; }
   font-size: 13px;
 }
 
+.admin-workload-card-jobs-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.admin-workload-card-body.admin-hidden {
+  display: none;
+}
+
 .admin-workload-card-jobs ul {
   margin: 6px 0 0;
   padding-left: 18px;
@@ -1016,6 +1029,14 @@ th { background: #f8fbff; }
 .admin-workload-nested thead th {
   background: #f1f5f9;
   font-weight: 600;
+}
+
+.admin-workload-summary-row {
+  cursor: pointer;
+}
+
+.admin-workload-summary-row .admin-workload-expand-btn {
+  cursor: pointer;
 }
 
 .tag.low {
