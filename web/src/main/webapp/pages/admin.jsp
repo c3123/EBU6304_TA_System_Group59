@@ -113,7 +113,7 @@
         <h3 class="admin-subtitle">Workload Monitoring (Table)</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Student ID</th><th>Name</th><th>Hired Jobs</th><th>Weekly Hours</th><th>Threshold</th><th>Warning</th></tr></thead>
+            <thead><tr><th class="admin-workload-col-expand" scope="col">Details</th><th>Student ID</th><th>Name</th><th>Hired Jobs</th><th>Weekly Hours</th><th>Threshold</th><th>Warning</th></tr></thead>
             <tbody id="adminWorkloadBody"></tbody>
           </table>
         </div>

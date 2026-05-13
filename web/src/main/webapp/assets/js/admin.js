@@ -41,6 +41,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const currentUserName = portal?.getAttribute("data-current-user-name") || "Admin User";
 
   let latestData = null;
+  let openWorkloadRowIdx = null;
   let knownDepartments = [];
   const filters = {
     status: "all",
@@ -205,6 +206,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     `).join("");
   }
 
+  function formatHiredAtDisplay(value) {
+    if (!value) return "—";
+    const text = String(value);
+    const isoDate = text.match(/^(\d{4}-\d{2}-\d{2})/);
+    return isoDate ? isoDate[1] : text;
+  }
+
+  function renderWorkloadAssignedRows(assignedJobs) {
+    const jobs = Array.isArray(assignedJobs) ? assignedJobs : [];
+    if (!jobs.length) {
+      return `<tr><td colspan="4">No per-job breakdown (missing job link).</td></tr>`;
+    }
+    return jobs.map((job) => `
+      <tr>
+        <td>${escapeHtml(job.moduleCode || "—")}</td>
+        <td>${escapeHtml(job.title || job.jobId || "—")}</td>
+        <td>${escapeHtml(String(job.weeklyHours ?? 0))}</td>
+        <td>${escapeHtml(formatHiredAtDisplay(job.hiredAt))}</td>
+      </tr>
+    `).join("");
+  }
+
   function renderJobs(jobs) {
     jobsCards.innerHTML = jobs.map((job) => {
       const recruitment = job.recruitmentClosed ? "Closed" : "Open";
@@ -243,10 +266,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function renderWorkload(workload) {
+    openWorkloadRowIdx = null;
+
     workloadCards.innerHTML = workload.map((item) => {
       const tag = item.warning
         ? { label: `Warning > ${item.thresholdHours || 0}h`, cls: "danger" }
         : { label: `Within ${item.thresholdHours || 0}h`, cls: "ok" };
+      const assignedJobs = Array.isArray(item.assignedJobs) ? item.assignedJobs : [];
+      const cardJobLines = assignedJobs.length
+        ? `<ul>${assignedJobs.map((job) => `
+          <li>${escapeHtml(job.moduleCode || job.jobId || "Job")}: ${escapeHtml(job.title || "")} — ${escapeHtml(String(job.weeklyHours ?? 0))}h/wk, hired ${escapeHtml(formatHiredAtDisplay(job.hiredAt))}</li>
+        `).join("")}</ul>`
+        : `<p class="admin-list-meta">No job-level breakdown.</p>`;
       return `
         <article class="card admin-work-card ${tag.cls === "danger" ? "is-danger" : ""}">
           <div class="admin-work-top">
@@ -261,12 +292,29 @@ document.addEventListener("DOMContentLoaded", async () => {
             </div>
           </div>
           <p class="admin-list-meta">Hired Jobs: ${escapeHtml(String(item.hiredCount || 0))} | Threshold: ${escapeHtml(String(item.thresholdHours || 0))}h</p>
+          <div class="admin-workload-card-jobs">
+            <strong class="admin-list-meta">By position</strong>
+            ${cardJobLines}
+          </div>
         </article>
       `;
     }).join("") || `<div class="card"><p class="admin-empty-text">No hired records yet.</p></div>`;
 
-    workloadBody.innerHTML = workload.map((item) => `
-      <tr>
+    workloadBody.innerHTML = workload.map((item, idx) => {
+      const expanded = openWorkloadRowIdx === idx;
+      const assignedJobs = Array.isArray(item.assignedJobs) ? item.assignedJobs : [];
+      const detailHidden = expanded ? "" : " admin-hidden";
+      const ariaExpanded = expanded ? "true" : "false";
+      return `
+      <tr class="admin-workload-summary-row" data-workload-summary="${idx}">
+        <td>
+          <button type="button" class="btn btn-outline admin-workload-expand-btn"
+            data-workload-expand="${idx}"
+            aria-expanded="${ariaExpanded}"
+            aria-controls="admin-wl-detail-${idx}">
+            ${expanded ? "Hide" : "Show"}
+          </button>
+        </td>
         <td>${escapeHtml(item.studentId)}</td>
         <td>${escapeHtml(item.studentName)}</td>
         <td>${escapeHtml(String(item.hiredCount || 0))}</td>
@@ -274,9 +322,49 @@ document.addEventListener("DOMContentLoaded", async () => {
         <td>${escapeHtml(String(item.thresholdHours || 0))}</td>
         <td>${item.warning ? "Warning" : "OK"}</td>
       </tr>
-    `).join("") || `
-      <tr><td colspan="6">No hired records yet.</td></tr>
+      <tr class="admin-workload-detail${detailHidden}" data-workload-detail="${idx}" id="admin-wl-detail-${idx}">
+        <td colspan="7">
+          <table class="admin-workload-nested">
+            <thead>
+              <tr><th>Module</th><th>Position title</th><th>Hours/week</th><th>Hired / recorded at</th></tr>
+            </thead>
+            <tbody>
+              ${renderWorkloadAssignedRows(assignedJobs)}
+            </tbody>
+          </table>
+        </td>
+      </tr>`;
+    }).join("") || `
+      <tr><td colspan="7">No hired records yet.</td></tr>
     `;
+  }
+
+  function onWorkloadTableClick(event) {
+    const btn = event.target.closest("[data-workload-expand]");
+    if (!btn || !workloadBody.contains(btn)) return;
+    const idx = Number(btn.getAttribute("data-workload-expand"), 10);
+    if (Number.isNaN(idx)) return;
+
+    const detail = workloadBody.querySelector(`[data-workload-detail="${idx}"]`);
+    if (!detail) return;
+
+    const willExpand = detail.classList.contains("admin-hidden");
+    workloadBody.querySelectorAll("[data-workload-detail]").forEach((row) => {
+      row.classList.add("admin-hidden");
+    });
+    workloadBody.querySelectorAll(".admin-workload-expand-btn").forEach((b) => {
+      b.setAttribute("aria-expanded", "false");
+      b.textContent = "Show";
+    });
+
+    if (willExpand) {
+      detail.classList.remove("admin-hidden");
+      btn.setAttribute("aria-expanded", "true");
+      btn.textContent = "Hide";
+      openWorkloadRowIdx = idx;
+    } else {
+      openWorkloadRowIdx = null;
+    }
   }
 
   async function createUser(event) {
@@ -525,6 +613,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   usersGrouped.addEventListener("click", handleUserActions);
   jobsBody.addEventListener("click", onReopen);
   jobsCards.addEventListener("click", onReopen);
+  workloadBody.addEventListener("click", onWorkloadTableClick);
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => activateTab(tab.getAttribute("data-admin-tab")));
   });
