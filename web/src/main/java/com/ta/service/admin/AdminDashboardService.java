@@ -214,6 +214,8 @@ public class AdminDashboardService {
             JobPosting job = jobById.get(app.getJobId());
             if (job != null) {
                 item.getAssignedJobs().add(toWorkloadJob(job, jobHours, app, hiredAtByApplicationId));
+            } else if (app.getJobId() != null && !app.getJobId().isBlank()) {
+                item.getAssignedJobs().add(toWorkloadJobMissing(app, hiredAtByApplicationId));
             }
         }
 
@@ -232,6 +234,20 @@ public class AdminDashboardService {
         row.setModuleCode(job.getModuleCode());
         row.setTitle(job.getTitle());
         row.setWeeklyHours(weeklyHours);
+        row.setHiredAt(resolveHiredAtForWorkloadRow(app, hiredAtByApplicationId));
+        return row;
+    }
+
+    /** Hired application exists but job id is missing from jobs.json — still list a row for admin drill-down. */
+    private AdminDashboardWorkloadJobResponse toWorkloadJobMissing(ApplicationRecord app,
+                                                                   Map<String, String> hiredAtByApplicationId) {
+        AdminDashboardWorkloadJobResponse row = new AdminDashboardWorkloadJobResponse();
+        row.setApplicationId(app != null ? app.getId() : null);
+        row.setJobId(app != null ? app.getJobId() : null);
+        row.setModuleCode("—");
+        String jobId = app != null ? trimToEmpty(app.getJobId()) : "";
+        row.setTitle(jobId.isEmpty() ? "Job record missing" : "Job record missing (" + jobId + ")");
+        row.setWeeklyHours(0);
         row.setHiredAt(resolveHiredAtForWorkloadRow(app, hiredAtByApplicationId));
         return row;
     }

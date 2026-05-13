@@ -3,6 +3,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   const usersBody = byId("adminUsersBody");
   const jobsBody = byId("adminJobsBody");
   const workloadBody = byId("adminWorkloadBody");
+  const workloadLayout = byId("adminWorkloadLayout");
+  const workloadDrawer = byId("adminWorkloadDrawer");
+  const workloadDrawerTitle = byId("adminWorkloadDrawerTitle");
+  const workloadDrawerBody = byId("adminWorkloadDrawerBody");
+  const workloadDrawerClose = byId("adminWorkloadDrawerClose");
   const usersGrouped = byId("adminUsersGrouped");
   const jobsCards = byId("adminJobsCards");
   const workloadCards = byId("adminWorkloadCards");
@@ -234,7 +239,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function renderWorkloadAssignedRows(assignedJobs) {
     const jobs = sortAssignedJobsForDisplay(assignedJobs);
     if (!jobs.length) {
-      return `<tr><td colspan="4">No per-job breakdown (missing job link).</td></tr>`;
+      return `<tr><td colspan="4">No line items (no hired applications with job data).</td></tr>`;
     }
     return jobs.map((job) => `
       <tr>
@@ -283,6 +288,45 @@ document.addEventListener("DOMContentLoaded", async () => {
     `).join("");
   }
 
+  function buildWorkloadNestedTableHtml(item) {
+    const assignedJobs = item.assignedJobs;
+    return `
+      <table class="admin-workload-nested">
+        <caption class="admin-sr-only">Hired positions for ${escapeHtml(item.studentName)}</caption>
+        <thead>
+          <tr><th scope="col">Module</th><th scope="col">Position title</th><th scope="col">Hours/week</th><th scope="col">Hired / recorded at</th></tr>
+        </thead>
+        <tbody>${renderWorkloadAssignedRows(assignedJobs)}</tbody>
+      </table>
+    `;
+  }
+
+  function syncWorkloadDrawer(idx, expand) {
+    if (!workloadLayout || !workloadDrawer || !workloadDrawerBody) {
+      return;
+    }
+    if (!expand || idx < 0) {
+      workloadDrawer.classList.add("admin-hidden");
+      workloadLayout.classList.remove("has-drawer-open");
+      workloadDrawerBody.innerHTML = "";
+      return;
+    }
+    const list = latestData && Array.isArray(latestData.workload) ? latestData.workload : [];
+    const row = list[idx];
+    if (!row) {
+      workloadDrawer.classList.add("admin-hidden");
+      workloadLayout.classList.remove("has-drawer-open");
+      workloadDrawerBody.innerHTML = "";
+      return;
+    }
+    if (workloadDrawerTitle) {
+      workloadDrawerTitle.textContent = `${row.studentName || "Student"} (${row.studentId || ""})`;
+    }
+    workloadDrawerBody.innerHTML = buildWorkloadNestedTableHtml(row);
+    workloadDrawer.classList.remove("admin-hidden");
+    workloadLayout.classList.add("has-drawer-open");
+  }
+
   function resolveExpandedWorkloadIndex(workload) {
     if (!openWorkloadStudentId) {
       return -1;
@@ -295,7 +339,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const workload = latestData && Array.isArray(latestData.workload) ? latestData.workload : [];
     const detail = workloadBody.querySelector(`[data-workload-detail="${idx}"]`);
     const btn = workloadBody.querySelector(`[data-workload-expand="${idx}"]`);
-    if (!detail || !btn) return;
+    if (!detail || !btn) {
+      syncWorkloadDrawer(-1, false);
+      return;
+    }
 
     workloadBody.querySelectorAll("[data-workload-detail]").forEach((row) => row.classList.add("admin-hidden"));
     workloadBody.querySelectorAll(".admin-workload-expand-btn").forEach((b) => {
@@ -320,8 +367,10 @@ document.addEventListener("DOMContentLoaded", async () => {
           /* ignore */
         }
       });
+      syncWorkloadDrawer(idx, true);
     } else {
       openWorkloadStudentId = null;
+      syncWorkloadDrawer(-1, false);
     }
   }
 
@@ -387,7 +436,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     workloadBody.innerHTML = list.map((item, idx) => {
       const expanded = expandedIdx === idx;
-      const assignedJobs = item.assignedJobs;
       const detailHidden = expanded ? "" : " admin-hidden";
       const ariaExpanded = expanded ? "true" : "false";
       return `
@@ -410,20 +458,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       </tr>
       <tr class="admin-workload-detail${detailHidden}" data-workload-detail="${idx}" id="admin-wl-detail-${idx}" role="region" aria-labelledby="admin-wl-sum-${idx}" tabindex="-1">
         <td colspan="7">
-          <table class="admin-workload-nested">
-            <caption class="admin-sr-only">Hired positions for ${escapeHtml(item.studentName)}</caption>
-            <thead>
-              <tr><th scope="col">Module</th><th scope="col">Position title</th><th scope="col">Hours/week</th><th scope="col">Hired / recorded at</th></tr>
-            </thead>
-            <tbody>
-              ${renderWorkloadAssignedRows(assignedJobs)}
-            </tbody>
-          </table>
+          ${buildWorkloadNestedTableHtml(item)}
         </td>
       </tr>`;
     }).join("") || `
       <tr><td colspan="7">No hired records yet.</td></tr>
     `;
+
+    if (expandedIdx >= 0) {
+      syncWorkloadDrawer(expandedIdx, true);
+    } else {
+      syncWorkloadDrawer(-1, false);
+    }
   }
 
   function onWorkloadCardClick(event) {
@@ -456,6 +502,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const idx = resolveExpandedWorkloadIndex(workload);
     if (idx < 0) {
       openWorkloadStudentId = null;
+      syncWorkloadDrawer(-1, false);
       return;
     }
     setWorkloadTableExpanded(idx, false);
@@ -727,6 +774,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  function onWorkloadDrawerCloseClick() {
+    const workload = latestData && Array.isArray(latestData.workload) ? latestData.workload : [];
+    const idx = resolveExpandedWorkloadIndex(workload);
+    if (idx >= 0) {
+      setWorkloadTableExpanded(idx, false);
+    } else {
+      syncWorkloadDrawer(-1, false);
+    }
+  }
+
   document.addEventListener("keydown", onWorkloadGlobalKeydown);
   usersBody.addEventListener("click", handleUserActions);
   usersGrouped.addEventListener("click", handleUserActions);
@@ -734,6 +791,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   jobsCards.addEventListener("click", onReopen);
   workloadBody.addEventListener("click", onWorkloadTableClick);
   workloadCards.addEventListener("click", onWorkloadCardClick);
+  if (workloadDrawerClose) {
+    workloadDrawerClose.addEventListener("click", onWorkloadDrawerCloseClick);
+  }
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => activateTab(tab.getAttribute("data-admin-tab")));
   });
