@@ -21,7 +21,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public final class JsonUtility {
     private static final String DATA_ROOT = "/WEB-INF/data/";
@@ -113,20 +115,27 @@ public final class JsonUtility {
     }
 
     private static File resolveDataFile(ServletContext context, String fileName) throws IOException {
-        String resourcePath = DATA_ROOT + fileName;
-        String realPath = context.getRealPath(resourcePath);
-        if (realPath == null) {
-            String contextRoot = context.getRealPath("/");
-            if (contextRoot != null) {
-                realPath = contextRoot + DATA_ROOT.substring(1) + fileName;
+        String configuredDataDir = System.getProperty("ta.data.dir");
+        File dataFile;
+
+        if (configuredDataDir != null && !configuredDataDir.isBlank()) {
+            dataFile = new File(configuredDataDir, fileName);
+        } else {
+            String resourcePath = DATA_ROOT + fileName;
+            String realPath = context.getRealPath(resourcePath);
+            if (realPath == null) {
+                String contextRoot = context.getRealPath("/");
+                if (contextRoot != null) {
+                    realPath = contextRoot + DATA_ROOT.substring(1) + fileName;
+                }
             }
+
+            if (realPath == null) {
+                throw new IOException("Unable to resolve data file path for " + fileName);
+            }
+            dataFile = new File(realPath);
         }
 
-        if (realPath == null) {
-            throw new IOException("Unable to resolve data file path for " + fileName);
-        }
-
-        File dataFile = new File(realPath);
         File dataDir = dataFile.getParentFile();
         if (dataDir != null && !dataDir.exists()) {
             Files.createDirectories(dataDir.toPath());
@@ -135,6 +144,20 @@ public final class JsonUtility {
         if (!dataFile.exists()) {
             Files.writeString(dataFile.toPath(), defaultJsonFor(fileName), StandardCharsets.UTF_8);
         }
+
+        // #region agent log
+        if ("hiring_history.json".equals(fileName)) {
+            try {
+                Map<String, Object> d = new LinkedHashMap<>();
+                d.put("resolvedAbsolutePath", dataFile.getAbsolutePath());
+                d.put("configuredTaDataDir", configuredDataDir);
+                d.put("usesTaDataDirProp", configuredDataDir != null && !configuredDataDir.isBlank());
+                AgentDebugLog.log("H2", "JsonUtility.resolveDataFile", "hiring_history_path", d);
+            } catch (Throwable ignored) {
+                // ignore
+            }
+        }
+        // #endregion
 
         return dataFile;
     }

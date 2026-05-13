@@ -47,7 +47,7 @@ public class AdminDashboardService {
             data.setTotalJobs(filteredJobs.size());
             data.setTotalApplications((int) applications.stream().filter(ApplicationRecord::isActive).count());
             data.setUsers(toUsers(users));
-            data.setJobs(toJobs(filteredJobs));
+            data.setJobs(toJobs(filteredJobs, applications));
             data.setWorkload(toWorkload(applications, jobs, settings.getWorkloadThresholdHours(), hiringHistory));
             return data;
         } catch (IOException e) {
@@ -153,7 +153,19 @@ public class AdminDashboardService {
         return items;
     }
 
-    private List<AdminDashboardJobItemResponse> toJobs(List<JobPosting> jobs) {
+    private List<AdminDashboardJobItemResponse> toJobs(List<JobPosting> jobs, List<ApplicationRecord> applications) {
+        Map<String, Integer> applicantCountByJob = new LinkedHashMap<>();
+        Map<String, Integer> hiredCountByJob = new LinkedHashMap<>();
+        for (ApplicationRecord app : applications) {
+            if (!app.isActive() || app.getJobId() == null || app.getJobId().isBlank()) {
+                continue;
+            }
+            applicantCountByJob.put(app.getJobId(), applicantCountByJob.getOrDefault(app.getJobId(), 0) + 1);
+            if ("hired".equalsIgnoreCase(app.getStatus())) {
+                hiredCountByJob.put(app.getJobId(), hiredCountByJob.getOrDefault(app.getJobId(), 0) + 1);
+            }
+        }
+
         List<AdminDashboardJobItemResponse> items = new ArrayList<>();
         for (JobPosting job : jobs) {
             AdminDashboardJobItemResponse item = new AdminDashboardJobItemResponse();
@@ -164,6 +176,15 @@ public class AdminDashboardService {
             item.setDepartment(job.getDepartment());
             item.setStatus(job.getStatus());
             item.setPositions(job.getPositions());
+            item.setApplicantCount(applicantCountByJob.getOrDefault(job.getId(), 0));
+            item.setHiredCount(hiredCountByJob.getOrDefault(job.getId(), 0));
+            item.setWeeklyHours(JobHoursUtil.resolveWeeklyHours(job));
+            item.setDeadline(job.getDeadline());
+            item.setPublishedAt(job.getPublishedAt());
+            item.setCreatedAt(job.getCreatedAt());
+            item.setRequirements(job.getRequirements());
+            item.setSchedule(job.getSchedule());
+            item.setLocation(job.getLocation());
             item.setRecruitmentClosed(Boolean.TRUE.equals(job.getRecruitmentClosed()));
             item.setClosedAt(job.getClosedAt());
             items.add(item);
@@ -204,19 +225,20 @@ public class AdminDashboardService {
                 created.setWeeklyHours(0);
                 created.setThresholdHours(threshold);
                 created.setWarning(false);
+                applyWorkloadLevel(created, threshold);
                 return created;
             });
 
             item.setHiredCount(item.getHiredCount() + 1);
             item.setWeeklyHours(item.getWeeklyHours() + jobHours);
             item.setThresholdHours(threshold);
-            item.setWarning(item.getWeeklyHours() > threshold);
             JobPosting job = jobById.get(app.getJobId());
             if (job != null) {
                 item.getAssignedJobs().add(toWorkloadJob(job, jobHours, app, hiredAtByApplicationId));
             } else if (app.getJobId() != null && !app.getJobId().isBlank()) {
                 item.getAssignedJobs().add(toWorkloadJobMissing(app, hiredAtByApplicationId));
             }
+            applyWorkloadLevel(item, threshold);
         }
 
         List<AdminDashboardWorkloadItemResponse> items = new ArrayList<>(workloadByStudent.values());
@@ -238,13 +260,12 @@ public class AdminDashboardService {
         return row;
     }
 
-    /** Hired application exists but job id is missing from jobs.json — still list a row for admin drill-down. */
     private AdminDashboardWorkloadJobResponse toWorkloadJobMissing(ApplicationRecord app,
                                                                    Map<String, String> hiredAtByApplicationId) {
         AdminDashboardWorkloadJobResponse row = new AdminDashboardWorkloadJobResponse();
         row.setApplicationId(app != null ? app.getId() : null);
         row.setJobId(app != null ? app.getJobId() : null);
-        row.setModuleCode("—");
+        row.setModuleCode("\u2014");
         String jobId = app != null ? trimToEmpty(app.getJobId()) : "";
         row.setTitle(jobId.isEmpty() ? "Job record missing" : "Job record missing (" + jobId + ")");
         row.setWeeklyHours(0);
@@ -289,6 +310,31 @@ public class AdminDashboardService {
             }
         }
         return trimToEmpty(app.getAppliedAt());
+    }
+
+    private void applyWorkloadLevel(AdminDashboardWorkloadItemResponse item, int threshold) {
+        int hours = item.getWeeklyHours();
+        if (hours >= threshold) {
+            item.setWorkloadLevel("overload");
+            item.setWorkloadLabel("Overload");
+            item.setWarning(true);
+            return;
+        }
+        if (hours >= 15) {
+            item.setWorkloadLevel("warning");
+            item.setWorkloadLabel("Warning");
+            item.setWarning(true);
+            return;
+        }
+        if (hours >= 10) {
+            item.setWorkloadLevel("normal");
+            item.setWorkloadLabel("Normal");
+            item.setWarning(false);
+            return;
+        }
+        item.setWorkloadLevel("low");
+        item.setWorkloadLabel("Low");
+        item.setWarning(false);
     }
 
     private String trimToEmpty(String value) {

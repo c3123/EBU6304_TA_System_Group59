@@ -109,13 +109,14 @@
         </form>
       </div>
       <div id="adminWorkloadCards" class="admin-feed"></div>
+      <div id="adminWorkloadLegend" class="admin-workload-legend"></div>
       <div class="card">
         <h3 class="admin-subtitle">Workload Monitoring (Table)</h3>
         <div id="adminWorkloadLayout" class="admin-workload-layout">
           <div class="admin-workload-main-col">
             <div class="table-wrap">
               <table aria-describedby="adminWorkloadHelp">
-                <thead><tr><th class="admin-workload-col-expand" scope="col">Details</th><th>Student ID</th><th>Name</th><th>Hired Jobs</th><th>Weekly Hours</th><th>Threshold</th><th>Warning</th></tr></thead>
+                <thead><tr><th class="admin-workload-col-expand" scope="col">Details</th><th>Student ID</th><th>Name</th><th>Hired Jobs</th><th>Weekly Hours</th><th>Threshold</th><th>Level</th></tr></thead>
                 <tbody id="adminWorkloadBody"></tbody>
               </table>
             </div>
@@ -211,8 +212,15 @@
           </div>
           <div class="field">
             <label for="adminJobDepartmentFilter">Department</label>
-            <input id="adminJobDepartmentFilter" type="text" list="adminDepartmentOptions" placeholder="all" />
-            <datalist id="adminDepartmentOptions"></datalist>
+            <select id="adminJobDepartmentFilter">
+              <option value="all">All Departments</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="adminJobTeacherFilter">Module Organiser</label>
+            <select id="adminJobTeacherFilter">
+              <option value="all">All Teachers</option>
+            </select>
           </div>
         </div>
         <div class="row" style="margin-top:16px;">
@@ -227,7 +235,7 @@
         <h3 class="admin-subtitle">Job Overview (Table)</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Code</th><th>Position</th><th>Department</th><th>Teacher</th><th>Status</th><th>Recruitment</th><th>Slots</th><th>Action</th></tr></thead>
+            <thead><tr><th>Code</th><th>Position</th><th>Department</th><th>Teacher</th><th>Applicants</th><th>Hired</th><th>Status</th><th>Action</th></tr></thead>
             <tbody id="adminJobsBody"></tbody>
           </table>
         </div>

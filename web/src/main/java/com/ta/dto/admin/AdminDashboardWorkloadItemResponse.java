@@ -10,6 +10,8 @@ public class AdminDashboardWorkloadItemResponse {
     private int weeklyHours;
     private int thresholdHours;
     private boolean warning;
+    private String workloadLevel;
+    private String workloadLabel;
     private List<AdminDashboardWorkloadJobResponse> assignedJobs = new ArrayList<>();
 
     public String getStudentId() {
@@ -58,6 +60,22 @@ public class AdminDashboardWorkloadItemResponse {
 
     public void setWarning(boolean warning) {
         this.warning = warning;
+    }
+
+    public String getWorkloadLevel() {
+        return workloadLevel;
+    }
+
+    public void setWorkloadLevel(String workloadLevel) {
+        this.workloadLevel = workloadLevel;
+    }
+
+    public String getWorkloadLabel() {
+        return workloadLabel;
+    }
+
+    public void setWorkloadLabel(String workloadLabel) {
+        this.workloadLabel = workloadLabel;
     }
 
     public List<AdminDashboardWorkloadJobResponse> getAssignedJobs() {

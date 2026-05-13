@@ -251,24 +251,75 @@ document.addEventListener("DOMContentLoaded", async () => {
     `).join("");
   }
 
+  function normalizeJobStatus(job) {
+    if (job.recruitmentClosed) {
+      return { label: "Closed", cls: "danger", level: "is-closed", icon: "" };
+    }
+    if (String(job.status || "").toLowerCase() === "open") {
+      return { label: "Open", cls: "ok", level: "is-open", icon: "\u2713 " };
+    }
+    if (String(job.status || "").toLowerCase() === "draft") {
+      return { label: "Draft", cls: "warn", level: "is-draft", icon: "" };
+    }
+    return { label: job.status || "Unknown", cls: "low", level: "is-other", icon: "" };
+  }
+
+  function formatDate(value) {
+    if (!value) return "";
+    const text = String(value);
+    const isoDate = text.match(/^(\d{4}-\d{2}-\d{2})/);
+    return isoDate ? isoDate[1] : text;
+  }
+
   function renderJobs(jobs) {
     jobsCards.innerHTML = jobs.map((job) => {
-      const recruitment = job.recruitmentClosed ? "Closed" : "Open";
+      const status = normalizeJobStatus(job);
+      const positions = Number(job.positions || 0);
+      const hired = Number(job.hiredCount || 0);
+      const applicants = Number(job.applicantCount || 0);
+      const postedDate = formatDate(job.publishedAt || job.createdAt);
       return `
-        <article class="card admin-job-card ${job.recruitmentClosed ? "is-closed" : ""}">
-          <div class="admin-job-top">
+        <article class="card admin-job-card admin-job-card-large ${status.level}">
+          <div class="admin-job-heading">
             <div>
-              <h3 class="admin-subtitle">${escapeHtml(job.moduleCode)} - ${escapeHtml(job.title)}</h3>
-              <p class="admin-list-meta">Module Organiser: ${escapeHtml(job.teacherName)}</p>
+              <div class="admin-job-title-line">
+                <h3 class="admin-job-title">${escapeHtml(job.moduleCode || "-")} - ${escapeHtml(job.title || "Untitled Job")}</h3>
+                <span class="tag ${status.cls}">${status.icon}${status.label}</span>
+              </div>
+              <p class="admin-list-meta">Module Organiser: ${escapeHtml(job.teacherName || "-")} &middot; Posted: ${escapeHtml(postedDate || "-")}</p>
             </div>
-            <span class="tag ${job.recruitmentClosed ? "" : "ok"}">${recruitment}</span>
           </div>
-          <div class="admin-job-grid">
-            <div><span class="admin-key">Status</span><strong>${escapeHtml(job.status)}</strong></div>
+          <p class="admin-job-description">${escapeHtml(job.requirements || "No description provided.")}</p>
+          <div class="admin-job-metrics">
+            <div class="admin-job-metric metric-positions">
+              <span>Positions</span>
+              <strong>${escapeHtml(String(positions))}</strong>
+            </div>
+            <div class="admin-job-metric metric-applicants">
+              <span>Applicants</span>
+              <strong>${escapeHtml(String(applicants))}</strong>
+            </div>
+            <div class="admin-job-metric metric-hired">
+              <span>Hired</span>
+              <strong>${escapeHtml(String(hired))}</strong>
+            </div>
+            <div class="admin-job-metric metric-filled">
+              <span>Status</span>
+              <strong>${escapeHtml(String(hired))}/${escapeHtml(String(positions))} Filled</strong>
+            </div>
+          </div>
+          <div class="admin-job-footer">
+            <p class="admin-job-meta">Hours/Week: ${escapeHtml(String(job.weeklyHours || 0))}h &middot; Rate: - &middot; Deadline: ${escapeHtml(job.deadline || "-")}</p>
+            <div class="row" style="gap:8px;">
+              <button class="btn btn-outline" type="button" data-job-details="${escapeHtml(job.id)}">View Details</button>
+              ${job.recruitmentClosed ? `<button class="btn btn-outline" type="button" data-reopen-job="${escapeHtml(job.id)}">Reopen</button>` : ""}
+            </div>
+          </div>
+          <div class="admin-job-details" data-job-details-panel="${escapeHtml(job.id)}">
             <div><span class="admin-key">Department</span><strong>${escapeHtml(job.department || "-")}</strong></div>
-            <div><span class="admin-key">Positions</span><strong>${escapeHtml(String(job.positions))}</strong></div>
-            <div><span class="admin-key">Recruitment</span><strong>${recruitment}</strong></div>
-            <div><span class="admin-key">Action</span>${job.recruitmentClosed ? `<button class="btn btn-outline" data-reopen-job="${escapeHtml(job.id)}">Reopen</button>` : "<span>-</span>"}</div>
+            <div><span class="admin-key">Schedule</span><strong>${escapeHtml(job.schedule || "-")}</strong></div>
+            <div><span class="admin-key">Location</span><strong>${escapeHtml(job.location || "-")}</strong></div>
+            <div><span class="admin-key">Closed At</span><strong>${escapeHtml(formatDate(job.closedAt) || "-")}</strong></div>
           </div>
         </article>
       `;
@@ -280,12 +331,36 @@ document.addEventListener("DOMContentLoaded", async () => {
         <td>${escapeHtml(job.title)}</td>
         <td>${escapeHtml(job.department || "-")}</td>
         <td>${escapeHtml(job.teacherName)}</td>
-        <td>${escapeHtml(job.status)}</td>
-        <td>${job.recruitmentClosed ? "Recruitment Closed" : "Open"}</td>
-        <td>${escapeHtml(String(job.positions))}</td>
+        <td>${escapeHtml(String(job.applicantCount || 0))}</td>
+        <td>${escapeHtml(String(job.hiredCount || 0))}</td>
+        <td>${escapeHtml(normalizeJobStatus(job).label)}</td>
         <td>${job.recruitmentClosed ? `<button class="btn btn-outline" data-reopen-job="${escapeHtml(job.id)}">Reopen</button>` : "-"}</td>
       </tr>
     `).join("");
+  }
+
+  function workloadTier(item) {
+    const level = String(item.workloadLevel || "").toLowerCase();
+    if (level === "overload") return { level: "overload", label: "Overload", cls: "danger", icon: "\u25CF " };
+    if (level === "warning") return { level: "warning", label: "Warning", cls: "warn", icon: "\u25B3 " };
+    if (level === "normal") return { level: "normal", label: "Normal", cls: "ok", icon: "\u2713 " };
+    return { level: "low", label: "Low", cls: "low", icon: "" };
+  }
+
+  function workloadLegendEl() {
+    return byId("adminWorkloadLegend");
+  }
+
+  function workloadLegendHtml() {
+    const threshold = Number(thresholdHoursEl.value || 20);
+    const warningText = threshold > 15 ? `Warning (15-${threshold - 1}h)` : "Warning (15h+ below overload threshold)";
+    return `
+      <strong>Legend:</strong>
+      <span><i class="legend-dot legend-overload"></i> Overload (&gt;=${escapeHtml(String(threshold))}h)</span>
+      <span><i class="legend-dot legend-warning"></i> ${escapeHtml(warningText)}</span>
+      <span><i class="legend-dot legend-normal"></i> Normal (10-14h)</span>
+      <span><i class="legend-dot legend-low"></i> Low (&lt;10h)</span>
+    `;
   }
 
   function buildWorkloadNestedTableHtml(item) {
@@ -393,9 +468,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     workloadCards.innerHTML = list.map((item, idx) => {
-      const tag = item.warning
-        ? { label: `Warning > ${item.thresholdHours || 0}h`, cls: "danger" }
-        : { label: `Within ${item.thresholdHours || 0}h`, cls: "ok" };
+      const tier = workloadTier(item);
       const assignedJobs = sortAssignedJobsForDisplay(item.assignedJobs);
       const cardJobLines = assignedJobs.length
         ? `<ul>${assignedJobs.map((job) => `
@@ -403,7 +476,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         `).join("")}</ul>`
         : `<p class="admin-list-meta">No job-level breakdown.</p>`;
       return `
-        <article class="card admin-work-card ${tag.cls === "danger" ? "is-danger" : ""}">
+        <article class="card admin-work-card admin-work-${tier.level}">
           <div class="admin-work-top">
             <div>
               <h3 class="admin-subtitle">${escapeHtml(item.studentName)}</h3>
@@ -412,13 +485,21 @@ document.addEventListener("DOMContentLoaded", async () => {
             <div class="admin-work-hours">
               <strong>${escapeHtml(String(item.weeklyHours || 0))}</strong>
               <span>hrs/week</span>
-              <em class="tag ${tag.cls}">${tag.label}</em>
+              <em class="tag ${tier.cls}">${tier.icon}${tier.label}</em>
+            </div>
+          </div>
+          <div class="admin-assigned-block">
+            <p class="admin-list-meta">Assigned Positions:</p>
+            <div class="admin-work-chips">
+              ${assignedJobs.map((job) => `
+                <span class="admin-work-chip">${escapeHtml(job.moduleCode || job.jobId || "Job")} ${escapeHtml(job.title || "")} (${escapeHtml(String(job.weeklyHours ?? 0))}h/week)</span>
+              `).join("") || `<span class="admin-work-chip">No assigned job details</span>`}
             </div>
           </div>
           <p class="admin-list-meta">Hired Jobs: ${escapeHtml(String(item.hiredCount || 0))} | Threshold: ${escapeHtml(String(item.thresholdHours || 0))}h</p>
           <div class="admin-workload-card-jobs">
             <div class="admin-workload-card-jobs-head">
-              <strong class="admin-list-meta">By position</strong>
+              <strong class="admin-list-meta">By position (full detail)</strong>
               <button type="button" class="btn btn-outline admin-workload-card-toggle"
                 data-workload-card-expand="${idx}"
                 aria-expanded="false"
@@ -433,6 +514,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         </article>
       `;
     }).join("") || `<div class="card"><p class="admin-empty-text">No hired records yet.</p></div>`;
+
+    if (workloadLegendEl()) {
+      workloadLegendEl().innerHTML = workloadLegendHtml();
+    }
 
     workloadBody.innerHTML = list.map((item, idx) => {
       const expanded = expandedIdx === idx;
@@ -454,7 +539,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         <td>${escapeHtml(String(item.hiredCount || 0))}</td>
         <td>${escapeHtml(String(item.weeklyHours || 0))}</td>
         <td>${escapeHtml(String(item.thresholdHours || 0))}</td>
-        <td>${item.warning ? "Warning" : "OK"}</td>
+        <td>${escapeHtml((item.workloadLabel || workloadTier(item).label))}</td>
       </tr>
       <tr class="admin-workload-detail${detailHidden}" data-workload-detail="${idx}" id="admin-wl-detail-${idx}" role="region" aria-labelledby="admin-wl-sum-${idx}" tabindex="-1">
         <td colspan="7">
@@ -753,6 +838,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  function onJobDetails(event) {
+    const btn = event.target.closest("[data-job-details]");
+    if (!btn || !jobsCards.contains(btn)) return;
+    const jobId = btn.getAttribute("data-job-details");
+    if (!jobId) return;
+    const panel = jobsCards.querySelector(`[data-job-details-panel="${CSS.escape(jobId)}"]`);
+    if (!panel) return;
+    const expanded = panel.classList.toggle("open");
+    btn.textContent = expanded ? "Hide Details" : "View Details";
+  }
+
+  function onJobsCardsClick(event) {
+    onJobDetails(event);
+    onReopen(event);
+  }
+
   async function onReopen(event) {
     const btn = event.target.closest("[data-reopen-job]");
     if (!btn) return;
@@ -788,7 +889,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   usersBody.addEventListener("click", handleUserActions);
   usersGrouped.addEventListener("click", handleUserActions);
   jobsBody.addEventListener("click", onReopen);
-  jobsCards.addEventListener("click", onReopen);
+  jobsCards.addEventListener("click", onJobsCardsClick);
   workloadBody.addEventListener("click", onWorkloadTableClick);
   workloadCards.addEventListener("click", onWorkloadCardClick);
   if (workloadDrawerClose) {
