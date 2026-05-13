@@ -112,11 +112,12 @@
       <div class="card">
         <h3 class="admin-subtitle">Workload Monitoring (Table)</h3>
         <div class="table-wrap">
-          <table>
+          <table aria-describedby="adminWorkloadHelp">
             <thead><tr><th class="admin-workload-col-expand" scope="col">Details</th><th>Student ID</th><th>Name</th><th>Hired Jobs</th><th>Weekly Hours</th><th>Threshold</th><th>Warning</th></tr></thead>
             <tbody id="adminWorkloadBody"></tbody>
           </table>
         </div>
+        <p id="adminWorkloadHelp" class="admin-workload-help">Press Escape to close an open breakdown. Use Show or click the row to expand.</p>
       </div>
     </section>
 
