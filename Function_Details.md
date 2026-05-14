@@ -613,8 +613,10 @@ The scope of this feature is not to replace the Module Organiser workflow. The a
   - `AdminWorkloadSettingsServlet` (`GET/POST /api/admin/settings/workload-threshold`) remains responsible for loading and saving the overload threshold.
   - `AdminRecruitmentReportExportServlet` (`GET /api/admin/reports/weekly?format=csv|txt`) remains responsible for downloadable weekly recruitment summaries.
   - `AdminApplicationsServlet` (`GET /api/admin/applications`) provides read-only application archive rows for administrator audit.
-  - Future export routes may be added under `/api/admin/reports/*` for workload, applications, or backup files, but they must follow the same admin-only guard.
-  - Future alert routes may be added under `/api/admin/alerts` if alerts become independent from the dashboard response.
+  - `AdminWorkloadReportExportServlet` (`GET /api/admin/reports/workload?format=csv|txt`) exports workload rows and assigned job details.
+  - `AdminApplicationArchiveExportServlet` (`GET /api/admin/reports/applications?format=csv|txt`) exports the read-only application archive.
+  - `AdminBackupExportServlet` (`GET /api/admin/reports/backup`) exports a JSON backup bundle for the current file-based data.
+  - Administrator alerts are returned through `GET /api/admin/dashboard` so the overview and alert panel share one data source.
 
 - **Service Layer:**
   - `AdminDashboardService` computes overview statistics, job health fields, workload rows, and risk labels from `jobs.json`, `applications.json`, `users.json`, and `students.json`.
