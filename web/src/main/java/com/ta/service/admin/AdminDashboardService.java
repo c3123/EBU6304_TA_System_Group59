@@ -7,6 +7,7 @@ import com.ta.dto.admin.AdminDashboardUserItemResponse;
 import com.ta.dto.admin.AdminDashboardWorkloadJobResponse;
 import com.ta.dto.admin.AdminDashboardWorkloadItemResponse;
 import com.ta.model.ApplicationRecord;
+import com.ta.model.HiringHistoryRecord;
 import com.ta.model.JobPosting;
 import com.ta.model.SystemSettings;
 import com.ta.model.User;
@@ -18,6 +19,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -33,6 +35,7 @@ public class AdminDashboardService {
             List<User> users = JsonUtility.loadUsers(context);
             List<JobPosting> jobs = JsonUtility.loadJobs(context);
             List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            List<HiringHistoryRecord> hiringHistory = JsonUtility.loadHiringHistory(context);
             SystemSettings settings = JsonUtility.loadSystemSettings(context);
 
             String normalizedStatus = normalizeStatusFilter(statusFilter);
@@ -45,7 +48,7 @@ public class AdminDashboardService {
             data.setTotalApplications((int) applications.stream().filter(ApplicationRecord::isActive).count());
             data.setUsers(toUsers(users));
             data.setJobs(toJobs(filteredJobs, applications));
-            data.setWorkload(toWorkload(applications, jobs, settings.getWorkloadThresholdHours()));
+            data.setWorkload(toWorkload(applications, jobs, settings.getWorkloadThresholdHours(), hiringHistory));
             return data;
         } catch (IOException e) {
             throw new RuntimeException("Failed to load admin dashboard.", e);
@@ -191,9 +194,10 @@ public class AdminDashboardService {
 
     private List<AdminDashboardWorkloadItemResponse> toWorkload(List<ApplicationRecord> applications,
                                                                 List<JobPosting> jobs,
-                                                                Integer thresholdHours) {
-        // Threshold value is normalized by JsonUtility.loadSystemSettings.
+                                                                Integer thresholdHours,
+                                                                List<HiringHistoryRecord> hiringHistory) {
         int threshold = thresholdHours;
+        Map<String, String> hiredAtByApplicationId = latestHiredSubmittedAtByApplicationId(hiringHistory);
         Map<String, Integer> jobHoursById = new LinkedHashMap<>();
         Map<String, JobPosting> jobById = new LinkedHashMap<>();
         for (JobPosting job : jobs) {
@@ -228,10 +232,11 @@ public class AdminDashboardService {
             item.setHiredCount(item.getHiredCount() + 1);
             item.setWeeklyHours(item.getWeeklyHours() + jobHours);
             item.setThresholdHours(threshold);
-            item.setWarning(item.getWeeklyHours() >= threshold);
             JobPosting job = jobById.get(app.getJobId());
             if (job != null) {
-                item.getAssignedJobs().add(toWorkloadJob(job, jobHours));
+                item.getAssignedJobs().add(toWorkloadJob(job, jobHours, app, hiredAtByApplicationId));
+            } else if (app.getJobId() != null && !app.getJobId().isBlank()) {
+                item.getAssignedJobs().add(toWorkloadJobMissing(app, hiredAtByApplicationId));
             }
             applyWorkloadLevel(item, threshold);
         }
@@ -241,13 +246,70 @@ public class AdminDashboardService {
         return items;
     }
 
-    private AdminDashboardWorkloadJobResponse toWorkloadJob(JobPosting job, int weeklyHours) {
-        AdminDashboardWorkloadJobResponse item = new AdminDashboardWorkloadJobResponse();
-        item.setJobId(job.getId());
-        item.setModuleCode(job.getModuleCode());
-        item.setTitle(job.getTitle());
-        item.setWeeklyHours(weeklyHours);
-        return item;
+    private AdminDashboardWorkloadJobResponse toWorkloadJob(JobPosting job,
+                                                            int weeklyHours,
+                                                            ApplicationRecord app,
+                                                            Map<String, String> hiredAtByApplicationId) {
+        AdminDashboardWorkloadJobResponse row = new AdminDashboardWorkloadJobResponse();
+        row.setApplicationId(app != null ? app.getId() : null);
+        row.setJobId(job.getId());
+        row.setModuleCode(job.getModuleCode());
+        row.setTitle(job.getTitle());
+        row.setWeeklyHours(weeklyHours);
+        row.setHiredAt(resolveHiredAtForWorkloadRow(app, hiredAtByApplicationId));
+        return row;
+    }
+
+    private AdminDashboardWorkloadJobResponse toWorkloadJobMissing(ApplicationRecord app,
+                                                                   Map<String, String> hiredAtByApplicationId) {
+        AdminDashboardWorkloadJobResponse row = new AdminDashboardWorkloadJobResponse();
+        row.setApplicationId(app != null ? app.getId() : null);
+        row.setJobId(app != null ? app.getJobId() : null);
+        row.setModuleCode("\u2014");
+        String jobId = app != null ? trimToEmpty(app.getJobId()) : "";
+        row.setTitle(jobId.isEmpty() ? "Job record missing" : "Job record missing (" + jobId + ")");
+        row.setWeeklyHours(0);
+        row.setHiredAt(resolveHiredAtForWorkloadRow(app, hiredAtByApplicationId));
+        return row;
+    }
+
+    private Map<String, String> latestHiredSubmittedAtByApplicationId(List<HiringHistoryRecord> history) {
+        Map<String, String> best = new HashMap<>();
+        if (history == null) {
+            return best;
+        }
+        for (HiringHistoryRecord rec : history) {
+            if (rec == null || rec.getHiredApplicationIds() == null) {
+                continue;
+            }
+            String submittedAt = trimToEmpty(rec.getSubmittedAt());
+            if (submittedAt.isEmpty()) {
+                continue;
+            }
+            for (String applicationId : rec.getHiredApplicationIds()) {
+                if (applicationId == null || applicationId.isBlank()) {
+                    continue;
+                }
+                String prev = best.get(applicationId);
+                if (prev == null || submittedAt.compareTo(prev) > 0) {
+                    best.put(applicationId, submittedAt);
+                }
+            }
+        }
+        return best;
+    }
+
+    private String resolveHiredAtForWorkloadRow(ApplicationRecord app, Map<String, String> hiredAtByApplicationId) {
+        if (app == null) {
+            return "";
+        }
+        if (app.getId() != null && !app.getId().isBlank()) {
+            String fromHistory = trimToEmpty(hiredAtByApplicationId.get(app.getId()));
+            if (!fromHistory.isEmpty()) {
+                return fromHistory;
+            }
+        }
+        return trimToEmpty(app.getAppliedAt());
     }
 
     private void applyWorkloadLevel(AdminDashboardWorkloadItemResponse item, int threshold) {

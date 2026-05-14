@@ -112,11 +112,23 @@
       <div id="adminWorkloadLegend" class="admin-workload-legend"></div>
       <div class="card">
         <h3 class="admin-subtitle">Workload Monitoring (Table)</h3>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Student ID</th><th>Name</th><th>Hired Jobs</th><th>Weekly Hours</th><th>Threshold</th><th>Warning</th></tr></thead>
-            <tbody id="adminWorkloadBody"></tbody>
-          </table>
+        <div id="adminWorkloadLayout" class="admin-workload-layout">
+          <div class="admin-workload-main-col">
+            <div class="table-wrap">
+              <table aria-describedby="adminWorkloadHelp">
+                <thead><tr><th class="admin-workload-col-expand" scope="col">Details</th><th>Student ID</th><th>Name</th><th>Hired Jobs</th><th>Weekly Hours</th><th>Threshold</th><th>Level</th></tr></thead>
+                <tbody id="adminWorkloadBody"></tbody>
+              </table>
+            </div>
+            <p id="adminWorkloadHelp" class="admin-workload-help">Press Escape to close. Use Show or click the row to expand. On wide screens, detail also opens in the side panel.</p>
+          </div>
+          <aside id="adminWorkloadDrawer" class="admin-workload-drawer admin-hidden" aria-label="Hired position breakdown">
+            <div class="admin-workload-drawer-head">
+              <h3 id="adminWorkloadDrawerTitle" class="admin-workload-drawer-title">Details</h3>
+              <button type="button" id="adminWorkloadDrawerClose" class="btn btn-outline">Close</button>
+            </div>
+            <div id="adminWorkloadDrawerBody" class="admin-workload-drawer-body"></div>
+          </aside>
         </div>
       </div>
     </section>

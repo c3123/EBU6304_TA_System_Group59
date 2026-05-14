@@ -3,11 +3,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   const usersBody = byId("adminUsersBody");
   const jobsBody = byId("adminJobsBody");
   const workloadBody = byId("adminWorkloadBody");
+  const workloadLayout = byId("adminWorkloadLayout");
+  const workloadDrawer = byId("adminWorkloadDrawer");
+  const workloadDrawerTitle = byId("adminWorkloadDrawerTitle");
+  const workloadDrawerBody = byId("adminWorkloadDrawerBody");
+  const workloadDrawerClose = byId("adminWorkloadDrawerClose");
   const usersGrouped = byId("adminUsersGrouped");
   const jobsCards = byId("adminJobsCards");
   const workloadCards = byId("adminWorkloadCards");
   const tabs = Array.from(document.querySelectorAll("[data-admin-tab]"));
   const panels = Array.from(document.querySelectorAll("[data-admin-panel]"));
+  const workloadPanel = panels.find((p) => p.getAttribute("data-admin-panel") === "workload") || null;
   const noticeEl = byId("adminNotice");
 
   const createUserForm = byId("adminCreateUserForm");
@@ -28,7 +34,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const statusFilterEl = byId("adminJobStatusFilter");
   const departmentFilterEl = byId("adminJobDepartmentFilter");
-  const teacherFilterEl = byId("adminJobTeacherFilter");
+  const departmentOptionsEl = byId("adminDepartmentOptions");
   const applyFiltersBtn = byId("adminApplyFiltersBtn");
   const resetFiltersBtn = byId("adminResetFiltersBtn");
   const exportCsvBtn = byId("adminExportCsvBtn");
@@ -41,12 +47,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   const currentUserName = portal?.getAttribute("data-current-user-name") || "Admin User";
 
   let latestData = null;
+  /** When set, workload table re-expands this student after dashboard reload (e.g. save threshold). */
+  let openWorkloadStudentId = null;
   let knownDepartments = [];
-  let knownTeachers = [];
   const filters = {
     status: "all",
-    department: "all",
-    teacher: "all"
+    department: "all"
   };
 
   function setNotice(message, isError) {
@@ -72,6 +78,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (tabName === "jobs") title.textContent = "Job Management";
     if (tabName === "account") title.textContent = "My Account";
     if (tabName === "overview") title.textContent = `Welcome, ${currentUserName}`;
+  }
+
+  function prefersReducedMotion() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }
 
   function syncCreateRoleFields() {
@@ -100,16 +110,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function renderDepartmentOptions() {
-    if (!departmentFilterEl) return;
-    departmentFilterEl.innerHTML = `<option value="all">All Departments</option>` + knownDepartments
-      .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
-      .join("");
-  }
-
-  function renderTeacherOptions() {
-    if (!teacherFilterEl) return;
-    teacherFilterEl.innerHTML = `<option value="all">All Teachers</option>` + knownTeachers
-      .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
+    if (!departmentOptionsEl) return;
+    departmentOptionsEl.innerHTML = knownDepartments
+      .map((value) => `<option value="${escapeHtml(value)}"></option>`)
       .join("");
   }
 
@@ -128,12 +131,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         .map((job) => String(job.department || "").trim())
         .filter(Boolean)))
         .sort((a, b) => a.localeCompare(b));
-      knownTeachers = Array.from(new Set((latestData.jobs || [])
-        .map((job) => String(job.teacherName || "").trim())
-        .filter(Boolean)))
-        .sort((a, b) => a.localeCompare(b));
       renderDepartmentOptions();
-      renderTeacherOptions();
     }
 
     byId("statJobs").textContent = latestData.totalJobs ?? 0;
@@ -141,15 +139,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     byId("statApps").textContent = latestData.totalApplications ?? 0;
     renderOverview(latestData);
     renderUsers(latestData.users || []);
-    renderJobs(filteredJobsForDisplay(latestData.jobs || []));
+    renderJobs(latestData.jobs || []);
     renderWorkload(latestData.workload || []);
-  }
-
-  function filteredJobsForDisplay(jobs) {
-    if (!filters.teacher || filters.teacher === "all") {
-      return jobs;
-    }
-    return jobs.filter((job) => String(job.teacherName || "").trim() === filters.teacher);
   }
 
   async function loadThresholdSettings() {
@@ -226,6 +217,60 @@ document.addEventListener("DOMContentLoaded", async () => {
     `).join("");
   }
 
+  function formatHiredAtDisplay(value) {
+    if (!value) return "—";
+    const text = String(value);
+    const isoDate = text.match(/^(\d{4}-\d{2}-\d{2})/);
+    return isoDate ? isoDate[1] : text;
+  }
+
+  function hiredAtSortKey(value) {
+    const raw = String(value || "").trim();
+    return raw || "\u0000";
+  }
+
+  function sortAssignedJobsForDisplay(assignedJobs) {
+    const jobs = Array.isArray(assignedJobs) ? assignedJobs.slice() : [];
+    jobs.sort((a, b) => hiredAtSortKey(b.hiredAt).localeCompare(hiredAtSortKey(a.hiredAt))
+      || String(a.moduleCode || "").localeCompare(String(b.moduleCode || ""), undefined, { sensitivity: "base" }));
+    return jobs;
+  }
+
+  function renderWorkloadAssignedRows(assignedJobs) {
+    const jobs = sortAssignedJobsForDisplay(assignedJobs);
+    if (!jobs.length) {
+      return `<tr><td colspan="4">No line items (no hired applications with job data).</td></tr>`;
+    }
+    return jobs.map((job) => `
+      <tr>
+        <td>${escapeHtml(job.moduleCode || "—")}</td>
+        <td>${escapeHtml(job.title || job.jobId || "—")}</td>
+        <td>${escapeHtml(String(job.weeklyHours ?? 0))}</td>
+        <td>${escapeHtml(formatHiredAtDisplay(job.hiredAt))}</td>
+      </tr>
+    `).join("");
+  }
+
+  function normalizeJobStatus(job) {
+    if (job.recruitmentClosed) {
+      return { label: "Closed", cls: "danger", level: "is-closed", icon: "" };
+    }
+    if (String(job.status || "").toLowerCase() === "open") {
+      return { label: "Open", cls: "ok", level: "is-open", icon: "\u2713 " };
+    }
+    if (String(job.status || "").toLowerCase() === "draft") {
+      return { label: "Draft", cls: "warn", level: "is-draft", icon: "" };
+    }
+    return { label: job.status || "Unknown", cls: "low", level: "is-other", icon: "" };
+  }
+
+  function formatDate(value) {
+    if (!value) return "";
+    const text = String(value);
+    const isoDate = text.match(/^(\d{4}-\d{2}-\d{2})/);
+    return isoDate ? isoDate[1] : text;
+  }
+
   function renderJobs(jobs) {
     jobsCards.innerHTML = jobs.map((job) => {
       const status = normalizeJobStatus(job);
@@ -239,9 +284,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             <div>
               <div class="admin-job-title-line">
                 <h3 class="admin-job-title">${escapeHtml(job.moduleCode || "-")} - ${escapeHtml(job.title || "Untitled Job")}</h3>
-                <span class="tag ${status.cls}">${status.icon} ${status.label}</span>
+                <span class="tag ${status.cls}">${status.icon}${status.label}</span>
               </div>
-              <p class="admin-list-meta">Module Organiser: ${escapeHtml(job.teacherName || "-")} • Posted: ${escapeHtml(postedDate || "-")}</p>
+              <p class="admin-list-meta">Module Organiser: ${escapeHtml(job.teacherName || "-")} &middot; Posted: ${escapeHtml(postedDate || "-")}</p>
             </div>
           </div>
           <p class="admin-job-description">${escapeHtml(job.requirements || "No description provided.")}</p>
@@ -264,7 +309,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             </div>
           </div>
           <div class="admin-job-footer">
-            <p class="admin-job-meta">Hours/Week: ${escapeHtml(String(job.weeklyHours || 0))}h • Rate: - • Deadline: ${escapeHtml(job.deadline || "-")}</p>
+            <p class="admin-job-meta">Hours/Week: ${escapeHtml(String(job.weeklyHours || 0))}h &middot; Rate: - &middot; Deadline: ${escapeHtml(job.deadline || "-")}</p>
             <div class="row" style="gap:8px;">
               <button class="btn btn-outline" type="button" data-job-details="${escapeHtml(job.id)}">View Details</button>
               ${job.recruitmentClosed ? `<button class="btn btn-outline" type="button" data-reopen-job="${escapeHtml(job.id)}">Reopen</button>` : ""}
@@ -294,78 +339,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     `).join("");
   }
 
-  function normalizeJobStatus(job) {
-    if (job.recruitmentClosed) {
-      return { label: "Closed", cls: "danger", level: "is-closed", icon: "" };
-    }
-    if (String(job.status || "").toLowerCase() === "open") {
-      return { label: "Open", cls: "ok", level: "is-open", icon: "✓" };
-    }
-    if (String(job.status || "").toLowerCase() === "draft") {
-      return { label: "Draft", cls: "warn", level: "is-draft", icon: "" };
-    }
-    return { label: job.status || "Unknown", cls: "low", level: "is-other", icon: "" };
-  }
-
-  function formatDate(value) {
-    if (!value) return "";
-    const text = String(value);
-    const isoDate = text.match(/^(\d{4}-\d{2}-\d{2})/);
-    return isoDate ? isoDate[1] : text;
-  }
-
-  function renderWorkload(workload) {
-    workloadCards.innerHTML = workload.map((item) => {
-      const tier = workloadTier(item);
-      const assignedJobs = Array.isArray(item.assignedJobs) ? item.assignedJobs : [];
-      return `
-        <article class="card admin-work-card admin-work-${tier.level}">
-          <div class="admin-work-top">
-            <div>
-              <h3 class="admin-subtitle">${escapeHtml(item.studentName)}</h3>
-              <p class="admin-list-meta">Student ID: ${escapeHtml(item.studentId)}</p>
-            </div>
-            <div class="admin-work-hours">
-              <strong>${escapeHtml(String(item.weeklyHours || 0))}</strong>
-              <span>hrs/week</span>
-              <em class="tag ${tier.cls}">${tier.icon} ${tier.label}</em>
-            </div>
-          </div>
-          <div class="admin-assigned-block">
-            <p class="admin-list-meta">Assigned Positions:</p>
-            <div class="admin-work-chips">
-              ${assignedJobs.map((job) => `
-                <span class="admin-work-chip">${escapeHtml(job.moduleCode || job.jobId || "Job")} ${escapeHtml(job.title || "")} (${escapeHtml(String(job.weeklyHours || 0))}h/week)</span>
-              `).join("") || `<span class="admin-work-chip">No assigned job details</span>`}
-            </div>
-          </div>
-        </article>
-      `;
-    }).join("") || `<div class="card"><p class="admin-empty-text">No hired records yet.</p></div>`;
-
-    if (workloadLegendEl()) {
-      workloadLegendEl().innerHTML = workloadLegendHtml();
-    }
-
-    workloadBody.innerHTML = workload.map((item) => `
-      <tr>
-        <td>${escapeHtml(item.studentId)}</td>
-        <td>${escapeHtml(item.studentName)}</td>
-        <td>${escapeHtml(String(item.hiredCount || 0))}</td>
-        <td>${escapeHtml(String(item.weeklyHours || 0))}</td>
-        <td>${escapeHtml(String(item.thresholdHours || 0))}</td>
-        <td>${escapeHtml((item.workloadLabel || workloadTier(item).label))}</td>
-      </tr>
-    `).join("") || `
-      <tr><td colspan="6">No hired records yet.</td></tr>
-    `;
-  }
-
   function workloadTier(item) {
     const level = String(item.workloadLevel || "").toLowerCase();
-    if (level === "overload") return { level: "overload", label: "Overload", cls: "danger", icon: "●" };
-    if (level === "warning") return { level: "warning", label: "Warning", cls: "warn", icon: "△" };
-    if (level === "normal") return { level: "normal", label: "Normal", cls: "ok", icon: "✓" };
+    if (level === "overload") return { level: "overload", label: "Overload", cls: "danger", icon: "\u25CF " };
+    if (level === "warning") return { level: "warning", label: "Warning", cls: "warn", icon: "\u25B3 " };
+    if (level === "normal") return { level: "normal", label: "Normal", cls: "ok", icon: "\u2713 " };
     return { level: "low", label: "Low", cls: "low", icon: "" };
   }
 
@@ -378,11 +356,265 @@ document.addEventListener("DOMContentLoaded", async () => {
     const warningText = threshold > 15 ? `Warning (15-${threshold - 1}h)` : "Warning (15h+ below overload threshold)";
     return `
       <strong>Legend:</strong>
-      <span><i class="legend-dot legend-overload"></i> Overload (>=${escapeHtml(String(threshold))}h)</span>
+      <span><i class="legend-dot legend-overload"></i> Overload (&gt;=${escapeHtml(String(threshold))}h)</span>
       <span><i class="legend-dot legend-warning"></i> ${escapeHtml(warningText)}</span>
       <span><i class="legend-dot legend-normal"></i> Normal (10-14h)</span>
       <span><i class="legend-dot legend-low"></i> Low (&lt;10h)</span>
     `;
+  }
+
+  function buildWorkloadNestedTableHtml(item) {
+    const assignedJobs = item.assignedJobs;
+    return `
+      <table class="admin-workload-nested">
+        <caption class="admin-sr-only">Hired positions for ${escapeHtml(item.studentName)}</caption>
+        <thead>
+          <tr><th scope="col">Module</th><th scope="col">Position title</th><th scope="col">Hours/week</th><th scope="col">Hired / recorded at</th></tr>
+        </thead>
+        <tbody>${renderWorkloadAssignedRows(assignedJobs)}</tbody>
+      </table>
+    `;
+  }
+
+  function syncWorkloadDrawer(idx, expand) {
+    if (!workloadLayout || !workloadDrawer || !workloadDrawerBody) {
+      return;
+    }
+    if (!expand || idx < 0) {
+      workloadDrawer.classList.add("admin-hidden");
+      workloadLayout.classList.remove("has-drawer-open");
+      workloadDrawerBody.innerHTML = "";
+      return;
+    }
+    const list = latestData && Array.isArray(latestData.workload) ? latestData.workload : [];
+    const row = list[idx];
+    if (!row) {
+      workloadDrawer.classList.add("admin-hidden");
+      workloadLayout.classList.remove("has-drawer-open");
+      workloadDrawerBody.innerHTML = "";
+      return;
+    }
+    if (workloadDrawerTitle) {
+      workloadDrawerTitle.textContent = `${row.studentName || "Student"} (${row.studentId || ""})`;
+    }
+    workloadDrawerBody.innerHTML = buildWorkloadNestedTableHtml(row);
+    workloadDrawer.classList.remove("admin-hidden");
+    workloadLayout.classList.add("has-drawer-open");
+  }
+
+  function resolveExpandedWorkloadIndex(workload) {
+    if (!openWorkloadStudentId) {
+      return -1;
+    }
+    const sid = String(openWorkloadStudentId);
+    return workload.findIndex((w) => String(w.studentId) === sid);
+  }
+
+  function setWorkloadTableExpanded(idx, expand) {
+    const workload = latestData && Array.isArray(latestData.workload) ? latestData.workload : [];
+    const detail = workloadBody.querySelector(`[data-workload-detail="${idx}"]`);
+    const btn = workloadBody.querySelector(`[data-workload-expand="${idx}"]`);
+    if (!detail || !btn) {
+      syncWorkloadDrawer(-1, false);
+      return;
+    }
+
+    workloadBody.querySelectorAll("[data-workload-detail]").forEach((row) => row.classList.add("admin-hidden"));
+    workloadBody.querySelectorAll(".admin-workload-expand-btn").forEach((b) => {
+      b.setAttribute("aria-expanded", "false");
+      b.textContent = "Show";
+    });
+
+    if (expand) {
+      detail.classList.remove("admin-hidden");
+      btn.setAttribute("aria-expanded", "true");
+      btn.textContent = "Hide";
+      const row = workload[idx];
+      openWorkloadStudentId = row && row.studentId != null ? String(row.studentId) : null;
+      requestAnimationFrame(() => {
+        detail.scrollIntoView({
+          block: "nearest",
+          behavior: prefersReducedMotion() ? "auto" : "smooth"
+        });
+        try {
+          detail.focus({ preventScroll: true });
+        } catch (e) {
+          /* ignore */
+        }
+      });
+      syncWorkloadDrawer(idx, true);
+    } else {
+      openWorkloadStudentId = null;
+      syncWorkloadDrawer(-1, false);
+    }
+  }
+
+  function toggleWorkloadTableAtIndex(idx) {
+    const detail = workloadBody.querySelector(`[data-workload-detail="${idx}"]`);
+    if (!detail) return;
+    const willExpand = detail.classList.contains("admin-hidden");
+    if (willExpand) {
+      setWorkloadTableExpanded(idx, true);
+    } else {
+      setWorkloadTableExpanded(idx, false);
+    }
+  }
+
+  function renderWorkload(workload) {
+    const list = Array.isArray(workload) ? workload : [];
+    let expandedIdx = resolveExpandedWorkloadIndex(list);
+    if (expandedIdx < 0) {
+      openWorkloadStudentId = null;
+    }
+
+    workloadCards.innerHTML = list.map((item, idx) => {
+      const tier = workloadTier(item);
+      const assignedJobs = sortAssignedJobsForDisplay(item.assignedJobs);
+      const cardJobLines = assignedJobs.length
+        ? `<ul>${assignedJobs.map((job) => `
+          <li>${escapeHtml(job.moduleCode || job.jobId || "Job")}: ${escapeHtml(job.title || "")} — ${escapeHtml(String(job.weeklyHours ?? 0))}h/wk, hired ${escapeHtml(formatHiredAtDisplay(job.hiredAt))}</li>
+        `).join("")}</ul>`
+        : `<p class="admin-list-meta">No job-level breakdown.</p>`;
+      return `
+        <article class="card admin-work-card admin-work-${tier.level}">
+          <div class="admin-work-top">
+            <div>
+              <h3 class="admin-subtitle">${escapeHtml(item.studentName)}</h3>
+              <p class="admin-list-meta">Student ID: ${escapeHtml(item.studentId)}</p>
+            </div>
+            <div class="admin-work-hours">
+              <strong>${escapeHtml(String(item.weeklyHours || 0))}</strong>
+              <span>hrs/week</span>
+              <em class="tag ${tier.cls}">${tier.icon}${tier.label}</em>
+            </div>
+          </div>
+          <div class="admin-assigned-block">
+            <p class="admin-list-meta">Assigned Positions:</p>
+            <div class="admin-work-chips">
+              ${assignedJobs.map((job) => `
+                <span class="admin-work-chip">${escapeHtml(job.moduleCode || job.jobId || "Job")} ${escapeHtml(job.title || "")} (${escapeHtml(String(job.weeklyHours ?? 0))}h/week)</span>
+              `).join("") || `<span class="admin-work-chip">No assigned job details</span>`}
+            </div>
+          </div>
+          <p class="admin-list-meta">Hired Jobs: ${escapeHtml(String(item.hiredCount || 0))} | Threshold: ${escapeHtml(String(item.thresholdHours || 0))}h</p>
+          <div class="admin-workload-card-jobs">
+            <div class="admin-workload-card-jobs-head">
+              <strong class="admin-list-meta">By position (full detail)</strong>
+              <button type="button" class="btn btn-outline admin-workload-card-toggle"
+                data-workload-card-expand="${idx}"
+                aria-expanded="false"
+                aria-controls="admin-wl-card-${idx}">
+                Show positions
+              </button>
+            </div>
+            <div id="admin-wl-card-${idx}" class="admin-workload-card-body admin-hidden">
+              ${cardJobLines}
+            </div>
+          </div>
+        </article>
+      `;
+    }).join("") || `<div class="card"><p class="admin-empty-text">No hired records yet.</p></div>`;
+
+    if (workloadLegendEl()) {
+      workloadLegendEl().innerHTML = workloadLegendHtml();
+    }
+
+    workloadBody.innerHTML = list.map((item, idx) => {
+      const expanded = expandedIdx === idx;
+      const detailHidden = expanded ? "" : " admin-hidden";
+      const ariaExpanded = expanded ? "true" : "false";
+      return `
+      <tr class="admin-workload-summary-row" data-workload-summary="${idx}" id="admin-wl-sum-${idx}" title="Click row to show or hide job breakdown">
+        <td>
+          <button type="button" class="btn btn-outline admin-workload-expand-btn"
+            data-workload-expand="${idx}"
+            data-workload-student-id="${escapeHtml(item.studentId)}"
+            aria-expanded="${ariaExpanded}"
+            aria-controls="admin-wl-detail-${idx}">
+            ${expanded ? "Hide" : "Show"}
+          </button>
+        </td>
+        <td>${escapeHtml(item.studentId)}</td>
+        <td>${escapeHtml(item.studentName)}</td>
+        <td>${escapeHtml(String(item.hiredCount || 0))}</td>
+        <td>${escapeHtml(String(item.weeklyHours || 0))}</td>
+        <td>${escapeHtml(String(item.thresholdHours || 0))}</td>
+        <td>${escapeHtml((item.workloadLabel || workloadTier(item).label))}</td>
+      </tr>
+      <tr class="admin-workload-detail${detailHidden}" data-workload-detail="${idx}" id="admin-wl-detail-${idx}" role="region" aria-labelledby="admin-wl-sum-${idx}" tabindex="-1">
+        <td colspan="7">
+          ${buildWorkloadNestedTableHtml(item)}
+        </td>
+      </tr>`;
+    }).join("") || `
+      <tr><td colspan="7">No hired records yet.</td></tr>
+    `;
+
+    if (expandedIdx >= 0) {
+      syncWorkloadDrawer(expandedIdx, true);
+    } else {
+      syncWorkloadDrawer(-1, false);
+    }
+  }
+
+  function onWorkloadCardClick(event) {
+    const btn = event.target.closest("[data-workload-card-expand]");
+    if (!btn || !workloadCards.contains(btn)) return;
+    const idx = Number(btn.getAttribute("data-workload-card-expand"), 10);
+    if (Number.isNaN(idx)) return;
+    const panel = workloadCards.querySelector(`#admin-wl-card-${idx}`);
+    if (!panel) return;
+    const willShow = panel.classList.contains("admin-hidden");
+    panel.classList.toggle("admin-hidden", !willShow);
+    btn.setAttribute("aria-expanded", willShow ? "true" : "false");
+    btn.textContent = willShow ? "Hide positions" : "Show positions";
+  }
+
+  function onWorkloadGlobalKeydown(event) {
+    if (event.key !== "Escape") {
+      return;
+    }
+    if (event.target.closest("input, textarea, select, option, [contenteditable='true']")) {
+      return;
+    }
+    if (!openWorkloadStudentId) {
+      return;
+    }
+    if (!workloadPanel || workloadPanel.classList.contains("admin-hidden")) {
+      return;
+    }
+    const workload = latestData && Array.isArray(latestData.workload) ? latestData.workload : [];
+    const idx = resolveExpandedWorkloadIndex(workload);
+    if (idx < 0) {
+      openWorkloadStudentId = null;
+      syncWorkloadDrawer(-1, false);
+      return;
+    }
+    setWorkloadTableExpanded(idx, false);
+    const sumRow = workloadBody.querySelector(`[data-workload-summary="${idx}"]`);
+    const expandBtn = sumRow && sumRow.querySelector(".admin-workload-expand-btn");
+    if (expandBtn) {
+      expandBtn.focus();
+    }
+    event.preventDefault();
+  }
+
+  function onWorkloadTableClick(event) {
+    const expandBtn = event.target.closest("[data-workload-expand]");
+    if (expandBtn && workloadBody.contains(expandBtn)) {
+      const idx = Number(expandBtn.getAttribute("data-workload-expand"), 10);
+      if (!Number.isNaN(idx)) {
+        toggleWorkloadTableAtIndex(idx);
+      }
+      return;
+    }
+
+    const summaryRow = event.target.closest("[data-workload-summary]");
+    if (!summaryRow || !workloadBody.contains(summaryRow)) return;
+    if (event.target.closest("button")) return;
+    const idx = Number(summaryRow.getAttribute("data-workload-summary"), 10);
+    if (Number.isNaN(idx)) return;
+    toggleWorkloadTableAtIndex(idx);
   }
 
   async function createUser(event) {
@@ -451,8 +683,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function applyFilters() {
     filters.status = statusFilterEl.value || "all";
-    filters.department = departmentFilterEl.value || "all";
-    filters.teacher = teacherFilterEl.value || "all";
+    const department = (departmentFilterEl.value || "").trim();
+    filters.department = department ? department : "all";
     try {
       await loadAdminDashboard();
       setNotice("Job filters applied.", false);
@@ -466,10 +698,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function resetFilters() {
     filters.status = "all";
     filters.department = "all";
-    filters.teacher = "all";
     statusFilterEl.value = "all";
-    departmentFilterEl.value = "all";
-    teacherFilterEl.value = "all";
+    departmentFilterEl.value = "";
     try {
       await loadAdminDashboard();
       setNotice("Job filters reset.", false);
@@ -608,6 +838,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  function onJobDetails(event) {
+    const btn = event.target.closest("[data-job-details]");
+    if (!btn || !jobsCards.contains(btn)) return;
+    const jobId = btn.getAttribute("data-job-details");
+    if (!jobId) return;
+    const panel = jobsCards.querySelector(`[data-job-details-panel="${CSS.escape(jobId)}"]`);
+    if (!panel) return;
+    const expanded = panel.classList.toggle("open");
+    btn.textContent = expanded ? "Hide Details" : "View Details";
+  }
+
+  function onJobsCardsClick(event) {
+    onJobDetails(event);
+    onReopen(event);
+  }
+
   async function onReopen(event) {
     const btn = event.target.closest("[data-reopen-job]");
     if (!btn) return;
@@ -629,21 +875,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  function onJobDetails(event) {
-    const btn = event.target.closest("[data-job-details]");
-    if (!btn) return;
-    const jobId = btn.getAttribute("data-job-details");
-    const panel = document.querySelector(`[data-job-details-panel="${CSS.escape(jobId)}"]`);
-    if (!panel) return;
-    const expanded = panel.classList.toggle("open");
-    btn.textContent = expanded ? "Hide Details" : "View Details";
+  function onWorkloadDrawerCloseClick() {
+    const workload = latestData && Array.isArray(latestData.workload) ? latestData.workload : [];
+    const idx = resolveExpandedWorkloadIndex(workload);
+    if (idx >= 0) {
+      setWorkloadTableExpanded(idx, false);
+    } else {
+      syncWorkloadDrawer(-1, false);
+    }
   }
 
+  document.addEventListener("keydown", onWorkloadGlobalKeydown);
   usersBody.addEventListener("click", handleUserActions);
   usersGrouped.addEventListener("click", handleUserActions);
   jobsBody.addEventListener("click", onReopen);
-  jobsCards.addEventListener("click", onReopen);
-  jobsCards.addEventListener("click", onJobDetails);
+  jobsCards.addEventListener("click", onJobsCardsClick);
+  workloadBody.addEventListener("click", onWorkloadTableClick);
+  workloadCards.addEventListener("click", onWorkloadCardClick);
+  if (workloadDrawerClose) {
+    workloadDrawerClose.addEventListener("click", onWorkloadDrawerCloseClick);
+  }
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => activateTab(tab.getAttribute("data-admin-tab")));
   });
