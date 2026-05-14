@@ -20,39 +20,65 @@ import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public class AdminReportService {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Set<String> ALLOWED_STATUS_FILTERS = Set.of("all", "draft", "open", "closed", "withdrawn");
     private final AdminDashboardService adminDashboardService = new AdminDashboardService();
     private final AdminApplicationArchiveService adminApplicationArchiveService = new AdminApplicationArchiveService();
 
     public String buildWeeklyRecruitmentReport(ServletContext context, String format) {
+        return buildWeeklyRecruitmentReport(context, format, "all", "all");
+    }
+
+    public String buildWeeklyRecruitmentReport(ServletContext context, String format, String statusFilter, String departmentFilter) {
         String normalizedFormat = normalizeFormat(format);
+        String normalizedStatus = normalizeStatusFilter(statusFilter);
+        String normalizedDepartment = normalizeFilterValue(departmentFilter);
         try {
             List<JobPosting> jobs = JsonUtility.loadJobs(context);
             List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
             Map<String, Integer> hiredCountByJob = countHiredByJob(applications);
+            List<JobPosting> filteredJobs = filterJobs(jobs, normalizedStatus, normalizedDepartment);
 
-            jobs.sort(Comparator.comparing(JobPosting::getModuleCode, Comparator.nullsLast(String::compareToIgnoreCase))
+            filteredJobs.sort(Comparator.comparing(JobPosting::getModuleCode, Comparator.nullsLast(String::compareToIgnoreCase))
                     .thenComparing(JobPosting::getTitle, Comparator.nullsLast(String::compareToIgnoreCase)));
 
             if ("txt".equals(normalizedFormat)) {
-                return toTextReport(jobs, hiredCountByJob);
+                return toTextReport(filteredJobs, hiredCountByJob);
             }
-            return toCsvReport(jobs, hiredCountByJob);
+            return toCsvReport(filteredJobs, hiredCountByJob);
         } catch (IOException e) {
             throw new RuntimeException("Failed to generate weekly recruitment report.", e);
         }
     }
 
     public String resolveFileName(String format) {
-        return "weekly-recruitment-report." + normalizeFormat(format);
+        return resolveFileName(format, "all", "all");
+    }
+
+    public String resolveFileName(String format, String statusFilter, String departmentFilter) {
+        String normalizedFormat = normalizeFormat(format);
+        String status = normalizeStatusFilter(statusFilter);
+        String department = normalizeFilterValue(departmentFilter);
+        List<String> parts = new ArrayList<>();
+        parts.add("weekly-report");
+        if (!"all".equals(status)) {
+            parts.add("status-" + sanitizeFileNamePart(status));
+        }
+        if (!"all".equals(department)) {
+            parts.add("dept-" + sanitizeFileNamePart(department));
+        }
+        parts.add(LocalDate.now().toString().replace("-", ""));
+        return String.join("-", parts) + "." + normalizedFormat;
     }
 
     public String resolveContentType(String format) {
@@ -73,8 +99,23 @@ public class AdminReportService {
     }
 
     public String buildApplicationArchiveReport(ServletContext context, String format) {
+        return buildApplicationArchiveReport(context, format, "all", "all", "all", "all");
+    }
+
+    public String buildApplicationArchiveReport(ServletContext context,
+                                                String format,
+                                                String statusFilter,
+                                                String jobIdFilter,
+                                                String teacherFilter,
+                                                String studentFilter) {
         String normalizedFormat = normalizeFormat(format);
-        AdminApplicationArchiveResponse archive = adminApplicationArchiveService.listArchive(context, "all", "all", "all", "all");
+        AdminApplicationArchiveResponse archive = adminApplicationArchiveService.listArchive(
+                context,
+                statusFilter,
+                jobIdFilter,
+                teacherFilter,
+                studentFilter
+        );
         if ("txt".equals(normalizedFormat)) {
             return applicationsToText(archive.getItems());
         }
@@ -116,9 +157,29 @@ public class AdminReportService {
         );
     }
 
+    private String normalizeStatusFilter(String statusFilter) {
+        String normalized = normalizeFilterValue(statusFilter).toLowerCase(Locale.ROOT);
+        if (!ALLOWED_STATUS_FILTERS.contains(normalized)) {
+            throw new AdminBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    "status must be all, draft, open, closed, or withdrawn.",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+        return normalized;
+    }
+
+    private String normalizeFilterValue(String value) {
+        String normalized = value == null ? "" : value.trim();
+        return normalized.isBlank() || "all".equalsIgnoreCase(normalized) ? "all" : normalized;
+    }
+
     private Map<String, Integer> countHiredByJob(List<ApplicationRecord> applications) {
         Map<String, Integer> counts = new LinkedHashMap<>();
         for (ApplicationRecord app : applications) {
+            if (!app.isActive()) {
+                continue;
+            }
             if (!"hired".equalsIgnoreCase(app.getStatus())) {
                 continue;
             }
@@ -128,6 +189,48 @@ public class AdminReportService {
             counts.put(app.getJobId(), counts.getOrDefault(app.getJobId(), 0) + 1);
         }
         return counts;
+    }
+
+    private List<JobPosting> filterJobs(List<JobPosting> jobs, String statusFilter, String departmentFilter) {
+        List<JobPosting> filtered = new ArrayList<>();
+        for (JobPosting job : jobs) {
+            if (!matchesStatus(job, statusFilter)) {
+                continue;
+            }
+            if (!matchesDepartment(job, departmentFilter)) {
+                continue;
+            }
+            filtered.add(job);
+        }
+        return filtered;
+    }
+
+    private boolean matchesStatus(JobPosting job, String statusFilter) {
+        if ("all".equals(statusFilter)) {
+            return true;
+        }
+        boolean withdrawn = Boolean.TRUE.equals(job.getWithdrawn());
+        boolean closed = Boolean.TRUE.equals(job.getRecruitmentClosed()) || "closed".equalsIgnoreCase(safe(job.getStatus()).trim());
+        String status = safe(job.getStatus()).trim().toLowerCase(Locale.ROOT);
+        switch (statusFilter) {
+            case "withdrawn":
+                return withdrawn;
+            case "closed":
+                return closed;
+            case "draft":
+                return !withdrawn && !closed && "draft".equals(status);
+            case "open":
+                return !withdrawn && !closed && "open".equals(status);
+            default:
+                return true;
+        }
+    }
+
+    private boolean matchesDepartment(JobPosting job, String departmentFilter) {
+        if ("all".equals(departmentFilter)) {
+            return true;
+        }
+        return safe(job.getDepartment()).trim().equalsIgnoreCase(departmentFilter);
     }
 
     private String toCsvReport(List<JobPosting> jobs, Map<String, Integer> hiredCountByJob) {
@@ -265,5 +368,10 @@ public class AdminReportService {
 
     private String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private String sanitizeFileNamePart(String value) {
+        String cleaned = safe(value).trim().replaceAll("[^A-Za-z0-9_-]+", "-");
+        return cleaned.isBlank() ? "all" : cleaned;
     }
 }

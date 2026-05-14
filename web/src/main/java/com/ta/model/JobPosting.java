@@ -42,6 +42,10 @@ public class JobPosting {
     private Boolean recruitmentClosed;
     /** ISO timestamp when recruitment is closed. */
     private String closedAt;
+    /** Admin review timestamp for approval or rejection decisions. */
+    private String reviewedAt;
+    /** Optional short reason stored when an admin rejects a demand. */
+    private String rejectionReason;
     
 
     public JobPosting() {
@@ -229,5 +233,21 @@ public class JobPosting {
 
     public void setClosedAt(String closedAt) {
         this.closedAt = closedAt;
+    }
+
+    public String getReviewedAt() {
+        return reviewedAt;
+    }
+
+    public void setReviewedAt(String reviewedAt) {
+        this.reviewedAt = reviewedAt;
+    }
+
+    public String getRejectionReason() {
+        return rejectionReason;
+    }
+
+    public void setRejectionReason(String rejectionReason) {
+        this.rejectionReason = rejectionReason;
     }
 }

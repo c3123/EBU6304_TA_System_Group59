@@ -9,7 +9,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 /**
- * GET /api/admin/applications?jobId= — read-only list with MO decision fields for archiving (MO_10).
+ * GET /api/admin/applications?jobId= read-only list with MO decision fields for archiving (MO_10).
  */
 @WebServlet(name = "AdminApplicationsServlet", urlPatterns = {"/api/admin/applications"})
 public class AdminApplicationsServlet extends AdminBaseServlet {

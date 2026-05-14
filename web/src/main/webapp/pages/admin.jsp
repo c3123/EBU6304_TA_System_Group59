@@ -37,6 +37,7 @@
       <button class="admin-tab active" data-admin-tab="overview" role="tab" aria-selected="true">System Overview</button>
       <button class="admin-tab" data-admin-tab="workload" role="tab" aria-selected="false">Workload</button>
       <button class="admin-tab" data-admin-tab="users" role="tab" aria-selected="false">Users</button>
+      <button class="admin-tab" data-admin-tab="demands" role="tab" aria-selected="false">Demand Review</button>
       <button class="admin-tab" data-admin-tab="jobs" role="tab" aria-selected="false">Jobs</button>
       <button class="admin-tab" data-admin-tab="archive" role="tab" aria-selected="false">Application Archive</button>
       <button class="admin-tab" data-admin-tab="alerts" role="tab" aria-selected="false">Alerts</button>
@@ -226,6 +227,42 @@
       </div>
     </section>
 
+    <section class="admin-panel admin-hidden" data-admin-panel="demands">
+      <div class="admin-headline">
+        <div>
+          <h2 class="admin-section-title">Demand Approval Workbench</h2>
+          <p class="admin-section-desc">Review Module Organiser demand submissions before they can be published as TA jobs.</p>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <h3 class="admin-subtitle">Demand Filters</h3>
+        <div class="admin-form-grid">
+          <div class="field">
+            <label for="adminDemandStatusFilter">Approval Status</label>
+            <select id="adminDemandStatusFilter">
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="all">All</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:16px;">
+          <button id="adminDemandRefreshBtn" type="button" class="btn btn-primary">Refresh Demands</button>
+        </div>
+      </div>
+      <div id="adminDemandCards" class="admin-feed"></div>
+      <div class="card">
+        <h3 class="admin-subtitle">Demand Review Table</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Module</th><th>Title</th><th>Organiser</th><th>Submitted</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="adminDemandBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <section class="admin-panel admin-hidden" data-admin-panel="jobs">
       <div class="admin-headline">
         <div>
@@ -265,6 +302,40 @@
           <button id="adminExportCsvBtn" type="button" class="btn btn-outline">Export CSV</button>
           <button id="adminExportTxtBtn" type="button" class="btn btn-outline">Export TXT</button>
           <button id="adminBackupBtn" type="button" class="btn btn-outline">Backup JSON</button>
+        </div>
+      </div>
+      <div id="adminJobApplicationsPanel" class="card admin-job-applications-panel admin-hidden" style="margin-bottom:16px;">
+        <div class="admin-panel-inline-head">
+          <div>
+            <h3 id="adminJobApplicationsTitle" class="admin-subtitle">Job Applications</h3>
+            <p class="admin-list-meta">Read-only applicant drilldown for the selected job.</p>
+          </div>
+          <button id="adminJobApplicationsCloseBtn" type="button" class="btn btn-outline">Close</button>
+        </div>
+        <div class="admin-form-grid">
+          <div class="field">
+            <label for="adminJobApplicationStatusFilter">Application Status</label>
+            <select id="adminJobApplicationStatusFilter">
+              <option value="all">All</option>
+              <option value="pending">Pending</option>
+              <option value="viewed">Viewed</option>
+              <option value="shortlisted">Shortlisted</option>
+              <option value="hired">Hired</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:16px;">
+          <button id="adminJobApplicationsApplyBtn" type="button" class="btn btn-primary">Apply Status Filter</button>
+          <button id="adminJobApplicationsCsvBtn" type="button" class="btn btn-outline">Export Job CSV</button>
+          <button id="adminJobApplicationsTxtBtn" type="button" class="btn btn-outline">Export Job TXT</button>
+        </div>
+        <div id="adminJobApplicationCards" class="admin-feed" style="margin-top:16px;"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Applicant</th><th>Student No.</th><th>Applied</th><th>Status</th><th>Notes / Feedback</th></tr></thead>
+            <tbody id="adminJobApplicationBody"></tbody>
+          </table>
         </div>
       </div>
       <div id="adminJobsCards" class="admin-feed"></div>

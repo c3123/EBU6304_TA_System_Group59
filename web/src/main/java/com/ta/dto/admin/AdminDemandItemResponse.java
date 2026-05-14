@@ -1,31 +1,27 @@
-package com.ta.dto.mo;
+package com.ta.dto.admin;
 
-/**
- * Demand list item for MO progress tracking.
- */
-public class MoDemandItemResponse {
+public class AdminDemandItemResponse {
     private String jobId;
     private String moId;
-    private String courseName;
+    private String teacherName;
+    private String moduleCode;
+    private String title;
     private String department;
     private Integer plannedCount;
     private Integer hourMin;
     private Integer hourMax;
-    /** Weekly hours from legacy job.hours when hourMin/hourMax absent */
     private Integer hours;
     private String approvalStatus;
     private String status;
     private Boolean published;
     private Boolean withdrawn;
     private Boolean recruitmentClosed;
-    private String closedAt;
     private String schedule;
     private String location;
     private String deadline;
     private String requirements;
     private String createdAt;
     private String updatedAt;
-    private String publishedAt;
     private String reviewedAt;
     private String rejectionReason;
 
@@ -45,12 +41,28 @@ public class MoDemandItemResponse {
         this.moId = moId;
     }
 
-    public String getCourseName() {
-        return courseName;
+    public String getTeacherName() {
+        return teacherName;
     }
 
-    public void setCourseName(String courseName) {
-        this.courseName = courseName;
+    public void setTeacherName(String teacherName) {
+        this.teacherName = teacherName;
+    }
+
+    public String getModuleCode() {
+        return moduleCode;
+    }
+
+    public void setModuleCode(String moduleCode) {
+        this.moduleCode = moduleCode;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
     }
 
     public String getDepartment() {
@@ -133,14 +145,6 @@ public class MoDemandItemResponse {
         this.recruitmentClosed = recruitmentClosed;
     }
 
-    public String getClosedAt() {
-        return closedAt;
-    }
-
-    public void setClosedAt(String closedAt) {
-        this.closedAt = closedAt;
-    }
-
     public String getSchedule() {
         return schedule;
     }
@@ -187,14 +191,6 @@ public class MoDemandItemResponse {
 
     public void setUpdatedAt(String updatedAt) {
         this.updatedAt = updatedAt;
-    }
-
-    public String getPublishedAt() {
-        return publishedAt;
-    }
-
-    public void setPublishedAt(String publishedAt) {
-        this.publishedAt = publishedAt;
     }
 
     public String getReviewedAt() {

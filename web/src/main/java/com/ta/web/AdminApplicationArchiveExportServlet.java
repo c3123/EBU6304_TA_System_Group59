@@ -22,7 +22,14 @@ public class AdminApplicationArchiveExportServlet extends AdminBaseServlet {
             }
 
             String format = req.getParameter("format");
-            String content = adminReportService.buildApplicationArchiveReport(getServletContext(), format);
+            String content = adminReportService.buildApplicationArchiveReport(
+                    getServletContext(),
+                    format,
+                    req.getParameter("status"),
+                    req.getParameter("jobId"),
+                    req.getParameter("teacher"),
+                    req.getParameter("student")
+            );
             String normalizedFormat = format == null ? "" : format.trim().toLowerCase();
 
             resp.setStatus(HttpServletResponse.SC_OK);
