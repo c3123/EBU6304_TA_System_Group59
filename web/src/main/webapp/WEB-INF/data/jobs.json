@@ -32,12 +32,18 @@
     "title": "Database Systems Teaching Assistant",
     "hours": 8,
     "positions": 2,
+    "status": "open",
+    "deadline": "2026-05-24",
     "hourMin": 6,
     "hourMax": 9,
+    "schedule": "Wed 12:00-14:00",
     "approvalStatus": "approved",
-    "published": false,
+    "published": true,
     "withdrawn": false,
+    "location": "offline",
+    "requirements": "Java、SQL、C",
     "createdAt": "2026-04-11T08:49:37.510252700Z",
-    "updatedAt": "2026-04-11T08:49:51.834125Z"
+    "updatedAt": "2026-05-15T16:38:11.404064400Z",
+    "publishedAt": "2026-05-15T16:38:11.404064400Z"
   }
 ]

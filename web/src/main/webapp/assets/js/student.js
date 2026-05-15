@@ -59,6 +59,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const profileExperienceEl = byId("profileExperience");
   const saveProfileBtn = byId("saveProfileBtn");
   const changePasswordBtn = byId("studentChangePasswordBtn");
+  const aiAdvisorQuestionEl = byId("aiAdvisorQuestion");
+  const aiAdvisorBtn = byId("aiAdvisorBtn");
+  const aiAdvisorAnswerEl = byId("aiAdvisorAnswer");
+  const aiAdvisorNoteEl = byId("aiAdvisorNote");
 
   const jobDetailOverlayEl = byId("jobDetailOverlay");
   const closeJobDetailBtn = byId("closeJobDetailBtn");
@@ -113,6 +117,27 @@ document.addEventListener("DOMContentLoaded", async () => {
       return '<span class="tag">Shortlisted</span>';
     }
     return '<span class="tag warn">Under Review</span>';
+  }
+
+  function normalizeSkillList(value) {
+    return Array.isArray(value) ? value.filter((item) => String(item || "").trim()) : [];
+  }
+
+  function formatSkillList(value, emptyText) {
+    const skills = normalizeSkillList(value);
+    return skills.length ? skills.map(escapeHtml).join(", ") : emptyText;
+  }
+
+  function matchPercent(job) {
+    const score = Number(job && job.matchScore);
+    if (!Number.isFinite(score) || score <= 0) return 0;
+    return Math.round(score * 100);
+  }
+
+  function matchTone(percent) {
+    if (percent >= 80) return "strong";
+    if (percent >= 50) return "moderate";
+    return "weak";
   }
 
   function getContextPath() {
@@ -231,6 +256,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     jobsListEl.innerHTML = filtered.map((job) => {
       const applied = hasApplied(job.id);
+      const percent = matchPercent(job);
+      const tone = matchTone(percent);
       const detailBtn = `<button class="btn btn-outline open-detail-btn" data-job-id="${escapeHtml(job.id)}">View Details</button>`;
       const applyBtn = applied
         ? '<button class="btn btn-outline" disabled>Already Applied</button>'
@@ -247,6 +274,14 @@ document.addEventListener("DOMContentLoaded", async () => {
           </p>
           <p class="job-meta">Schedule: ${escapeHtml(job.schedule || "-")} | Location: ${escapeHtml(job.location || "-")}</p>
           <p class="job-meta">Status: ${escapeHtml(job.status || "unknown")}</p>
+          <div class="job-match job-match-${tone}">
+            <div class="job-match-rate">
+              <span>Match Rate</span>
+              <strong>${escapeHtml(percent)}%</strong>
+            </div>
+            <p><span>Matched Skills:</span> ${formatSkillList(job.matchedSkills, "No matching skills detected.")}</p>
+            <p><span>Missing Skills:</span> ${formatSkillList(job.missingSkills, "No major missing skills.")}</p>
+          </div>
           <div class="job-actions">${detailBtn}${applyBtn}</div>
         </article>
       `;
@@ -707,6 +742,39 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  async function askAiAdvisor() {
+    if (!aiAdvisorQuestionEl || !aiAdvisorBtn || !aiAdvisorAnswerEl || !aiAdvisorNoteEl) return;
+
+    const question = aiAdvisorQuestionEl.value.trim();
+    if (!question) {
+      aiAdvisorAnswerEl.textContent = "Please enter a question for the AI Job Advisor.";
+      aiAdvisorAnswerEl.classList.remove("hidden");
+      aiAdvisorNoteEl.classList.add("hidden");
+      return;
+    }
+
+    aiAdvisorBtn.disabled = true;
+    aiAdvisorBtn.textContent = "Asking...";
+    aiAdvisorAnswerEl.textContent = "Preparing advice from your current matching results...";
+    aiAdvisorAnswerEl.classList.remove("hidden");
+    aiAdvisorNoteEl.classList.add("hidden");
+
+    try {
+      const data = await requestApi("/ai-advisor", {
+        method: "POST",
+        body: { question }
+      });
+      aiAdvisorAnswerEl.textContent = data && data.answer ? data.answer : "No advice is available yet.";
+      aiAdvisorNoteEl.classList.toggle("hidden", !(data && data.fallback));
+    } catch (err) {
+      aiAdvisorAnswerEl.textContent = err.message || "AI advisor is unavailable right now.";
+      aiAdvisorNoteEl.classList.add("hidden");
+    } finally {
+      aiAdvisorBtn.disabled = false;
+      aiAdvisorBtn.textContent = "Ask AI Advisor";
+    }
+  }
+
   tabButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
       switchTab(btn.dataset.tab);
@@ -798,6 +866,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   changePasswordBtn.addEventListener("click", changePassword);
+
+  if (aiAdvisorBtn) {
+    aiAdvisorBtn.addEventListener("click", askAiAdvisor);
+  }
 
   if (uploadAreaEl && fileInputEl) {
     syncAttachmentLabelUi();

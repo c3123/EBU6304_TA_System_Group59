@@ -119,6 +119,95 @@
       line-height: 1.5;
     }
 
+    .job-match {
+      margin: 12px 0;
+      padding: 10px 12px;
+      border: 1px solid #e5e7eb;
+      border-left-width: 4px;
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+
+    .job-match-rate {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: #475569;
+    }
+
+    .job-match-rate strong {
+      font-size: 18px;
+      color: #0f172a;
+    }
+
+    .job-match p {
+      margin: 4px 0;
+      font-size: 12px;
+      line-height: 1.45;
+      color: #475569;
+    }
+
+    .job-match p span {
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .job-match-strong {
+      border-left-color: #16a34a;
+      background: #f0fdf4;
+    }
+
+    .job-match-moderate {
+      border-left-color: #f59e0b;
+      background: #fffbeb;
+    }
+
+    .job-match-weak {
+      border-left-color: #94a3b8;
+    }
+
+    .ai-advisor-card {
+      margin-bottom: 16px;
+    }
+
+    .ai-advisor-card h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .ai-advisor-form {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .ai-advisor-form textarea {
+      min-height: 44px;
+      border-width: 1px;
+      border-radius: 8px;
+    }
+
+    .ai-advisor-answer {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #334155;
+      font-size: 13px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    .ai-advisor-note {
+      margin-top: 8px;
+      color: #92400e;
+      font-size: 12px;
+    }
+
     .hired-summary {
       display: grid;
       grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
@@ -512,6 +601,16 @@
         </div>
       </div>
 
+      <div class="card ai-advisor-card">
+        <h3>AI Job Advisor</h3>
+        <div class="ai-advisor-form">
+          <textarea id="aiAdvisorQuestion" placeholder="Ask: Which TA job is most suitable for me?"></textarea>
+          <button id="aiAdvisorBtn" class="btn btn-primary" type="button">Ask AI Advisor</button>
+        </div>
+        <div id="aiAdvisorAnswer" class="ai-advisor-answer hidden"></div>
+        <div id="aiAdvisorNote" class="ai-advisor-note hidden">AI service unavailable. Showing system-generated advice.</div>
+      </div>
+
       <div id="jobsLoading" class="loading-state">Loading job data...</div>
       <div id="jobsEmpty" class="empty-state hidden">No matching positions at the moment.</div>
       <div id="jobsList" class="jobs-grid hidden"></div>
@@ -603,7 +702,8 @@
           </div>
           <div class="field field-wide">
             <label for="profileSkills">Skills</label>
-            <input id="profileSkills" type="text" placeholder="For example: Java, SQL, Python" />
+            <input id="profileSkills" type="text" placeholder="Example: Java, Python, SQL, Communication, Database Design" />
+            <p class="field-help">Enter technical and soft skills separated by commas.</p>
           </div>
           <div class="field field-wide">
             <label for="profileExperience">Experience</label>

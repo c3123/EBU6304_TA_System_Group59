@@ -1,6 +1,7 @@
 package com.ta.web.student;
 
 import com.ta.constant.ErrorCodes;
+import com.ta.service.student.JobMatchingService;
 import com.ta.service.student.StudentBusinessException;
 import com.ta.service.student.StudentService;
 import jakarta.servlet.ServletException;
@@ -12,7 +13,7 @@ import java.io.IOException;
 
 @WebServlet(name = "StudentJobsServlet", urlPatterns = {"/api/student/jobs"})
 public class StudentJobsServlet extends StudentBaseServlet {
-    private final StudentService studentService = new StudentService();
+    private final StudentService studentService = new StudentService(new JobMatchingService());
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -23,7 +24,7 @@ public class StudentJobsServlet extends StudentBaseServlet {
                 return;
             }
 
-            writeSuccess(resp, studentService.listJobs(getServletContext()));
+            writeSuccess(resp, studentService.listJobs(getServletContext(), studentUserId));
         } catch (StudentBusinessException ex) {
             writeError(resp, ex.getHttpStatus(), ex.getCode(), ex.getMessage());
         } catch (Exception ex) {
