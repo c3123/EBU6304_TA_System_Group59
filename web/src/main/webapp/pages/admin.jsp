@@ -355,7 +355,7 @@
       <div class="admin-headline">
         <div>
           <h2 class="admin-section-title">Recruitment Results</h2>
-          <p class="admin-section-desc">Campus-wide hiring and vacancy summary for leadership (read-only). Charts and vacancy ranking will appear in later updates.</p>
+          <p class="admin-section-desc">Campus-wide hiring and vacancy summary for leadership (read-only). Vacancy ranking by job follows in a later update.</p>
         </div>
       </div>
       <div class="card" style="margin-bottom:16px;">
@@ -393,6 +393,15 @@
           <p id="adminOutcomeTotalVacancies" class="admin-stat-value">0</p>
           <p class="admin-stat-sub">Unfilled slots (positions minus hired)</p>
         </article>
+      </div>
+      <div class="card">
+        <h3 class="admin-subtitle">By department</h3>
+        <p class="desc">Hired counts and unfilled slots grouped by each job posting's department field. Blank values are rolled up as 未填.</p>
+        <p class="admin-outcome-dept-legend" role="note">
+          <span><span class="admin-outcome-legend-swatch admin-outcome-legend-swatch--hired" aria-hidden="true"></span>Hired</span>
+          <span><span class="admin-outcome-legend-swatch admin-outcome-legend-swatch--vac" aria-hidden="true"></span>Vacancies</span>
+        </p>
+        <div id="adminOutcomeDeptChart" class="admin-outcome-dept-chart"></div>
       </div>
     </section>
 

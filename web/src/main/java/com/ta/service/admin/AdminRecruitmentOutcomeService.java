@@ -1,5 +1,6 @@
 package com.ta.service.admin;
 
+import com.ta.dto.admin.AdminRecruitmentOutcomeDepartmentRow;
 import com.ta.dto.admin.AdminRecruitmentOutcomeResponse;
 import com.ta.model.ApplicationRecord;
 import com.ta.model.JobPosting;
@@ -7,15 +8,22 @@ import com.ta.util.JsonUtility;
 import jakarta.servlet.ServletContext;
 
 import java.io.IOException;
+import java.text.Collator;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Aggregates jobs and applications for the leadership recruitment-outcome dashboard.
  * Counting rules align with {@link AdminDashboardService#populateOverview} for consistency.
  */
 public class AdminRecruitmentOutcomeService {
+
+    private static final String DEPARTMENT_UNKNOWN = "\u672a\u586b";
 
     public AdminRecruitmentOutcomeResponse load(ServletContext context) throws IOException {
         List<JobPosting> jobs = JsonUtility.loadJobs(context);
@@ -60,7 +68,79 @@ public class AdminRecruitmentOutcomeService {
         response.setTotalApplications(totalApplications);
         response.setTotalHired(totalHired);
         response.setTotalVacancies(totalVacancies);
+        response.setDepartments(buildDepartmentRows(jobs, applications, hiredByJob));
         return response;
+    }
+
+    private List<AdminRecruitmentOutcomeDepartmentRow> buildDepartmentRows(List<JobPosting> jobs,
+                                                                           List<ApplicationRecord> applications,
+                                                                           Map<String, Integer> hiredByJob) {
+        Map<String, JobPosting> jobById = new LinkedHashMap<>();
+        for (JobPosting job : jobs) {
+            if (job.getId() != null && !job.getId().isBlank()) {
+                jobById.put(job.getId(), job);
+            }
+        }
+
+        Map<String, Integer> hiredByDept = new LinkedHashMap<>();
+        for (ApplicationRecord app : applications) {
+            if (!app.isActive() || app.getJobId() == null || app.getJobId().isBlank()) {
+                continue;
+            }
+            if (!"hired".equalsIgnoreCase(trimToEmpty(app.getStatus()))) {
+                continue;
+            }
+            JobPosting job = jobById.get(app.getJobId());
+            String dept = departmentLabel(job);
+            hiredByDept.put(dept, hiredByDept.getOrDefault(dept, 0) + 1);
+        }
+
+        Map<String, Integer> vacancyByDept = new LinkedHashMap<>();
+        for (JobPosting job : jobs) {
+            if (Boolean.TRUE.equals(job.getWithdrawn())) {
+                continue;
+            }
+            String dept = departmentLabel(job);
+            int hired = hiredByJob.getOrDefault(job.getId(), 0);
+            int vac = Math.max(job.getPositions() - hired, 0);
+            vacancyByDept.put(dept, vacancyByDept.getOrDefault(dept, 0) + vac);
+        }
+
+        Set<String> keys = new LinkedHashSet<>();
+        keys.addAll(hiredByDept.keySet());
+        keys.addAll(vacancyByDept.keySet());
+
+        Collator collator = Collator.getInstance(Locale.CHINA);
+        List<String> ordered = new ArrayList<>(keys);
+        ordered.sort((a, b) -> {
+            boolean ua = DEPARTMENT_UNKNOWN.equals(a);
+            boolean ub = DEPARTMENT_UNKNOWN.equals(b);
+            if (ua != ub) {
+                return ua ? 1 : -1;
+            }
+            return collator.compare(a, b);
+        });
+
+        List<AdminRecruitmentOutcomeDepartmentRow> rows = new ArrayList<>();
+        for (String dept : ordered) {
+            AdminRecruitmentOutcomeDepartmentRow row = new AdminRecruitmentOutcomeDepartmentRow();
+            row.setDepartment(dept);
+            row.setHiredCount(hiredByDept.getOrDefault(dept, 0));
+            row.setVacancyCount(vacancyByDept.getOrDefault(dept, 0));
+            rows.add(row);
+        }
+        return rows;
+    }
+
+    private String departmentLabel(JobPosting job) {
+        if (job == null) {
+            return DEPARTMENT_UNKNOWN;
+        }
+        String raw = trimToEmpty(job.getDepartment());
+        if (raw.isEmpty()) {
+            return DEPARTMENT_UNKNOWN;
+        }
+        return raw;
     }
 
     private Map<String, Integer> countHiredByJob(List<ApplicationRecord> applications) {

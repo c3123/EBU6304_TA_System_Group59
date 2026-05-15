@@ -194,6 +194,42 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  function renderRecruitmentDepartmentChart(rows) {
+    const chart = byId("adminOutcomeDeptChart");
+    if (!chart) return;
+    const list = Array.isArray(rows) ? rows : [];
+    if (list.length === 0) {
+      chart.innerHTML = `<p class="desc">No department breakdown (no jobs or applications yet).</p>`;
+      return;
+    }
+    let max = 1;
+    list.forEach((r) => {
+      max = Math.max(max, Number(r.hiredCount) || 0, Number(r.vacancyCount) || 0);
+    });
+    chart.innerHTML = list.map((r) => {
+      const h = Number(r.hiredCount) || 0;
+      const v = Number(r.vacancyCount) || 0;
+      const hw = max ? (h / max) * 100 : 0;
+      const vw = max ? (v / max) * 100 : 0;
+      return `
+      <div class="admin-outcome-dept-row">
+        <div class="admin-outcome-dept-name">${escapeHtml(r.department)}</div>
+        <div class="admin-outcome-dept-metrics">
+          <div class="admin-outcome-dept-metric">
+            <span class="admin-outcome-dept-metric-label">Hired</span>
+            <div class="admin-outcome-bar-track" role="presentation"><div class="admin-outcome-bar-fill admin-outcome-bar-fill--hired" style="width:${hw}%"></div></div>
+            <span class="admin-outcome-dept-metric-val">${h}</span>
+          </div>
+          <div class="admin-outcome-dept-metric">
+            <span class="admin-outcome-dept-metric-label">Vacancies</span>
+            <div class="admin-outcome-bar-track" role="presentation"><div class="admin-outcome-bar-fill admin-outcome-bar-fill--vac" style="width:${vw}%"></div></div>
+            <span class="admin-outcome-dept-metric-val">${v}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
   async function loadRecruitmentOutcome() {
     try {
       const data = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/recruitment-outcome`, {
@@ -211,6 +247,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (apps) apps.textContent = data.totalApplications ?? 0;
       if (hired) hired.textContent = data.totalHired ?? 0;
       if (vac) vac.textContent = data.totalVacancies ?? 0;
+      renderRecruitmentDepartmentChart(data.departments);
     } catch (err) {
       setNotice(err.message, true);
     }
