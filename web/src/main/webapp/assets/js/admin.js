@@ -11,6 +11,23 @@ document.addEventListener("DOMContentLoaded", async () => {
   const usersGrouped = byId("adminUsersGrouped");
   const jobsCards = byId("adminJobsCards");
   const workloadCards = byId("adminWorkloadCards");
+  const archiveCards = byId("adminArchiveCards");
+  const archiveBody = byId("adminArchiveBody");
+  const alertsPreview = byId("adminAlertsPreview");
+  const alertsList = byId("adminAlertsList");
+  const demandStatusFilterEl = byId("adminDemandStatusFilter");
+  const demandRefreshBtn = byId("adminDemandRefreshBtn");
+  const demandCards = byId("adminDemandCards");
+  const demandBody = byId("adminDemandBody");
+  const jobApplicationsPanel = byId("adminJobApplicationsPanel");
+  const jobApplicationsTitle = byId("adminJobApplicationsTitle");
+  const jobApplicationsCloseBtn = byId("adminJobApplicationsCloseBtn");
+  const jobApplicationsStatusFilterEl = byId("adminJobApplicationStatusFilter");
+  const jobApplicationsApplyBtn = byId("adminJobApplicationsApplyBtn");
+  const jobApplicationsCsvBtn = byId("adminJobApplicationsCsvBtn");
+  const jobApplicationsTxtBtn = byId("adminJobApplicationsTxtBtn");
+  const jobApplicationCards = byId("adminJobApplicationCards");
+  const jobApplicationBody = byId("adminJobApplicationBody");
   const tabs = Array.from(document.querySelectorAll("[data-admin-tab]"));
   const panels = Array.from(document.querySelectorAll("[data-admin-panel]"));
   const workloadPanel = panels.find((p) => p.getAttribute("data-admin-panel") === "workload") || null;
@@ -31,14 +48,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   const thresholdHoursEl = byId("adminThresholdHours");
   const thresholdUpdatedAtEl = byId("adminThresholdUpdatedAt");
   const thresholdSaveBtn = byId("adminThresholdSaveBtn");
+  const exportWorkloadCsvBtn = byId("adminExportWorkloadCsvBtn");
+  const exportWorkloadTxtBtn = byId("adminExportWorkloadTxtBtn");
 
   const statusFilterEl = byId("adminJobStatusFilter");
   const departmentFilterEl = byId("adminJobDepartmentFilter");
-  const departmentOptionsEl = byId("adminDepartmentOptions");
+  const teacherFilterEl = byId("adminJobTeacherFilter");
   const applyFiltersBtn = byId("adminApplyFiltersBtn");
   const resetFiltersBtn = byId("adminResetFiltersBtn");
   const exportCsvBtn = byId("adminExportCsvBtn");
   const exportTxtBtn = byId("adminExportTxtBtn");
+  const backupBtn = byId("adminBackupBtn");
+
+  const archiveStatusFilterEl = byId("adminArchiveStatusFilter");
+  const archiveJobFilterEl = byId("adminArchiveJobFilter");
+  const archiveTeacherFilterEl = byId("adminArchiveTeacherFilter");
+  const archiveStudentFilterEl = byId("adminArchiveStudentFilter");
+  const archiveApplyBtn = byId("adminArchiveApplyBtn");
+  const archiveResetBtn = byId("adminArchiveResetBtn");
+  const archiveExportCsvBtn = byId("adminArchiveExportCsvBtn");
+  const archiveExportTxtBtn = byId("adminArchiveExportTxtBtn");
 
   const changePasswordForm = byId("adminChangePasswordForm");
   const changePasswordBtn = byId("adminChangePasswordBtn");
@@ -47,12 +76,30 @@ document.addEventListener("DOMContentLoaded", async () => {
   const currentUserName = portal?.getAttribute("data-current-user-name") || "Admin User";
 
   let latestData = null;
+  let latestArchive = null;
+  let latestDemands = null;
   /** When set, workload table re-expands this student after dashboard reload (e.g. save threshold). */
   let openWorkloadStudentId = null;
+  let currentJobApplicationJobId = null;
+  let currentJobApplicationTitle = "";
   let knownDepartments = [];
+  let knownTeachers = [];
   const filters = {
     status: "all",
-    department: "all"
+    department: "all",
+    teacher: "all"
+  };
+  const archiveFilters = {
+    status: "all",
+    jobId: "all",
+    teacher: "all",
+    student: ""
+  };
+  const demandFilters = {
+    status: "pending"
+  };
+  const jobApplicationFilters = {
+    status: "all"
   };
 
   function setNotice(message, isError) {
@@ -75,7 +122,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!title) return;
     if (tabName === "workload") title.textContent = "TA Workload Statistics";
     if (tabName === "users") title.textContent = "User Management";
+    if (tabName === "demands") title.textContent = "Demand Approval Workbench";
     if (tabName === "jobs") title.textContent = "Job Management";
+    if (tabName === "archive") title.textContent = "Application Archive";
+    if (tabName === "alerts") title.textContent = "Administrator Alerts";
     if (tabName === "account") title.textContent = "My Account";
     if (tabName === "overview") title.textContent = `Welcome, ${currentUserName}`;
   }
@@ -110,10 +160,34 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function renderDepartmentOptions() {
-    if (!departmentOptionsEl) return;
-    departmentOptionsEl.innerHTML = knownDepartments
-      .map((value) => `<option value="${escapeHtml(value)}"></option>`)
+    if (!departmentFilterEl) return;
+    departmentFilterEl.innerHTML = `<option value="all">All Departments</option>` + knownDepartments
+      .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
       .join("");
+    departmentFilterEl.value = filters.department;
+  }
+
+  function renderTeacherOptions() {
+    if (!teacherFilterEl) return;
+    teacherFilterEl.innerHTML = `<option value="all">All Teachers</option>` + knownTeachers
+      .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
+      .join("");
+    teacherFilterEl.value = filters.teacher;
+  }
+
+  function renderArchiveOptions(jobs) {
+    if (archiveJobFilterEl) {
+      archiveJobFilterEl.innerHTML = `<option value="all">All Jobs</option>` + (jobs || [])
+        .map((job) => `<option value="${escapeHtml(job.id)}">${escapeHtml(job.moduleCode || job.id)} - ${escapeHtml(job.title || "Untitled")}</option>`)
+        .join("");
+      archiveJobFilterEl.value = archiveFilters.jobId;
+    }
+    if (archiveTeacherFilterEl) {
+      archiveTeacherFilterEl.innerHTML = `<option value="all">All Teachers</option>` + knownTeachers
+        .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
+        .join("");
+      archiveTeacherFilterEl.value = archiveFilters.teacher;
+    }
   }
 
   async function loadAdminDashboard() {
@@ -131,16 +205,56 @@ document.addEventListener("DOMContentLoaded", async () => {
         .map((job) => String(job.department || "").trim())
         .filter(Boolean)))
         .sort((a, b) => a.localeCompare(b));
+      knownTeachers = Array.from(new Set((latestData.jobs || [])
+        .map((job) => String(job.teacherName || "").trim())
+        .filter(Boolean)))
+        .sort((a, b) => a.localeCompare(b));
       renderDepartmentOptions();
+      renderTeacherOptions();
+      renderArchiveOptions(latestData.jobs || []);
     }
 
     byId("statJobs").textContent = latestData.totalJobs ?? 0;
     byId("statUsers").textContent = latestData.totalUsers ?? 0;
     byId("statApps").textContent = latestData.totalApplications ?? 0;
+    byId("statStudents").textContent = latestData.totalStudents ?? 0;
+    byId("statTeachers").textContent = latestData.totalTeachers ?? 0;
+    byId("statOpenApps").textContent = latestData.totalOpenApplications ?? 0;
     renderOverview(latestData);
     renderUsers(latestData.users || []);
-    renderJobs(latestData.jobs || []);
+    renderJobs(filteredJobsForDisplay(latestData.jobs || []));
     renderWorkload(latestData.workload || []);
+    renderAlerts(latestData.alerts || []);
+  }
+
+  function filteredJobsForDisplay(jobs) {
+    if (!filters.teacher || filters.teacher === "all") {
+      return jobs;
+    }
+    return jobs.filter((job) => String(job.teacherName || "").trim() === filters.teacher);
+  }
+
+  async function loadArchive() {
+    const params = new URLSearchParams();
+    params.set("status", archiveFilters.status || "all");
+    params.set("jobId", archiveFilters.jobId || "all");
+    params.set("teacher", archiveFilters.teacher || "all");
+    if (archiveFilters.student) {
+      params.set("student", archiveFilters.student);
+    }
+    latestArchive = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/applications?${params.toString()}`, {
+      method: "GET"
+    });
+    renderArchive((latestArchive && latestArchive.items) || []);
+  }
+
+  async function loadDemands() {
+    const params = new URLSearchParams();
+    params.set("status", demandFilters.status || "pending");
+    latestDemands = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/demands?${params.toString()}`, {
+      method: "GET"
+    });
+    renderDemands((latestDemands && latestDemands.items) || []);
   }
 
   async function loadThresholdSettings() {
@@ -152,13 +266,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function renderOverview(data) {
-    const jobs = data.jobs || [];
-    const openJobs = jobs.filter((job) => !job.recruitmentClosed).length;
-    const closedJobs = jobs.filter((job) => job.recruitmentClosed).length;
-    const totalHired = (data.workload || []).reduce((sum, item) => sum + Number(item.hiredCount || 0), 0);
-    byId("overviewOpenJobs").textContent = openJobs;
-    byId("overviewClosedJobs").textContent = closedJobs;
-    byId("overviewHiredCount").textContent = totalHired;
+    byId("overviewOpenJobs").textContent = data.totalActiveJobs ?? 0;
+    byId("overviewClosedJobs").textContent = data.totalClosedJobs ?? 0;
+    byId("overviewHiredCount").textContent = data.totalHiredRecords ?? 0;
+    byId("overviewUnfilledPositions").textContent = data.totalUnfilledPositions ?? 0;
+    byId("overviewRiskStudents").textContent = Number(data.totalWarningStudents || 0) + Number(data.totalOverloadedStudents || 0);
+    byId("overviewAlerts").textContent = (data.alerts || []).length;
   }
 
   function buildUserActions(user, adminCount) {
@@ -217,8 +330,77 @@ document.addEventListener("DOMContentLoaded", async () => {
     `).join("");
   }
 
+  function renderDemands(items) {
+    const rows = Array.isArray(items) ? items : [];
+    if (demandCards) {
+      demandCards.innerHTML = rows.map((item) => {
+        const status = String(item.approvalStatus || "pending").toLowerCase();
+        return `
+          <article class="card admin-demand-card admin-demand-${escapeHtml(status)}">
+            <div class="admin-job-title-line">
+              <h3 class="admin-job-title">${escapeHtml(item.moduleCode || "-")} - ${escapeHtml(item.title || "Untitled Demand")}</h3>
+              <span class="tag ${demandStatusClass(status)}">${escapeHtml(formatStatus(status))}</span>
+            </div>
+            <p class="admin-list-meta">Submitted by ${escapeHtml(item.teacherName || item.moId || "-")} on ${escapeHtml(formatDate(item.createdAt) || "-")}</p>
+            <div class="admin-demand-detail-grid">
+              <div><span class="admin-key">Department</span><strong>${escapeHtml(item.department || "-")}</strong></div>
+              <div><span class="admin-key">Planned Count</span><strong>${escapeHtml(String(item.plannedCount ?? "-"))}</strong></div>
+              <div><span class="admin-key">Hours</span><strong>${escapeHtml(formatHourRange(item))}</strong></div>
+              <div><span class="admin-key">Reviewed</span><strong>${escapeHtml(formatDate(item.reviewedAt) || "-")}</strong></div>
+            </div>
+            <p class="admin-demand-requirements">${escapeHtml(item.requirements || "No demand notes yet.")}</p>
+            ${item.rejectionReason ? `<p class="admin-demand-reason"><strong>Reject reason:</strong> ${escapeHtml(item.rejectionReason)}</p>` : ""}
+            <div class="row" style="margin-top:12px;">
+              ${demandActionButtons(item)}
+            </div>
+          </article>
+        `;
+      }).join("") || `<div class="card"><p class="admin-empty-text">No demands found for this status.</p></div>`;
+    }
+
+    if (demandBody) {
+      demandBody.innerHTML = rows.map((item) => `
+        <tr>
+          <td>${escapeHtml(item.moduleCode || "-")}</td>
+          <td>${escapeHtml(item.title || "-")}</td>
+          <td>${escapeHtml(item.teacherName || item.moId || "-")}</td>
+          <td>${escapeHtml(formatDate(item.createdAt) || "-")}</td>
+          <td>${escapeHtml(formatStatus(item.approvalStatus))}</td>
+          <td>${demandActionButtons(item)}</td>
+        </tr>
+      `).join("") || `<tr><td colspan="6">No demands found for this status.</td></tr>`;
+    }
+  }
+
+  function demandActionButtons(item) {
+    if (String(item.approvalStatus || "").toLowerCase() !== "pending") {
+      return `<span class="admin-list-meta">Reviewed ${escapeHtml(formatDate(item.reviewedAt) || "-")}</span>`;
+    }
+    return `
+      <button class="btn btn-primary" type="button" data-demand-review="${escapeHtml(item.jobId)}" data-demand-action="approve">Approve</button>
+      <button class="btn btn-outline" type="button" data-demand-review="${escapeHtml(item.jobId)}" data-demand-action="reject">Reject</button>
+    `;
+  }
+
+  function demandStatusClass(status) {
+    const value = String(status || "").toLowerCase();
+    if (value === "approved") return "ok";
+    if (value === "rejected") return "danger";
+    return "warn";
+  }
+
+  function formatHourRange(item) {
+    if (item.hours && Number(item.hours) > 0) {
+      return `${item.hours}h`;
+    }
+    if (item.hourMin !== null && item.hourMin !== undefined && item.hourMax !== null && item.hourMax !== undefined) {
+      return `${item.hourMin}-${item.hourMax}h`;
+    }
+    return "-";
+  }
+
   function formatHiredAtDisplay(value) {
-    if (!value) return "—";
+    if (!value) return "-";
     const text = String(value);
     const isoDate = text.match(/^(\d{4}-\d{2}-\d{2})/);
     return isoDate ? isoDate[1] : text;
@@ -243,8 +425,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     return jobs.map((job) => `
       <tr>
-        <td>${escapeHtml(job.moduleCode || "—")}</td>
-        <td>${escapeHtml(job.title || job.jobId || "—")}</td>
+        <td>${escapeHtml(job.moduleCode || "-")}</td>
+        <td>${escapeHtml(job.title || job.jobId || "-")}</td>
         <td>${escapeHtml(String(job.weeklyHours ?? 0))}</td>
         <td>${escapeHtml(formatHiredAtDisplay(job.hiredAt))}</td>
       </tr>
@@ -277,14 +459,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       const positions = Number(job.positions || 0);
       const hired = Number(job.hiredCount || 0);
       const applicants = Number(job.applicantCount || 0);
+      const unfilled = Number(job.unfilledCount ?? Math.max(positions - hired, 0));
       const postedDate = formatDate(job.publishedAt || job.createdAt);
       return `
-        <article class="card admin-job-card admin-job-card-large ${status.level}">
+        <article class="card admin-job-card admin-job-card-large ${status.level} admin-health-${escapeHtml(job.healthLevel || "unknown")}">
           <div class="admin-job-heading">
             <div>
               <div class="admin-job-title-line">
                 <h3 class="admin-job-title">${escapeHtml(job.moduleCode || "-")} - ${escapeHtml(job.title || "Untitled Job")}</h3>
                 <span class="tag ${status.cls}">${status.icon}${status.label}</span>
+                <span class="tag ${healthTagClass(job.healthLevel)}">${escapeHtml(job.healthLabel || "Health Unknown")}</span>
               </div>
               <p class="admin-list-meta">Module Organiser: ${escapeHtml(job.teacherName || "-")} &middot; Posted: ${escapeHtml(postedDate || "-")}</p>
             </div>
@@ -305,13 +489,18 @@ document.addEventListener("DOMContentLoaded", async () => {
             </div>
             <div class="admin-job-metric metric-filled">
               <span>Status</span>
-              <strong>${escapeHtml(String(hired))}/${escapeHtml(String(positions))} Filled</strong>
+              <strong>${escapeHtml(job.filledLabel || `${hired}/${positions} Filled`)}</strong>
+            </div>
+            <div class="admin-job-metric metric-unfilled">
+              <span>Unfilled</span>
+              <strong>${escapeHtml(String(unfilled))}</strong>
             </div>
           </div>
           <div class="admin-job-footer">
-            <p class="admin-job-meta">Hours/Week: ${escapeHtml(String(job.weeklyHours || 0))}h &middot; Rate: - &middot; Deadline: ${escapeHtml(job.deadline || "-")}</p>
+            <p class="admin-job-meta">Hours/Week: ${escapeHtml(String(job.weeklyHours || 0))}h &middot; Rate: - &middot; Deadline: ${escapeHtml(job.deadline || "-")}${deadlineSuffix(job)}</p>
             <div class="row" style="gap:8px;">
               <button class="btn btn-outline" type="button" data-job-details="${escapeHtml(job.id)}">View Details</button>
+              <button class="btn btn-outline" type="button" data-job-applications="${escapeHtml(job.id)}" data-job-title="${escapeHtml(job.moduleCode || job.id)} - ${escapeHtml(job.title || "Untitled Job")}">View Applications</button>
               ${job.recruitmentClosed ? `<button class="btn btn-outline" type="button" data-reopen-job="${escapeHtml(job.id)}">Reopen</button>` : ""}
             </div>
           </div>
@@ -333,17 +522,39 @@ document.addEventListener("DOMContentLoaded", async () => {
         <td>${escapeHtml(job.teacherName)}</td>
         <td>${escapeHtml(String(job.applicantCount || 0))}</td>
         <td>${escapeHtml(String(job.hiredCount || 0))}</td>
-        <td>${escapeHtml(normalizeJobStatus(job).label)}</td>
-        <td>${job.recruitmentClosed ? `<button class="btn btn-outline" data-reopen-job="${escapeHtml(job.id)}">Reopen</button>` : "-"}</td>
+        <td>${escapeHtml(normalizeJobStatus(job).label)} / ${escapeHtml(job.healthLabel || "-")}</td>
+        <td>
+          <div class="row" style="gap:8px;">
+            <button class="btn btn-outline" type="button" data-job-applications="${escapeHtml(job.id)}" data-job-title="${escapeHtml(job.moduleCode || job.id)} - ${escapeHtml(job.title || "Untitled Job")}">Applications</button>
+            ${job.recruitmentClosed ? `<button class="btn btn-outline" data-reopen-job="${escapeHtml(job.id)}">Reopen</button>` : ""}
+          </div>
+        </td>
       </tr>
     `).join("");
   }
 
+  function healthTagClass(level) {
+    const value = String(level || "").toLowerCase();
+    if (["overdue", "closed-unfilled", "no-applicants"].includes(value)) return "danger";
+    if (["deadline-risk", "unfilled"].includes(value)) return "warn";
+    if (["healthy", "complete"].includes(value)) return "ok";
+    return "low";
+  }
+
+  function deadlineSuffix(job) {
+    if (job.daysUntilDeadline === null || job.daysUntilDeadline === undefined) return "";
+    const days = Number(job.daysUntilDeadline);
+    if (Number.isNaN(days)) return "";
+    if (days < 0) return ` (${Math.abs(days)} day(s) overdue)`;
+    if (days === 0) return " (today)";
+    return ` (${days} day(s) left)`;
+  }
+
   function workloadTier(item) {
     const level = String(item.workloadLevel || "").toLowerCase();
-    if (level === "overload") return { level: "overload", label: "Overload", cls: "danger", icon: "\u25CF " };
-    if (level === "warning") return { level: "warning", label: "Warning", cls: "warn", icon: "\u25B3 " };
-    if (level === "normal") return { level: "normal", label: "Normal", cls: "ok", icon: "\u2713 " };
+    if (level === "overload") return { level: "overload", label: "Overload", cls: "danger", icon: "!" };
+    if (level === "warning") return { level: "warning", label: "Warning", cls: "warn", icon: "!" };
+    if (level === "normal") return { level: "normal", label: "Normal", cls: "ok", icon: "OK" };
     return { level: "low", label: "Low", cls: "low", icon: "" };
   }
 
@@ -472,7 +683,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const assignedJobs = sortAssignedJobsForDisplay(item.assignedJobs);
       const cardJobLines = assignedJobs.length
         ? `<ul>${assignedJobs.map((job) => `
-          <li>${escapeHtml(job.moduleCode || job.jobId || "Job")}: ${escapeHtml(job.title || "")} — ${escapeHtml(String(job.weeklyHours ?? 0))}h/wk, hired ${escapeHtml(formatHiredAtDisplay(job.hiredAt))}</li>
+          <li>${escapeHtml(job.moduleCode || job.jobId || "Job")}: ${escapeHtml(job.title || "")} - ${escapeHtml(String(job.weeklyHours ?? 0))}h/wk, hired ${escapeHtml(formatHiredAtDisplay(job.hiredAt))}</li>
         `).join("")}</ul>`
         : `<p class="admin-list-meta">No job-level breakdown.</p>`;
       return `
@@ -617,6 +828,141 @@ document.addEventListener("DOMContentLoaded", async () => {
     toggleWorkloadTableAtIndex(idx);
   }
 
+  function renderAlerts(alerts) {
+    const items = Array.isArray(alerts) ? alerts : [];
+    const previewItems = items.slice(0, 4);
+    if (alertsPreview) {
+      alertsPreview.innerHTML = previewItems.map(alertHtml).join("")
+        || `<div class="admin-alert admin-alert-info"><strong>No alerts</strong><p>No active admin alerts.</p></div>`;
+    }
+    if (alertsList) {
+      alertsList.innerHTML = items.map(alertHtml).join("")
+        || `<div class="admin-alert admin-alert-info"><strong>No alerts</strong><p>No workload, vacancy, deadline, or metadata alerts found.</p></div>`;
+    }
+  }
+
+  function alertHtml(alert) {
+    const severity = String(alert.severity || "info").toLowerCase();
+    return `
+      <article class="admin-alert admin-alert-${escapeHtml(severity)}">
+        <div>
+          <strong>${escapeHtml(alert.title || "Alert")}</strong>
+          <p>${escapeHtml(alert.message || "")}</p>
+          <small>${escapeHtml(alert.ownerName || "-")} ${alert.dueDate ? `| Due: ${escapeHtml(alert.dueDate)}` : ""}</small>
+        </div>
+        <span>${escapeHtml((alert.type || "info").toUpperCase())}</span>
+      </article>
+    `;
+  }
+
+  function renderArchive(items) {
+    const rows = Array.isArray(items) ? items : [];
+    if (archiveCards) {
+      archiveCards.innerHTML = rows.map((item) => `
+        <article class="card admin-archive-card">
+          <div class="admin-job-title-line">
+            <h3 class="admin-job-title">${escapeHtml(item.moduleCode || item.jobId || "-")} - ${escapeHtml(item.title || "Unknown Job")}</h3>
+            <span class="tag ${archiveStatusClass(item.status)}">${escapeHtml(formatStatus(item.status))}</span>
+          </div>
+          <p class="admin-list-meta">Student: ${escapeHtml(item.studentName || item.studentId || "-")} - Organiser: ${escapeHtml(item.teacherName || "-")} - Applied: ${escapeHtml(formatDate(item.appliedAt) || "-")}</p>
+          <div class="admin-archive-notes">
+            <div><span class="admin-key">Evaluation Notes</span><p>${escapeHtml(item.evaluationNotes || "-")}</p></div>
+            <div><span class="admin-key">Decision Feedback</span><p>${escapeHtml(item.decisionFeedback || "-")}</p></div>
+          </div>
+        </article>
+      `).join("") || `<div class="card"><p class="admin-empty-text">No archived applications found.</p></div>`;
+    }
+
+    if (archiveBody) {
+      archiveBody.innerHTML = rows.map((item) => `
+        <tr>
+          <td>${escapeHtml(item.applicationId || "-")}</td>
+          <td>${escapeHtml(item.studentName || item.studentId || "-")}</td>
+          <td>${escapeHtml(item.moduleCode || item.jobId || "-")}</td>
+          <td>${escapeHtml(item.teacherName || "-")}</td>
+          <td>${escapeHtml(formatStatus(item.status))}</td>
+          <td>${escapeHtml(formatDate(item.appliedAt) || "-")}</td>
+          <td>${escapeHtml(item.decisionFeedback || item.evaluationNotes || "-")}</td>
+        </tr>
+      `).join("") || `<tr><td colspan="7">No archived applications found.</td></tr>`;
+    }
+  }
+
+  function archiveStatusClass(status) {
+    const value = String(status || "").toLowerCase();
+    if (value === "hired") return "ok";
+    if (value === "rejected") return "danger";
+    if (value === "shortlisted") return "warn";
+    return "low";
+  }
+
+  async function openJobApplications(jobId, title) {
+    currentJobApplicationJobId = jobId;
+    currentJobApplicationTitle = title || jobId;
+    jobApplicationFilters.status = "all";
+    if (jobApplicationsStatusFilterEl) {
+      jobApplicationsStatusFilterEl.value = "all";
+    }
+    if (jobApplicationsTitle) {
+      jobApplicationsTitle.textContent = `Applications for ${currentJobApplicationTitle}`;
+    }
+    if (jobApplicationsPanel) {
+      jobApplicationsPanel.classList.remove("admin-hidden");
+    }
+    await loadJobApplications();
+    activateTab("jobs");
+    if (jobApplicationsPanel) {
+      jobApplicationsPanel.scrollIntoView({ block: "start", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    }
+  }
+
+  async function loadJobApplications() {
+    if (!currentJobApplicationJobId) {
+      return;
+    }
+    const params = new URLSearchParams();
+    params.set("jobId", currentJobApplicationJobId);
+    params.set("status", jobApplicationFilters.status || "all");
+    const data = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/applications?${params.toString()}`, {
+      method: "GET"
+    });
+    renderJobApplications((data && data.items) || []);
+  }
+
+  function renderJobApplications(items) {
+    const rows = Array.isArray(items) ? items : [];
+    if (jobApplicationCards) {
+      jobApplicationCards.innerHTML = rows.map((item) => `
+        <article class="card admin-app-card">
+          <div class="admin-job-title-line">
+            <h3 class="admin-subtitle">${escapeHtml(item.studentName || item.studentId || "-")}</h3>
+            <span class="tag ${archiveStatusClass(item.status)}">${escapeHtml(formatStatus(item.status))}</span>
+          </div>
+          <p class="admin-list-meta">Student No: ${escapeHtml(item.studentNo || "-")} | Applied: ${escapeHtml(formatDate(item.appliedAt) || "-")}</p>
+          <div class="admin-archive-notes">
+            <div><span class="admin-key">Evaluation Notes</span><p>${escapeHtml(item.evaluationNotes || "-")}</p></div>
+            <div><span class="admin-key">Decision Feedback</span><p>${escapeHtml(item.decisionFeedback || "-")}</p></div>
+          </div>
+        </article>
+      `).join("") || `<div class="card"><p class="admin-empty-text">No applications found for this job and status.</p></div>`;
+    }
+
+    if (jobApplicationBody) {
+      jobApplicationBody.innerHTML = rows.map((item) => `
+        <tr>
+          <td>${escapeHtml(item.studentName || item.studentId || "-")}</td>
+          <td>${escapeHtml(item.studentNo || "-")}</td>
+          <td>${escapeHtml(formatDate(item.appliedAt) || "-")}</td>
+          <td>${escapeHtml(formatStatus(item.status))}</td>
+          <td>
+            <strong>Notes:</strong> ${escapeHtml(item.evaluationNotes || "-")}<br />
+            <strong>Feedback:</strong> ${escapeHtml(item.decisionFeedback || "-")}
+          </td>
+        </tr>
+      `).join("") || `<tr><td colspan="5">No applications found for this job and status.</td></tr>`;
+    }
+  }
+
   async function createUser(event) {
     event.preventDefault();
     const payload = {
@@ -681,10 +1027,65 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  async function refreshDemandFilters() {
+    demandFilters.status = demandStatusFilterEl.value || "pending";
+    try {
+      await loadDemands();
+      setNotice("Demand list refreshed.", false);
+      activateTab("demands");
+    } catch (err) {
+      setNotice(err.message, true);
+      activateTab("demands");
+    }
+  }
+
+  async function reviewDemand(button) {
+    const jobId = button.getAttribute("data-demand-review");
+    const action = button.getAttribute("data-demand-action");
+    if (!jobId || !action) {
+      return;
+    }
+    let reason = "";
+    if (action === "reject") {
+      const entered = window.prompt("Enter a short rejection reason (optional):", "");
+      if (entered === null) {
+        return;
+      }
+      reason = entered.trim();
+      if (reason.length > 200) {
+        setNotice("Rejection reason must be 200 characters or fewer.", true);
+        activateTab("demands");
+        return;
+      }
+    } else if (!window.confirm(`Approve demand ${jobId}?`)) {
+      return;
+    }
+
+    try {
+      button.disabled = true;
+      button.textContent = action === "approve" ? "Approving..." : "Rejecting...";
+      await requestJson(`${window.location.origin}${getContextPath()}/api/admin/demands/review/${encodeURIComponent(jobId)}?action=${encodeURIComponent(action)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json;charset=UTF-8" },
+        body: JSON.stringify({ reason })
+      });
+      setNotice(`Demand ${jobId} ${action === "approve" ? "approved" : "rejected"}.`, false);
+      await Promise.all([loadDemands(), loadAdminDashboard()]);
+      activateTab("demands");
+    } catch (err) {
+      setNotice(err.message, true);
+      activateTab("demands");
+    } finally {
+      button.disabled = false;
+      button.textContent = action === "approve" ? "Approve" : "Reject";
+    }
+  }
+
   async function applyFilters() {
     filters.status = statusFilterEl.value || "all";
     const department = (departmentFilterEl.value || "").trim();
     filters.department = department ? department : "all";
+    filters.teacher = teacherFilterEl.value || "all";
     try {
       await loadAdminDashboard();
       setNotice("Job filters applied.", false);
@@ -698,8 +1099,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function resetFilters() {
     filters.status = "all";
     filters.department = "all";
+    filters.teacher = "all";
     statusFilterEl.value = "all";
-    departmentFilterEl.value = "";
+    departmentFilterEl.value = "all";
+    teacherFilterEl.value = "all";
     try {
       await loadAdminDashboard();
       setNotice("Job filters reset.", false);
@@ -713,15 +1116,126 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function downloadReport(format) {
     const button = format === "csv" ? exportCsvBtn : exportTxtBtn;
     const defaultText = format === "csv" ? "Export CSV" : "Export TXT";
+    const params = new URLSearchParams();
+    params.set("format", format);
+    params.set("status", filters.status || "all");
+    params.set("department", filters.department || "all");
+    await downloadAdminFile(
+      `/api/admin/reports/weekly?${params.toString()}`,
+      weeklyReportFileName(format),
+      button,
+      defaultText,
+      `Weekly ${format.toUpperCase()} report exported.`,
+      "jobs"
+    );
+  }
+
+  async function downloadWorkloadReport(format) {
+    const button = format === "csv" ? exportWorkloadCsvBtn : exportWorkloadTxtBtn;
+    const defaultText = format === "csv" ? "Export Workload CSV" : "Export Workload TXT";
+    await downloadAdminFile(
+      `/api/admin/reports/workload?format=${encodeURIComponent(format)}`,
+      `workload-report.${format}`,
+      button,
+      defaultText,
+      `Workload ${format.toUpperCase()} report exported.`,
+      "workload"
+    );
+  }
+
+  async function downloadArchiveReport(format) {
+    const button = format === "csv" ? archiveExportCsvBtn : archiveExportTxtBtn;
+    const defaultText = format === "csv" ? "Export Archive CSV" : "Export Archive TXT";
+    const params = new URLSearchParams();
+    params.set("format", format);
+    params.set("status", archiveFilters.status || "all");
+    params.set("jobId", archiveFilters.jobId || "all");
+    params.set("teacher", archiveFilters.teacher || "all");
+    if (archiveFilters.student) {
+      params.set("student", archiveFilters.student);
+    }
+    await downloadAdminFile(
+      `/api/admin/reports/applications?${params.toString()}`,
+      `application-archive.${format}`,
+      button,
+      defaultText,
+      `Application archive ${format.toUpperCase()} exported.`,
+      "archive"
+    );
+  }
+
+  async function applyJobApplicationFilter() {
+    jobApplicationFilters.status = jobApplicationsStatusFilterEl.value || "all";
     try {
-      button.disabled = true;
-      button.textContent = "Preparing...";
-      const response = await fetch(`${window.location.origin}${getContextPath()}/api/admin/reports/weekly?format=${encodeURIComponent(format)}`, {
+      await loadJobApplications();
+      setNotice("Job application filter applied.", false);
+      activateTab("jobs");
+    } catch (err) {
+      setNotice(err.message, true);
+      activateTab("jobs");
+    }
+  }
+
+  function closeJobApplications() {
+    currentJobApplicationJobId = null;
+    currentJobApplicationTitle = "";
+    if (jobApplicationsPanel) {
+      jobApplicationsPanel.classList.add("admin-hidden");
+    }
+    if (jobApplicationCards) {
+      jobApplicationCards.innerHTML = "";
+    }
+    if (jobApplicationBody) {
+      jobApplicationBody.innerHTML = "";
+    }
+  }
+
+  async function downloadJobApplications(format) {
+    if (!currentJobApplicationJobId) {
+      setNotice("Select a job before exporting applications.", true);
+      activateTab("jobs");
+      return;
+    }
+    const button = format === "csv" ? jobApplicationsCsvBtn : jobApplicationsTxtBtn;
+    const defaultText = format === "csv" ? "Export Job CSV" : "Export Job TXT";
+    const params = new URLSearchParams();
+    params.set("format", format);
+    params.set("jobId", currentJobApplicationJobId);
+    params.set("status", jobApplicationFilters.status || "all");
+    await downloadAdminFile(
+      `/api/admin/reports/applications?${params.toString()}`,
+      `job-applications-${safeFileNamePart(currentJobApplicationJobId)}-${jobApplicationFilters.status || "all"}.${format}`,
+      button,
+      defaultText,
+      `Job application ${format.toUpperCase()} exported.`,
+      "jobs"
+    );
+  }
+
+  async function downloadBackup() {
+    await downloadAdminFile(
+      "/api/admin/reports/backup",
+      "admin-data-backup.json",
+      backupBtn,
+      "Backup JSON",
+      "Admin data backup exported.",
+      "jobs",
+      true
+    );
+  }
+
+  async function downloadAdminFile(path, fileName, button, defaultText, successMessage, tabName, allowJson) {
+    try {
+      if (button) {
+        button.disabled = true;
+        button.textContent = "Preparing...";
+      }
+      const response = await fetch(`${window.location.origin}${getContextPath()}${path}`, {
         method: "GET",
         credentials: "same-origin"
       });
       const contentType = response.headers.get("content-type") || "";
-      if (!response.ok || contentType.includes("application/json")) {
+      if (!response.ok || (!allowJson && contentType.includes("application/json"))) {
         const errorBody = await response.json();
         throw new Error(errorBody.message || "Export failed.");
       }
@@ -729,19 +1243,71 @@ document.addEventListener("DOMContentLoaded", async () => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `weekly-recruitment-report.${format}`;
+      link.download = fileName;
       document.body.appendChild(link);
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      setNotice(`Weekly ${format.toUpperCase()} report exported.`, false);
-      activateTab("jobs");
+      setNotice(successMessage, false);
+      activateTab(tabName);
     } catch (err) {
       setNotice(err.message, true);
-      activateTab("jobs");
+      activateTab(tabName);
     } finally {
-      button.disabled = false;
-      button.textContent = defaultText;
+      if (button) {
+        button.disabled = false;
+        button.textContent = defaultText;
+      }
+    }
+  }
+
+  function weeklyReportFileName(format) {
+    const parts = ["weekly-report"];
+    if (filters.status && filters.status !== "all") {
+      parts.push(`status-${safeFileNamePart(filters.status)}`);
+    }
+    if (filters.department && filters.department !== "all") {
+      parts.push(`dept-${safeFileNamePart(filters.department)}`);
+    }
+    parts.push(new Date().toISOString().slice(0, 10).replace(/-/g, ""));
+    return `${parts.join("-")}.${format}`;
+  }
+
+  function safeFileNamePart(value) {
+    return String(value || "all").trim().replace(/[^A-Za-z0-9_-]+/g, "-") || "all";
+  }
+
+  async function applyArchiveFilters() {
+    archiveFilters.status = archiveStatusFilterEl.value || "all";
+    archiveFilters.jobId = archiveJobFilterEl.value || "all";
+    archiveFilters.teacher = archiveTeacherFilterEl.value || "all";
+    archiveFilters.student = archiveStudentFilterEl.value.trim();
+    try {
+      await loadArchive();
+      setNotice("Archive filters applied.", false);
+      activateTab("archive");
+    } catch (err) {
+      setNotice(err.message, true);
+      activateTab("archive");
+    }
+  }
+
+  async function resetArchiveFilters() {
+    archiveFilters.status = "all";
+    archiveFilters.jobId = "all";
+    archiveFilters.teacher = "all";
+    archiveFilters.student = "";
+    archiveStatusFilterEl.value = "all";
+    archiveJobFilterEl.value = "all";
+    archiveTeacherFilterEl.value = "all";
+    archiveStudentFilterEl.value = "";
+    try {
+      await loadArchive();
+      setNotice("Archive filters reset.", false);
+      activateTab("archive");
+    } catch (err) {
+      setNotice(err.message, true);
+      activateTab("archive");
     }
   }
 
@@ -838,6 +1404,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  function handleDemandActions(event) {
+    const reviewButton = event.target.closest("[data-demand-review]");
+    if (!reviewButton) {
+      return;
+    }
+    reviewDemand(reviewButton);
+  }
+
   function onJobDetails(event) {
     const btn = event.target.closest("[data-job-details]");
     if (!btn || !jobsCards.contains(btn)) return;
@@ -849,8 +1423,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     btn.textContent = expanded ? "Hide Details" : "View Details";
   }
 
+  function onJobApplications(event) {
+    const btn = event.target.closest("[data-job-applications]");
+    if (!btn) return;
+    const jobId = btn.getAttribute("data-job-applications");
+    const title = btn.getAttribute("data-job-title") || jobId;
+    if (!jobId) return;
+    openJobApplications(jobId, title);
+  }
+
   function onJobsCardsClick(event) {
     onJobDetails(event);
+    onJobApplications(event);
+    onReopen(event);
+  }
+
+  function onJobsTableClick(event) {
+    onJobApplications(event);
     onReopen(event);
   }
 
@@ -888,7 +1477,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.addEventListener("keydown", onWorkloadGlobalKeydown);
   usersBody.addEventListener("click", handleUserActions);
   usersGrouped.addEventListener("click", handleUserActions);
-  jobsBody.addEventListener("click", onReopen);
+  if (demandCards) demandCards.addEventListener("click", handleDemandActions);
+  if (demandBody) demandBody.addEventListener("click", handleDemandActions);
+  jobsBody.addEventListener("click", onJobsTableClick);
   jobsCards.addEventListener("click", onJobsCardsClick);
   workloadBody.addEventListener("click", onWorkloadTableClick);
   workloadCards.addEventListener("click", onWorkloadCardClick);
@@ -901,16 +1492,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   createRoleEl.addEventListener("change", syncCreateRoleFields);
   createUserForm.addEventListener("submit", createUser);
   thresholdForm.addEventListener("submit", saveThreshold);
+  if (demandRefreshBtn) demandRefreshBtn.addEventListener("click", refreshDemandFilters);
   applyFiltersBtn.addEventListener("click", applyFilters);
   resetFiltersBtn.addEventListener("click", resetFilters);
   exportCsvBtn.addEventListener("click", () => downloadReport("csv"));
   exportTxtBtn.addEventListener("click", () => downloadReport("txt"));
+  exportWorkloadCsvBtn.addEventListener("click", () => downloadWorkloadReport("csv"));
+  exportWorkloadTxtBtn.addEventListener("click", () => downloadWorkloadReport("txt"));
+  backupBtn.addEventListener("click", downloadBackup);
+  archiveApplyBtn.addEventListener("click", applyArchiveFilters);
+  archiveResetBtn.addEventListener("click", resetArchiveFilters);
+  archiveExportCsvBtn.addEventListener("click", () => downloadArchiveReport("csv"));
+  archiveExportTxtBtn.addEventListener("click", () => downloadArchiveReport("txt"));
+  if (jobApplicationsApplyBtn) jobApplicationsApplyBtn.addEventListener("click", applyJobApplicationFilter);
+  if (jobApplicationsCloseBtn) jobApplicationsCloseBtn.addEventListener("click", closeJobApplications);
+  if (jobApplicationsCsvBtn) jobApplicationsCsvBtn.addEventListener("click", () => downloadJobApplications("csv"));
+  if (jobApplicationsTxtBtn) jobApplicationsTxtBtn.addEventListener("click", () => downloadJobApplications("txt"));
   changePasswordForm.addEventListener("submit", changeOwnPassword);
 
   syncCreateRoleFields();
   activateTab("overview");
   try {
-    await Promise.all([loadAdminDashboard(), loadThresholdSettings()]);
+    await Promise.all([loadAdminDashboard(), loadThresholdSettings(), loadArchive(), loadDemands()]);
   } catch (err) {
     setNotice(err.message, true);
   }
@@ -923,4 +1526,14 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function formatRole(role) {
+  const value = String(role || "");
+  return value ? value.charAt(0).toUpperCase() + value.slice(1) : "-";
+}
+
+function formatStatus(status) {
+  const value = String(status || "");
+  return value ? value.charAt(0).toUpperCase() + value.slice(1) : "-";
 }

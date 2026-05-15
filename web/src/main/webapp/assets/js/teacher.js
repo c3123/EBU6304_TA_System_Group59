@@ -283,6 +283,7 @@ function renderTeacherJobCard(item) {
       </div>
 
       <p class="notice">Approval status: <strong>${teacherEscapeHtml(teacherSafeText(item.approvalStatus || "pending"))}</strong>. Job status: <strong>${teacherEscapeHtml(teacherSafeText(item.status || "-"))}</strong>. Published: <strong>${teacherEscapeHtml(String(item.published === true))}</strong>. Withdrawn: <strong>${teacherEscapeHtml(String(item.withdrawn === true))}</strong>.</p>
+      ${item.rejectionReason ? `<p class="notice" style="color:#dc2626;">Rejection reason: <strong>${teacherEscapeHtml(item.rejectionReason)}</strong></p>` : ""}
       <p class="notice">Schedule: <strong>${teacherEscapeHtml(teacherSafeText(item.schedule))}</strong>. Location: <strong>${teacherEscapeHtml(teacherSafeText(item.location))}</strong>. Deadline: <strong>${teacherEscapeHtml(teacherSafeText(item.deadline))}</strong>.</p>
 
       <div class="mo-demand-actions">
@@ -311,7 +312,8 @@ async function submitDemandForm(event) {
       department: byId("department").value.trim(),
       plannedCount: Number(byId("plannedCount").value),
       hourMin: Number(byId("hourMin").value),
-      hourMax: Number(byId("hourMax").value)
+      hourMax: Number(byId("hourMax").value),
+      requirements: byId("demandRequirements").value.trim()
     };
 
     const data = await teacherRequest(`${teacherApiBase()}/demands`, {

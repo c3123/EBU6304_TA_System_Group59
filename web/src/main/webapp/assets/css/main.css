@@ -964,7 +964,7 @@ th { background: #f8fbff; }
 
 .admin-job-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
   gap: 16px;
   margin-bottom: 18px;
 }
@@ -1012,6 +1012,27 @@ th { background: #f8fbff; }
 .metric-filled strong {
   font-size: 22px;
   line-height: 1.2;
+}
+
+.metric-unfilled {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.admin-health-overdue,
+.admin-health-no-applicants,
+.admin-health-closed-unfilled {
+  border-color: #fecaca;
+}
+
+.admin-health-deadline-risk,
+.admin-health-unfilled {
+  border-color: #fde68a;
+}
+
+.admin-health-healthy,
+.admin-health-complete {
+  border-color: #bbf7d0;
 }
 
 .admin-job-footer {
@@ -1280,6 +1301,144 @@ th { background: #f8fbff; }
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+.admin-alert-list {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-alert {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  padding: 14px 16px;
+}
+
+.admin-alert strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.admin-alert p {
+  margin: 0 0 6px;
+  color: #475569;
+}
+
+.admin-alert small {
+  color: #64748b;
+}
+
+.admin-alert > span {
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #334155;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.admin-alert-danger {
+  border-color: #fecaca;
+  background: #fff7f7;
+}
+
+.admin-alert-warning {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.admin-alert-info {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.admin-archive-card {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-archive-notes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.admin-archive-notes > div {
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 12px;
+}
+
+.admin-archive-notes p {
+  margin: 0;
+  color: #334155;
+  line-height: 1.45;
+}
+
+.admin-panel-inline-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.admin-demand-card {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-demand-pending {
+  border-color: #fde68a;
+}
+
+.admin-demand-approved {
+  border-color: #bbf7d0;
+}
+
+.admin-demand-rejected {
+  border-color: #fecaca;
+}
+
+.admin-demand-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.admin-demand-detail-grid > div {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 10px 12px;
+}
+
+.admin-demand-requirements,
+.admin-demand-reason {
+  margin: 0;
+  color: #334155;
+  line-height: 1.45;
+}
+
+.admin-demand-reason {
+  border-left: 3px solid #dc2626;
+  padding-left: 10px;
+}
+
+.admin-job-applications-panel {
+  border-color: #bfdbfe;
+}
+
+.admin-app-card {
+  display: grid;
+  gap: 10px;
 }
 
 .legend-dot {

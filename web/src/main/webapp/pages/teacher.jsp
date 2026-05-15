@@ -374,6 +374,10 @@
             <input id="hourMax" type="number" min="1" placeholder="e.g. 12" required />
           </div>
         </div>
+        <div class="field">
+          <label for="demandRequirements">Demand Notes</label>
+          <textarea id="demandRequirements" maxlength="500" placeholder="Brief workload or skill notes for admin review"></textarea>
+        </div>
         <div class="row" style="margin-top:12px;">
           <button class="btn btn-primary" type="submit">Submit Demand</button>
           <button class="btn btn-outline" type="reset">Clear</button>

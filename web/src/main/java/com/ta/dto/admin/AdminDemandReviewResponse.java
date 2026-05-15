@@ -7,6 +7,7 @@ public class AdminDemandReviewResponse {
     private Boolean published;
     private Boolean withdrawn;
     private String reviewedAt;
+    private String rejectionReason;
 
     public String getJobId() {
         return jobId;
@@ -54,5 +55,13 @@ public class AdminDemandReviewResponse {
 
     public void setReviewedAt(String reviewedAt) {
         this.reviewedAt = reviewedAt;
+    }
+
+    public String getRejectionReason() {
+        return rejectionReason;
+    }
+
+    public void setRejectionReason(String rejectionReason) {
+        this.rejectionReason = rejectionReason;
     }
 }

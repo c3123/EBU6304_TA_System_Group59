@@ -10,7 +10,12 @@ public class AdminDashboardJobItemResponse {
     private Integer positions;
     private Integer applicantCount;
     private Integer hiredCount;
+    private Integer unfilledCount;
     private Integer weeklyHours;
+    private Integer daysUntilDeadline;
+    private String healthLevel;
+    private String healthLabel;
+    private String filledLabel;
     private String deadline;
     private String publishedAt;
     private String createdAt;
@@ -92,12 +97,52 @@ public class AdminDashboardJobItemResponse {
         this.hiredCount = hiredCount;
     }
 
+    public Integer getUnfilledCount() {
+        return unfilledCount;
+    }
+
+    public void setUnfilledCount(Integer unfilledCount) {
+        this.unfilledCount = unfilledCount;
+    }
+
     public Integer getWeeklyHours() {
         return weeklyHours;
     }
 
     public void setWeeklyHours(Integer weeklyHours) {
         this.weeklyHours = weeklyHours;
+    }
+
+    public Integer getDaysUntilDeadline() {
+        return daysUntilDeadline;
+    }
+
+    public void setDaysUntilDeadline(Integer daysUntilDeadline) {
+        this.daysUntilDeadline = daysUntilDeadline;
+    }
+
+    public String getHealthLevel() {
+        return healthLevel;
+    }
+
+    public void setHealthLevel(String healthLevel) {
+        this.healthLevel = healthLevel;
+    }
+
+    public String getHealthLabel() {
+        return healthLabel;
+    }
+
+    public void setHealthLabel(String healthLabel) {
+        this.healthLabel = healthLabel;
+    }
+
+    public String getFilledLabel() {
+        return filledLabel;
+    }
+
+    public void setFilledLabel(String filledLabel) {
+        this.filledLabel = filledLabel;
     }
 
     public String getDeadline() {

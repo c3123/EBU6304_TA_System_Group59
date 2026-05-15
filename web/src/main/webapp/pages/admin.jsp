@@ -37,7 +37,10 @@
       <button class="admin-tab active" data-admin-tab="overview" role="tab" aria-selected="true">System Overview</button>
       <button class="admin-tab" data-admin-tab="workload" role="tab" aria-selected="false">Workload</button>
       <button class="admin-tab" data-admin-tab="users" role="tab" aria-selected="false">Users</button>
+      <button class="admin-tab" data-admin-tab="demands" role="tab" aria-selected="false">Demand Review</button>
       <button class="admin-tab" data-admin-tab="jobs" role="tab" aria-selected="false">Jobs</button>
+      <button class="admin-tab" data-admin-tab="archive" role="tab" aria-selected="false">Application Archive</button>
+      <button class="admin-tab" data-admin-tab="alerts" role="tab" aria-selected="false">Alerts</button>
       <button class="admin-tab" data-admin-tab="account" role="tab" aria-selected="false">My Account</button>
     </nav>
 
@@ -61,11 +64,26 @@
           <p id="statApps" class="admin-stat-value">0</p>
           <p class="admin-stat-sub">Current application records</p>
         </article>
+        <article class="admin-stat-card">
+          <p class="admin-stat-label">Students</p>
+          <p id="statStudents" class="admin-stat-value">0</p>
+          <p class="admin-stat-sub">Registered TA applicants</p>
+        </article>
+        <article class="admin-stat-card">
+          <p class="admin-stat-label">Module Organisers</p>
+          <p id="statTeachers" class="admin-stat-value">0</p>
+          <p class="admin-stat-sub">Teacher accounts</p>
+        </article>
+        <article class="admin-stat-card">
+          <p class="admin-stat-label">Open Applications</p>
+          <p id="statOpenApps" class="admin-stat-value">0</p>
+          <p class="admin-stat-sub">Pending, viewed, or shortlisted</p>
+        </article>
       </div>
 
       <div class="card">
         <h3 class="admin-subtitle">Quick Summary</h3>
-        <p class="desc">Use the tabs above to manage workload, users, and jobs.</p>
+        <p class="desc">Use the tabs above to manage workload, users, jobs, archive, and alerts.</p>
         <div class="admin-summary-grid">
           <div class="admin-summary-item">
             <span id="overviewOpenJobs">0</span>
@@ -79,7 +97,24 @@
             <span id="overviewHiredCount">0</span>
             <small>Total Hired Slots</small>
           </div>
+          <div class="admin-summary-item">
+            <span id="overviewUnfilledPositions">0</span>
+            <small>Unfilled Positions</small>
+          </div>
+          <div class="admin-summary-item">
+            <span id="overviewRiskStudents">0</span>
+            <small>Workload Risk Students</small>
+          </div>
+          <div class="admin-summary-item">
+            <span id="overviewAlerts">0</span>
+            <small>Active Alerts</small>
+          </div>
         </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h3 class="admin-subtitle">Priority Alerts</h3>
+        <div id="adminAlertsPreview" class="admin-alert-list"></div>
       </div>
     </section>
 
@@ -105,6 +140,8 @@
           </div>
           <div class="row" style="margin-top:16px;">
             <button id="adminThresholdSaveBtn" type="submit" class="btn btn-primary">Save Threshold</button>
+            <button id="adminExportWorkloadCsvBtn" type="button" class="btn btn-outline">Export Workload CSV</button>
+            <button id="adminExportWorkloadTxtBtn" type="button" class="btn btn-outline">Export Workload TXT</button>
           </div>
         </form>
       </div>
@@ -190,6 +227,42 @@
       </div>
     </section>
 
+    <section class="admin-panel admin-hidden" data-admin-panel="demands">
+      <div class="admin-headline">
+        <div>
+          <h2 class="admin-section-title">Demand Approval Workbench</h2>
+          <p class="admin-section-desc">Review Module Organiser demand submissions before they can be published as TA jobs.</p>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <h3 class="admin-subtitle">Demand Filters</h3>
+        <div class="admin-form-grid">
+          <div class="field">
+            <label for="adminDemandStatusFilter">Approval Status</label>
+            <select id="adminDemandStatusFilter">
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="all">All</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:16px;">
+          <button id="adminDemandRefreshBtn" type="button" class="btn btn-primary">Refresh Demands</button>
+        </div>
+      </div>
+      <div id="adminDemandCards" class="admin-feed"></div>
+      <div class="card">
+        <h3 class="admin-subtitle">Demand Review Table</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Module</th><th>Title</th><th>Organiser</th><th>Submitted</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="adminDemandBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <section class="admin-panel admin-hidden" data-admin-panel="jobs">
       <div class="admin-headline">
         <div>
@@ -228,6 +301,41 @@
           <button id="adminResetFiltersBtn" type="button" class="btn btn-outline">Reset</button>
           <button id="adminExportCsvBtn" type="button" class="btn btn-outline">Export CSV</button>
           <button id="adminExportTxtBtn" type="button" class="btn btn-outline">Export TXT</button>
+          <button id="adminBackupBtn" type="button" class="btn btn-outline">Backup JSON</button>
+        </div>
+      </div>
+      <div id="adminJobApplicationsPanel" class="card admin-job-applications-panel admin-hidden" style="margin-bottom:16px;">
+        <div class="admin-panel-inline-head">
+          <div>
+            <h3 id="adminJobApplicationsTitle" class="admin-subtitle">Job Applications</h3>
+            <p class="admin-list-meta">Read-only applicant drilldown for the selected job.</p>
+          </div>
+          <button id="adminJobApplicationsCloseBtn" type="button" class="btn btn-outline">Close</button>
+        </div>
+        <div class="admin-form-grid">
+          <div class="field">
+            <label for="adminJobApplicationStatusFilter">Application Status</label>
+            <select id="adminJobApplicationStatusFilter">
+              <option value="all">All</option>
+              <option value="pending">Pending</option>
+              <option value="viewed">Viewed</option>
+              <option value="shortlisted">Shortlisted</option>
+              <option value="hired">Hired</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:16px;">
+          <button id="adminJobApplicationsApplyBtn" type="button" class="btn btn-primary">Apply Status Filter</button>
+          <button id="adminJobApplicationsCsvBtn" type="button" class="btn btn-outline">Export Job CSV</button>
+          <button id="adminJobApplicationsTxtBtn" type="button" class="btn btn-outline">Export Job TXT</button>
+        </div>
+        <div id="adminJobApplicationCards" class="admin-feed" style="margin-top:16px;"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Applicant</th><th>Student No.</th><th>Applied</th><th>Status</th><th>Notes / Feedback</th></tr></thead>
+            <tbody id="adminJobApplicationBody"></tbody>
+          </table>
         </div>
       </div>
       <div id="adminJobsCards" class="admin-feed"></div>
@@ -240,6 +348,73 @@
           </table>
         </div>
       </div>
+    </section>
+
+    <section class="admin-panel admin-hidden" data-admin-panel="archive">
+      <div class="admin-headline">
+        <div>
+          <h2 class="admin-section-title">Application Archive</h2>
+          <p class="admin-section-desc">Read-only audit view of applications, MO notes, and decision feedback.</p>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <h3 class="admin-subtitle">Archive Filters and Export</h3>
+        <div class="admin-form-grid">
+          <div class="field">
+            <label for="adminArchiveStatusFilter">Status</label>
+            <select id="adminArchiveStatusFilter">
+              <option value="all">All</option>
+              <option value="pending">Pending</option>
+              <option value="viewed">Viewed</option>
+              <option value="shortlisted">Shortlisted</option>
+              <option value="hired">Hired</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="adminArchiveJobFilter">Job</label>
+            <select id="adminArchiveJobFilter">
+              <option value="all">All Jobs</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="adminArchiveTeacherFilter">Module Organiser</label>
+            <select id="adminArchiveTeacherFilter">
+              <option value="all">All Teachers</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="adminArchiveStudentFilter">Student Search</label>
+            <input id="adminArchiveStudentFilter" type="text" placeholder="Name, user ID, or student no." />
+          </div>
+        </div>
+        <div class="row" style="margin-top:16px;">
+          <button id="adminArchiveApplyBtn" type="button" class="btn btn-primary">Apply Archive Filters</button>
+          <button id="adminArchiveResetBtn" type="button" class="btn btn-outline">Reset</button>
+          <button id="adminArchiveExportCsvBtn" type="button" class="btn btn-outline">Export Archive CSV</button>
+          <button id="adminArchiveExportTxtBtn" type="button" class="btn btn-outline">Export Archive TXT</button>
+        </div>
+      </div>
+      <div id="adminArchiveCards" class="admin-feed"></div>
+      <div class="card">
+        <h3 class="admin-subtitle">Archive Table</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Application</th><th>Student</th><th>Job</th><th>Organiser</th><th>Status</th><th>Applied</th><th>Feedback</th></tr></thead>
+            <tbody id="adminArchiveBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="admin-panel admin-hidden" data-admin-panel="alerts">
+      <div class="admin-headline">
+        <div>
+          <h2 class="admin-section-title">Administrator Alerts</h2>
+          <p class="admin-section-desc">Follow up workload, vacancy, deadline, and data-quality risk cases.</p>
+        </div>
+      </div>
+      <div id="adminAlertsList" class="admin-alert-list"></div>
     </section>
 
     <section class="admin-panel admin-hidden" data-admin-panel="account">

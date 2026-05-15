@@ -5,6 +5,7 @@ import com.ta.dto.mo.MoDemandCreateRequest;
 import com.ta.dto.mo.MoDemandItemResponse;
 import com.ta.dto.mo.MoDemandListResponse;
 import com.ta.model.JobPosting;
+import com.ta.model.User;
 import com.ta.util.JsonUtility;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletResponse;
@@ -21,7 +22,7 @@ import java.util.UUID;
  * Ownership: A side (demand and publish chain).
  * Rules:
  * 1) One MO cannot submit same course when pending demand exists.
- * 2) New demand is created as approved so it can be published directly.
+ * 2) New demand is created as pending and must be approved by admin before publishing.
  */
 public class MoDemandService {
 
@@ -49,6 +50,7 @@ public class MoDemandService {
 
         try {
             List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            List<User> users = JsonUtility.loadUsers(context);
 
             for (JobPosting job : jobs) {
                 if (!moId.equals(job.getTeacherId())) {
@@ -67,6 +69,7 @@ public class MoDemandService {
             JobPosting job = new JobPosting();
             job.setId("job_" + UUID.randomUUID().toString().replace("-", ""));
             job.setTeacherId(moId);
+            job.setTeacherName(resolveUserName(users, moId));
             job.setTitle(request.getCourseName());
             job.setModuleCode(request.getCourseName());
             job.setDepartment(request.getDepartment().trim());
@@ -74,13 +77,15 @@ public class MoDemandService {
             job.setHourMin(request.getHourMin());
             job.setHourMax(request.getHourMax());
 
-            job.setApprovalStatus("approved");
+            job.setApprovalStatus("pending");
             job.setPublished(false);
             job.setWithdrawn(false);
             job.setStatus("draft");
             job.setLocation(null);
-            job.setRequirements(null);
+            job.setRequirements(normalizeOptionalText(request.getRequirements()));
             job.setDeadline(null);
+            job.setReviewedAt(null);
+            job.setRejectionReason(null);
             job.setCreatedAt(now);
             job.setUpdatedAt(now);
 
@@ -114,6 +119,15 @@ public class MoDemandService {
                     HttpServletResponse.SC_BAD_REQUEST
             );
         }
+
+        String requirements = request.getRequirements();
+        if (requirements != null && requirements.trim().length() > 500) {
+            throw new MoBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    "requirements must be 500 characters or fewer.",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
     }
 
     private MoDemandItemResponse toDemandItem(JobPosting job) {
@@ -141,7 +155,21 @@ public class MoDemandService {
         item.setCreatedAt(job.getCreatedAt());
         item.setUpdatedAt(job.getUpdatedAt());
         item.setPublishedAt(job.getPublishedAt());
+        item.setReviewedAt(job.getReviewedAt());
+        item.setRejectionReason(job.getRejectionReason());
         return item;
+    }
+
+    private String resolveUserName(List<User> users, String userId) {
+        if (users == null) {
+            return userId;
+        }
+        for (User user : users) {
+            if (userId != null && userId.equals(user.getId())) {
+                return user.getName() == null || user.getName().isBlank() ? userId : user.getName();
+            }
+        }
+        return userId;
     }
 
     private boolean sameCourse(JobPosting job, String courseName) {
@@ -155,5 +183,9 @@ public class MoDemandService {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private String normalizeOptionalText(String value) {
+        return value == null ? null : value.trim();
     }
 }
