@@ -28,6 +28,10 @@ public class AdminRecruitmentOutcomeResponse {
     private int vacancyTopLimit;
     /** When this snapshot was built (UTC, ISO-8601 seconds). */
     private String generatedAt;
+    /** Echo of optional filter: first day (yyyy-MM-dd), or blank. */
+    private String jobSince;
+    /** Echo of optional filter: last day (yyyy-MM-dd), or blank. */
+    private String jobUntil;
 
     public int getTotalPositionSlots() {
         return totalPositionSlots;
@@ -107,5 +111,21 @@ public class AdminRecruitmentOutcomeResponse {
 
     public void setGeneratedAt(String generatedAt) {
         this.generatedAt = generatedAt;
+    }
+
+    public String getJobSince() {
+        return jobSince;
+    }
+
+    public void setJobSince(String jobSince) {
+        this.jobSince = jobSince;
+    }
+
+    public String getJobUntil() {
+        return jobUntil;
+    }
+
+    public void setJobUntil(String jobUntil) {
+        this.jobUntil = jobUntil;
     }
 }

@@ -1,5 +1,6 @@
 package com.ta.service.admin;
 
+import com.ta.constant.ErrorCodes;
 import com.ta.dto.admin.AdminRecruitmentOutcomeDepartmentRow;
 import com.ta.dto.admin.AdminRecruitmentOutcomeResponse;
 import com.ta.dto.admin.AdminRecruitmentOutcomeVacancyRow;
@@ -8,11 +9,15 @@ import com.ta.model.JobPosting;
 import com.ta.util.IsoTime;
 import com.ta.util.JsonUtility;
 import jakarta.servlet.ServletContext;
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 import java.text.Collator;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -28,9 +33,35 @@ public class AdminRecruitmentOutcomeService {
 
     private static final String DEPARTMENT_UNKNOWN = "\u672a\u586b";
 
-    public AdminRecruitmentOutcomeResponse load(ServletContext context, int vacancyTopLimit) throws IOException {
-        List<JobPosting> jobs = JsonUtility.loadJobs(context);
-        List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+    public AdminRecruitmentOutcomeResponse load(ServletContext context,
+                                                int vacancyTopLimit,
+                                                String jobSinceRaw,
+                                                String jobUntilRaw) throws IOException {
+        LocalDate jobSince = parseOptionalIsoDate("jobSince", jobSinceRaw);
+        LocalDate jobUntil = parseOptionalIsoDate("jobUntil", jobUntilRaw);
+        if (jobSince != null && jobUntil != null && jobSince.isAfter(jobUntil)) {
+            throw new AdminBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    "jobSince must be on or before jobUntil.",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+
+        List<JobPosting> allJobs = JsonUtility.loadJobs(context);
+        List<JobPosting> jobsWindow = applyJobReferenceDateWindow(allJobs, jobSince, jobUntil);
+        Set<String> jobIds = new HashSet<>();
+        for (JobPosting j : jobsWindow) {
+            if (j.getId() != null && !j.getId().isBlank()) {
+                jobIds.add(j.getId());
+            }
+        }
+
+        List<ApplicationRecord> allApplications = JsonUtility.loadApplications(context);
+        boolean dateFilterActive = jobSince != null || jobUntil != null;
+        List<ApplicationRecord> applications = dateFilterActive
+                ? filterApplicationsToJobIds(allApplications, jobIds)
+                : new ArrayList<>(allApplications);
+
         Map<String, Integer> hiredByJob = countHiredByJob(applications);
 
         int totalPositionSlots = 0;
@@ -38,7 +69,7 @@ public class AdminRecruitmentOutcomeService {
         int recruitingJobs = 0;
         int totalVacancies = 0;
 
-        for (JobPosting job : jobs) {
+        for (JobPosting job : jobsWindow) {
             if (Boolean.TRUE.equals(job.getWithdrawn())) {
                 continue;
             }
@@ -67,16 +98,164 @@ public class AdminRecruitmentOutcomeService {
         int topLimit = normalizeVacancyTopLimit(vacancyTopLimit);
         AdminRecruitmentOutcomeResponse response = new AdminRecruitmentOutcomeResponse();
         response.setVacancyTopLimit(topLimit);
+        response.setJobSince(jobSince == null ? "" : jobSince.toString());
+        response.setJobUntil(jobUntil == null ? "" : jobUntil.toString());
         response.setTotalPositionSlots(totalPositionSlots);
         response.setClosedJobs(closedJobs);
         response.setRecruitingJobs(recruitingJobs);
         response.setTotalApplications(totalApplications);
         response.setTotalHired(totalHired);
         response.setTotalVacancies(totalVacancies);
-        response.setDepartments(buildDepartmentRows(jobs, applications, hiredByJob));
-        response.setTopVacancyJobs(buildTopVacancyJobs(jobs, hiredByJob, topLimit));
+        response.setDepartments(buildDepartmentRows(jobsWindow, applications, hiredByJob));
+        response.setTopVacancyJobs(buildTopVacancyJobs(jobsWindow, hiredByJob, topLimit));
         response.setGeneratedAt(IsoTime.utcNowSeconds());
         return response;
+    }
+
+    public String buildRecruitmentOutcomeCsv(AdminRecruitmentOutcomeResponse data) {
+        StringBuilder sb = new StringBuilder();
+        sb.append('\uFEFF');
+        appendCsvRow(sb, "meta", "generatedAt", csvValue(data.getGeneratedAt()));
+        appendCsvRow(sb, "meta", "jobSince", csvValue(data.getJobSince()));
+        appendCsvRow(sb, "meta", "jobUntil", csvValue(data.getJobUntil()));
+        appendCsvRow(sb, "meta", "vacancyTopLimit", String.valueOf(data.getVacancyTopLimit()));
+        appendCsvRow(sb, "kpi", "totalPositionSlots", String.valueOf(data.getTotalPositionSlots()));
+        appendCsvRow(sb, "kpi", "closedJobs", String.valueOf(data.getClosedJobs()));
+        appendCsvRow(sb, "kpi", "recruitingJobs", String.valueOf(data.getRecruitingJobs()));
+        appendCsvRow(sb, "kpi", "totalApplications", String.valueOf(data.getTotalApplications()));
+        appendCsvRow(sb, "kpi", "totalHired", String.valueOf(data.getTotalHired()));
+        appendCsvRow(sb, "kpi", "totalVacancies", String.valueOf(data.getTotalVacancies()));
+        appendCsvRow(sb, "dept_header", "department", "hiredCount", "vacancyCount");
+        for (AdminRecruitmentOutcomeDepartmentRow row : data.getDepartments()) {
+            appendCsvRow(sb, "dept", row.getDepartment(), String.valueOf(row.getHiredCount()), String.valueOf(row.getVacancyCount()));
+        }
+        appendCsvRow(sb, "vac_header", "rank", "jobId", "moduleCode", "title", "department", "teacherName", "positions", "hiredCount", "vacancyCount");
+        List<AdminRecruitmentOutcomeVacancyRow> top = data.getTopVacancyJobs();
+        for (int i = 0; i < top.size(); i++) {
+            AdminRecruitmentOutcomeVacancyRow row = top.get(i);
+            appendCsvRow(sb, "vac",
+                    String.valueOf(i + 1),
+                    csvValue(row.getJobId()),
+                    csvValue(row.getModuleCode()),
+                    csvValue(row.getTitle()),
+                    csvValue(row.getDepartment()),
+                    csvValue(row.getTeacherName()),
+                    String.valueOf(row.getPositions()),
+                    String.valueOf(row.getHiredCount()),
+                    String.valueOf(row.getVacancyCount()));
+        }
+        return sb.toString();
+    }
+
+    private static String csvValue(String v) {
+        return v == null ? "" : v;
+    }
+
+    private static void appendCsvRow(StringBuilder sb, String... cells) {
+        for (int i = 0; i < cells.length; i++) {
+            if (i > 0) {
+                sb.append(',');
+            }
+            sb.append(escapeCsvCell(cells[i]));
+        }
+        sb.append('\n');
+    }
+
+    private static String escapeCsvCell(String value) {
+        String v = value == null ? "" : value;
+        boolean needQuotes = v.contains(",") || v.contains("\"") || v.contains("\n") || v.contains("\r");
+        String t = v.replace("\"", "\"\"");
+        if (needQuotes) {
+            return "\"" + t + "\"";
+        }
+        return t;
+    }
+
+    private List<JobPosting> applyJobReferenceDateWindow(List<JobPosting> all,
+                                                         LocalDate since,
+                                                         LocalDate until) {
+        if (since == null && until == null) {
+            return new ArrayList<>(all);
+        }
+        List<JobPosting> out = new ArrayList<>();
+        for (JobPosting job : all) {
+            if (jobMatchesReferenceWindow(job, since, until)) {
+                out.add(job);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Jobs with no parseable reference date are always included when a window is set (legacy rows).
+     */
+    private boolean jobMatchesReferenceWindow(JobPosting job, LocalDate since, LocalDate until) {
+        if (since == null && until == null) {
+            return true;
+        }
+        LocalDate ref = resolveJobReferenceDate(job);
+        if (ref == null) {
+            return true;
+        }
+        if (since != null && ref.isBefore(since)) {
+            return false;
+        }
+        return until == null || !ref.isAfter(until);
+    }
+
+    private LocalDate resolveJobReferenceDate(JobPosting job) {
+        LocalDate d = parseIsoDatePrefix(job.getPublishedAt());
+        if (d != null) {
+            return d;
+        }
+        d = parseIsoDatePrefix(job.getCreatedAt());
+        if (d != null) {
+            return d;
+        }
+        return parseIsoDatePrefix(job.getUpdatedAt());
+    }
+
+    private LocalDate parseIsoDatePrefix(String raw) {
+        String t = trimToEmpty(raw);
+        if (t.isBlank()) {
+            return null;
+        }
+        try {
+            String datePart = t.length() >= 10 ? t.substring(0, 10) : t;
+            return LocalDate.parse(datePart);
+        } catch (DateTimeParseException ex) {
+            return null;
+        }
+    }
+
+    private LocalDate parseOptionalIsoDate(String paramName, String raw) {
+        String t = trimToEmpty(raw);
+        if (t.isBlank()) {
+            return null;
+        }
+        try {
+            String datePart = t.length() >= 10 ? t.substring(0, 10) : t;
+            return LocalDate.parse(datePart);
+        } catch (DateTimeParseException ex) {
+            throw new AdminBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    paramName + " must be yyyy-MM-dd.",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+    }
+
+    private List<ApplicationRecord> filterApplicationsToJobIds(List<ApplicationRecord> apps, Set<String> jobIds) {
+        List<ApplicationRecord> out = new ArrayList<>();
+        for (ApplicationRecord a : apps) {
+            if (a.getJobId() == null || a.getJobId().isBlank()) {
+                continue;
+            }
+            if (jobIds.contains(a.getJobId())) {
+                out.add(a);
+            }
+        }
+        return out;
     }
 
     private int normalizeVacancyTopLimit(int requested) {
@@ -124,8 +303,8 @@ public class AdminRecruitmentOutcomeService {
     }
 
     private List<AdminRecruitmentOutcomeDepartmentRow> buildDepartmentRows(List<JobPosting> jobs,
-                                                                           List<ApplicationRecord> applications,
-                                                                           Map<String, Integer> hiredByJob) {
+                                                                         List<ApplicationRecord> applications,
+                                                                         Map<String, Integer> hiredByJob) {
         Map<String, JobPosting> jobById = new LinkedHashMap<>();
         for (JobPosting job : jobs) {
             if (job.getId() != null && !job.getId().isBlank()) {

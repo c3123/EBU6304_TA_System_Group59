@@ -32,6 +32,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   const panels = Array.from(document.querySelectorAll("[data-admin-panel]"));
   const workloadPanel = panels.find((p) => p.getAttribute("data-admin-panel") === "workload") || null;
   const noticeEl = byId("adminNotice");
+  const adminOutcomeJobSince = byId("adminOutcomeJobSince");
+  const adminOutcomeJobUntil = byId("adminOutcomeJobUntil");
+  const adminOutcomeApplyRangeBtn = byId("adminOutcomeApplyRangeBtn");
+  const adminOutcomeClearRangeBtn = byId("adminOutcomeClearRangeBtn");
+  const adminOutcomeRefreshBtn = byId("adminOutcomeRefreshBtn");
+  const adminOutcomeExportCsvBtn = byId("adminOutcomeExportCsvBtn");
 
   const createUserForm = byId("adminCreateUserForm");
   const createRoleEl = byId("adminCreateRole");
@@ -99,6 +105,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     status: "pending"
   };
   const RECRUITMENT_VACANCY_TOP = 10;
+  const outcomeJobDateRange = { since: "", until: "" };
   const jobApplicationFilters = {
     status: "all"
   };
@@ -200,6 +207,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  function buildRecruitmentOutcomeQueryParams() {
+    const params = new URLSearchParams();
+    params.set("vacancyTop", String(RECRUITMENT_VACANCY_TOP));
+    if (outcomeJobDateRange.since) {
+      params.set("jobSince", outcomeJobDateRange.since);
+    }
+    if (outcomeJobDateRange.until) {
+      params.set("jobUntil", outcomeJobDateRange.until);
+    }
+    return params;
+  }
+
   function formatOutcomeGeneratedAt(iso) {
     if (!iso) return "";
     try {
@@ -285,11 +304,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function loadRecruitmentOutcome() {
     try {
-      const params = new URLSearchParams();
-      params.set("vacancyTop", String(RECRUITMENT_VACANCY_TOP));
-      const data = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/recruitment-outcome?${params.toString()}`, {
+      const data = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/recruitment-outcome?${buildRecruitmentOutcomeQueryParams().toString()}`, {
         method: "GET"
       });
+      outcomeJobDateRange.since = data.jobSince || "";
+      outcomeJobDateRange.until = data.jobUntil || "";
+      if (adminOutcomeJobSince) {
+        adminOutcomeJobSince.value = outcomeJobDateRange.since;
+      }
+      if (adminOutcomeJobUntil) {
+        adminOutcomeJobUntil.value = outcomeJobDateRange.until;
+      }
       const slots = byId("adminOutcomeTotalSlots");
       const closed = byId("adminOutcomeClosedJobs");
       const recruiting = byId("adminOutcomeRecruitingJobs");
@@ -1270,6 +1295,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
   }
 
+  async function downloadRecruitmentOutcomeCsv() {
+    const button = adminOutcomeExportCsvBtn;
+    const defaultText = "Export CSV";
+    const params = buildRecruitmentOutcomeQueryParams();
+    await downloadAdminFile(
+      `/api/admin/recruitment-outcome/export?${params.toString()}`,
+      `recruitment-outcome-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}.csv`,
+      button,
+      defaultText,
+      "Recruitment outcome CSV exported.",
+      "recruitment-outcome"
+    );
+  }
+
   async function downloadArchiveReport(format) {
     const button = format === "csv" ? archiveExportCsvBtn : archiveExportTxtBtn;
     const defaultText = format === "csv" ? "Export Archive CSV" : "Export Archive TXT";
@@ -1635,6 +1674,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (jobApplicationsCloseBtn) jobApplicationsCloseBtn.addEventListener("click", closeJobApplications);
   if (jobApplicationsCsvBtn) jobApplicationsCsvBtn.addEventListener("click", () => downloadJobApplications("csv"));
   if (jobApplicationsTxtBtn) jobApplicationsTxtBtn.addEventListener("click", () => downloadJobApplications("txt"));
+  if (adminOutcomeApplyRangeBtn) {
+    adminOutcomeApplyRangeBtn.addEventListener("click", () => {
+      outcomeJobDateRange.since = (adminOutcomeJobSince && adminOutcomeJobSince.value) || "";
+      outcomeJobDateRange.until = (adminOutcomeJobUntil && adminOutcomeJobUntil.value) || "";
+      void loadRecruitmentOutcome();
+    });
+  }
+  if (adminOutcomeClearRangeBtn) {
+    adminOutcomeClearRangeBtn.addEventListener("click", () => {
+      outcomeJobDateRange.since = "";
+      outcomeJobDateRange.until = "";
+      if (adminOutcomeJobSince) adminOutcomeJobSince.value = "";
+      if (adminOutcomeJobUntil) adminOutcomeJobUntil.value = "";
+      void loadRecruitmentOutcome();
+    });
+  }
+  if (adminOutcomeRefreshBtn) {
+    adminOutcomeRefreshBtn.addEventListener("click", () => void loadRecruitmentOutcome());
+  }
+  if (adminOutcomeExportCsvBtn) {
+    adminOutcomeExportCsvBtn.addEventListener("click", () => void downloadRecruitmentOutcomeCsv());
+  }
   changePasswordForm.addEventListener("submit", changeOwnPassword);
 
   syncCreateRoleFields();

@@ -854,6 +854,37 @@ th { background: #f8fbff; }
   font-size: 12px;
 }
 
+.admin-outcome-toolbar {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(148, 163, 184, 0.45);
+}
+
+.admin-outcome-toolbar-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin-bottom: 12px;
+}
+
+.admin-outcome-toolbar-dates .field {
+  margin: 0;
+  min-width: 160px;
+}
+
+.admin-outcome-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.admin-outcome-filter-hint {
+  margin: 0;
+  max-width: 52rem;
+}
+
 .admin-outcome-board {
   padding: 18px 18px 10px;
   border-radius: 20px;

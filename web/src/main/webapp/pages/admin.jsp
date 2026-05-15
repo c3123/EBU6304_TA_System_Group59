@@ -358,6 +358,25 @@
           <h2 class="admin-section-title admin-outcome-title">Recruitment Results</h2>
           <p class="admin-section-desc admin-outcome-lede">Single-screen summary of hiring pressure: KPIs, department mix, and the largest role-level gaps. No edits are available on this tab.</p>
           <p class="admin-outcome-generated">Snapshot generated at <time id="adminOutcomeGeneratedAt" datetime="">—</time> <span class="admin-outcome-generated-note">(server UTC, shown in your time zone)</span></p>
+          <div class="admin-outcome-toolbar" role="group" aria-label="Recruitment outcome snapshot controls">
+            <div class="admin-outcome-toolbar-dates">
+              <div class="field">
+                <label for="adminOutcomeJobSince">Job reference from</label>
+                <input id="adminOutcomeJobSince" type="date" />
+              </div>
+              <div class="field">
+                <label for="adminOutcomeJobUntil">Job reference to</label>
+                <input id="adminOutcomeJobUntil" type="date" />
+              </div>
+            </div>
+            <div class="admin-outcome-toolbar-actions">
+              <button type="button" id="adminOutcomeApplyRangeBtn" class="btn btn-primary">Apply range</button>
+              <button type="button" id="adminOutcomeClearRangeBtn" class="btn btn-outline">All jobs</button>
+              <button type="button" id="adminOutcomeRefreshBtn" class="btn btn-outline">Refresh snapshot</button>
+              <button type="button" id="adminOutcomeExportCsvBtn" class="btn btn-outline">Export CSV</button>
+            </div>
+            <p id="adminOutcomeFilterHint" class="admin-outcome-filter-hint desc">Filters use each job's reference day: published date if set, otherwise created, otherwise last updated. Jobs with no parseable date stay included when a range is active.</p>
+          </div>
         </div>
       </div>
       <div class="admin-outcome-board">
