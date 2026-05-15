@@ -39,7 +39,7 @@
       <button class="admin-tab" data-admin-tab="users" role="tab" aria-selected="false">Users</button>
       <button class="admin-tab" data-admin-tab="demands" role="tab" aria-selected="false">Demand Review</button>
       <button class="admin-tab" data-admin-tab="jobs" role="tab" aria-selected="false">Jobs</button>
-      <button class="admin-tab" data-admin-tab="recruitment-outcome" role="tab" aria-selected="false">Recruitment Results</button>
+      <button class="admin-tab admin-tab--outcome" data-admin-tab="recruitment-outcome" role="tab" aria-selected="false">Recruitment Results</button>
       <button class="admin-tab" data-admin-tab="archive" role="tab" aria-selected="false">Application Archive</button>
       <button class="admin-tab" data-admin-tab="alerts" role="tab" aria-selected="false">Alerts</button>
       <button class="admin-tab" data-admin-tab="account" role="tab" aria-selected="false">My Account</button>
@@ -351,50 +351,53 @@
       </div>
     </section>
 
-    <section class="admin-panel admin-hidden" data-admin-panel="recruitment-outcome">
-      <div class="admin-headline">
-        <div>
-          <h2 class="admin-section-title">Recruitment Results</h2>
-          <p class="admin-section-desc">Campus-wide hiring and vacancy summary for leadership (read-only). Presentation polish can follow in later updates.</p>
+    <section class="admin-panel admin-hidden admin-panel--outcome-board" data-admin-panel="recruitment-outcome">
+      <div class="admin-outcome-hero">
+        <div class="admin-outcome-hero-text">
+          <p class="admin-outcome-pill"><span class="admin-sr-only">Mode: </span>Read-only · Leadership view</p>
+          <h2 class="admin-section-title admin-outcome-title">Recruitment Results</h2>
+          <p class="admin-section-desc admin-outcome-lede">Single-screen summary of hiring pressure: KPIs, department mix, and the largest role-level gaps. No edits are available on this tab.</p>
+          <p class="admin-outcome-generated">Snapshot generated at <time id="adminOutcomeGeneratedAt" datetime="">—</time> <span class="admin-outcome-generated-note">(server UTC, shown in your time zone)</span></p>
         </div>
       </div>
+      <div class="admin-outcome-board">
       <div class="card" style="margin-bottom:16px;">
         <h3 class="admin-subtitle">Key indicators</h3>
         <p class="desc">Aggregated across all non-withdrawn job postings and active applications. Total vacancies = sum of (positions - hired) per job.</p>
       </div>
-      <div class="admin-stats-grid">
-        <article class="admin-stat-card">
+      <div class="admin-stats-grid admin-outcome-kpi-grid">
+        <article class="admin-stat-card admin-stat-card--outcome">
           <p class="admin-stat-label">Total position slots</p>
           <p id="adminOutcomeTotalSlots" class="admin-stat-value">0</p>
           <p class="admin-stat-sub">Sum of headcount targets (non-withdrawn jobs)</p>
         </article>
-        <article class="admin-stat-card">
+        <article class="admin-stat-card admin-stat-card--outcome">
           <p class="admin-stat-label">Closed recruitment</p>
           <p id="adminOutcomeClosedJobs" class="admin-stat-value">0</p>
           <p class="admin-stat-sub">Jobs with recruitment closed or status closed</p>
         </article>
-        <article class="admin-stat-card">
+        <article class="admin-stat-card admin-stat-card--outcome">
           <p class="admin-stat-label">Still recruiting</p>
           <p id="adminOutcomeRecruitingJobs" class="admin-stat-value">0</p>
           <p class="admin-stat-sub">Open jobs not yet closed</p>
         </article>
-        <article class="admin-stat-card">
+        <article class="admin-stat-card admin-stat-card--outcome">
           <p class="admin-stat-label">Total applications</p>
           <p id="adminOutcomeTotalApplications" class="admin-stat-value">0</p>
           <p class="admin-stat-sub">Active application records</p>
         </article>
-        <article class="admin-stat-card">
+        <article class="admin-stat-card admin-stat-card--outcome">
           <p class="admin-stat-label">Total hired</p>
           <p id="adminOutcomeTotalHired" class="admin-stat-value">0</p>
           <p class="admin-stat-sub">Active applications marked hired</p>
         </article>
-        <article class="admin-stat-card">
+        <article class="admin-stat-card admin-stat-card--outcome">
           <p class="admin-stat-label">Total vacancies</p>
           <p id="adminOutcomeTotalVacancies" class="admin-stat-value">0</p>
           <p class="admin-stat-sub">Unfilled slots (positions minus hired)</p>
         </article>
       </div>
-      <div class="card">
+      <div class="card admin-outcome-card">
         <h3 class="admin-subtitle">By department</h3>
         <p class="desc">Hired counts and unfilled slots grouped by each job posting's department field. Blank values are rolled up as 未填.</p>
         <p class="admin-outcome-dept-legend" role="note">
@@ -403,10 +406,10 @@
         </p>
         <div id="adminOutcomeDeptChart" class="admin-outcome-dept-chart"></div>
       </div>
-      <div class="card">
+      <div class="card admin-outcome-card">
         <h3 class="admin-subtitle">Top positions by vacancy</h3>
         <p class="desc" id="adminOutcomeVacancyHelp">Non-withdrawn jobs with unfilled slots, ranked for MO follow-up.</p>
-        <div class="table-wrap">
+        <div class="table-wrap admin-outcome-table-wrap">
           <table aria-describedby="adminOutcomeVacancyHelp">
             <thead>
               <tr>
@@ -423,6 +426,7 @@
             <tbody id="adminOutcomeVacancyBody"></tbody>
           </table>
         </div>
+      </div>
       </div>
     </section>
 

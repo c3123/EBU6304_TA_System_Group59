@@ -5,6 +5,7 @@ import com.ta.dto.admin.AdminRecruitmentOutcomeResponse;
 import com.ta.dto.admin.AdminRecruitmentOutcomeVacancyRow;
 import com.ta.model.ApplicationRecord;
 import com.ta.model.JobPosting;
+import com.ta.util.IsoTime;
 import com.ta.util.JsonUtility;
 import jakarta.servlet.ServletContext;
 
@@ -74,6 +75,7 @@ public class AdminRecruitmentOutcomeService {
         response.setTotalVacancies(totalVacancies);
         response.setDepartments(buildDepartmentRows(jobs, applications, hiredByJob));
         response.setTopVacancyJobs(buildTopVacancyJobs(jobs, hiredByJob, topLimit));
+        response.setGeneratedAt(IsoTime.utcNowSeconds());
         return response;
     }
 

@@ -26,6 +26,8 @@ public class AdminRecruitmentOutcomeResponse {
     private List<AdminRecruitmentOutcomeVacancyRow> topVacancyJobs = new ArrayList<>();
     /** Effective cap used for {@link #topVacancyJobs} (echo of {@code vacancyTop} query). */
     private int vacancyTopLimit;
+    /** When this snapshot was built (UTC, ISO-8601 seconds). */
+    private String generatedAt;
 
     public int getTotalPositionSlots() {
         return totalPositionSlots;
@@ -97,5 +99,13 @@ public class AdminRecruitmentOutcomeResponse {
 
     public void setVacancyTopLimit(int vacancyTopLimit) {
         this.vacancyTopLimit = vacancyTopLimit;
+    }
+
+    public String getGeneratedAt() {
+        return generatedAt;
+    }
+
+    public void setGeneratedAt(String generatedAt) {
+        this.generatedAt = generatedAt;
     }
 }
