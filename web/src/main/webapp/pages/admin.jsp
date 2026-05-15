@@ -355,7 +355,7 @@
       <div class="admin-headline">
         <div>
           <h2 class="admin-section-title">Recruitment Results</h2>
-          <p class="admin-section-desc">Campus-wide hiring and vacancy summary for leadership (read-only). Vacancy ranking by job follows in a later update.</p>
+          <p class="admin-section-desc">Campus-wide hiring and vacancy summary for leadership (read-only). Presentation polish can follow in later updates.</p>
         </div>
       </div>
       <div class="card" style="margin-bottom:16px;">
@@ -402,6 +402,27 @@
           <span><span class="admin-outcome-legend-swatch admin-outcome-legend-swatch--vac" aria-hidden="true"></span>Vacancies</span>
         </p>
         <div id="adminOutcomeDeptChart" class="admin-outcome-dept-chart"></div>
+      </div>
+      <div class="card">
+        <h3 class="admin-subtitle">Top positions by vacancy</h3>
+        <p class="desc" id="adminOutcomeVacancyHelp">Non-withdrawn jobs with unfilled slots, ranked for MO follow-up.</p>
+        <div class="table-wrap">
+          <table aria-describedby="adminOutcomeVacancyHelp">
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">Module</th>
+                <th scope="col">Title</th>
+                <th scope="col">Department</th>
+                <th scope="col">Organiser</th>
+                <th scope="col">Positions</th>
+                <th scope="col">Hired</th>
+                <th scope="col">Vacancies</th>
+              </tr>
+            </thead>
+            <tbody id="adminOutcomeVacancyBody"></tbody>
+          </table>
+        </div>
       </div>
     </section>
 

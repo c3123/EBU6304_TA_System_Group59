@@ -22,6 +22,10 @@ public class AdminRecruitmentOutcomeResponse {
     private int totalVacancies;
     /** Per department: hired applications and unfilled slots (blank department label is 未填). */
     private List<AdminRecruitmentOutcomeDepartmentRow> departments = new ArrayList<>();
+    /** Jobs with the largest unfilled slot counts (non-withdrawn, vacancy greater than zero), capped by request. */
+    private List<AdminRecruitmentOutcomeVacancyRow> topVacancyJobs = new ArrayList<>();
+    /** Effective cap used for {@link #topVacancyJobs} (echo of {@code vacancyTop} query). */
+    private int vacancyTopLimit;
 
     public int getTotalPositionSlots() {
         return totalPositionSlots;
@@ -77,5 +81,21 @@ public class AdminRecruitmentOutcomeResponse {
 
     public void setDepartments(List<AdminRecruitmentOutcomeDepartmentRow> departments) {
         this.departments = departments != null ? departments : new ArrayList<>();
+    }
+
+    public List<AdminRecruitmentOutcomeVacancyRow> getTopVacancyJobs() {
+        return topVacancyJobs;
+    }
+
+    public void setTopVacancyJobs(List<AdminRecruitmentOutcomeVacancyRow> topVacancyJobs) {
+        this.topVacancyJobs = topVacancyJobs != null ? topVacancyJobs : new ArrayList<>();
+    }
+
+    public int getVacancyTopLimit() {
+        return vacancyTopLimit;
+    }
+
+    public void setVacancyTopLimit(int vacancyTopLimit) {
+        this.vacancyTopLimit = vacancyTopLimit;
     }
 }

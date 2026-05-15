@@ -2,6 +2,7 @@ package com.ta.service.admin;
 
 import com.ta.dto.admin.AdminRecruitmentOutcomeDepartmentRow;
 import com.ta.dto.admin.AdminRecruitmentOutcomeResponse;
+import com.ta.dto.admin.AdminRecruitmentOutcomeVacancyRow;
 import com.ta.model.ApplicationRecord;
 import com.ta.model.JobPosting;
 import com.ta.util.JsonUtility;
@@ -10,6 +11,7 @@ import jakarta.servlet.ServletContext;
 import java.io.IOException;
 import java.text.Collator;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -25,7 +27,7 @@ public class AdminRecruitmentOutcomeService {
 
     private static final String DEPARTMENT_UNKNOWN = "\u672a\u586b";
 
-    public AdminRecruitmentOutcomeResponse load(ServletContext context) throws IOException {
+    public AdminRecruitmentOutcomeResponse load(ServletContext context, int vacancyTopLimit) throws IOException {
         List<JobPosting> jobs = JsonUtility.loadJobs(context);
         List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
         Map<String, Integer> hiredByJob = countHiredByJob(applications);
@@ -61,7 +63,9 @@ public class AdminRecruitmentOutcomeService {
             }
         }
 
+        int topLimit = normalizeVacancyTopLimit(vacancyTopLimit);
         AdminRecruitmentOutcomeResponse response = new AdminRecruitmentOutcomeResponse();
+        response.setVacancyTopLimit(topLimit);
         response.setTotalPositionSlots(totalPositionSlots);
         response.setClosedJobs(closedJobs);
         response.setRecruitingJobs(recruitingJobs);
@@ -69,7 +73,52 @@ public class AdminRecruitmentOutcomeService {
         response.setTotalHired(totalHired);
         response.setTotalVacancies(totalVacancies);
         response.setDepartments(buildDepartmentRows(jobs, applications, hiredByJob));
+        response.setTopVacancyJobs(buildTopVacancyJobs(jobs, hiredByJob, topLimit));
         return response;
+    }
+
+    private int normalizeVacancyTopLimit(int requested) {
+        if (requested < 1) {
+            return 10;
+        }
+        return Math.min(requested, 50);
+    }
+
+    private List<AdminRecruitmentOutcomeVacancyRow> buildTopVacancyJobs(List<JobPosting> jobs,
+                                                                        Map<String, Integer> hiredByJob,
+                                                                        int limit) {
+        List<AdminRecruitmentOutcomeVacancyRow> rows = new ArrayList<>();
+        for (JobPosting job : jobs) {
+            if (Boolean.TRUE.equals(job.getWithdrawn())) {
+                continue;
+            }
+            if (job.getId() == null || job.getId().isBlank()) {
+                continue;
+            }
+            int hired = hiredByJob.getOrDefault(job.getId(), 0);
+            int vac = Math.max(job.getPositions() - hired, 0);
+            if (vac <= 0) {
+                continue;
+            }
+            AdminRecruitmentOutcomeVacancyRow row = new AdminRecruitmentOutcomeVacancyRow();
+            row.setJobId(job.getId());
+            row.setModuleCode(trimToEmpty(job.getModuleCode()));
+            row.setTitle(trimToEmpty(job.getTitle()));
+            row.setDepartment(departmentLabel(job));
+            row.setTeacherName(trimToEmpty(job.getTeacherName()));
+            row.setPositions(Math.max(job.getPositions(), 0));
+            row.setHiredCount(hired);
+            row.setVacancyCount(vac);
+            rows.add(row);
+        }
+        rows.sort(Comparator
+                .comparingInt(AdminRecruitmentOutcomeVacancyRow::getVacancyCount).reversed()
+                .thenComparing(r -> trimToEmpty(r.getModuleCode()), String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(r -> trimToEmpty(r.getTitle()), String.CASE_INSENSITIVE_ORDER));
+        if (rows.size() > limit) {
+            return new ArrayList<>(rows.subList(0, limit));
+        }
+        return rows;
     }
 
     private List<AdminRecruitmentOutcomeDepartmentRow> buildDepartmentRows(List<JobPosting> jobs,

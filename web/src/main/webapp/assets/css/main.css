@@ -851,6 +851,11 @@ th { background: #f8fbff; }
   margin-top: 4px;
 }
 
+.admin-outcome-vacancy-val {
+  font-weight: 700;
+  color: #c2410c;
+}
+
 .admin-outcome-dept-legend {
   display: flex;
   flex-wrap: wrap;

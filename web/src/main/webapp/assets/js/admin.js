@@ -98,6 +98,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const demandFilters = {
     status: "pending"
   };
+  const RECRUITMENT_VACANCY_TOP = 10;
   const jobApplicationFilters = {
     status: "all"
   };
@@ -230,9 +231,45 @@ document.addEventListener("DOMContentLoaded", async () => {
     }).join("");
   }
 
+  function recruitmentOutcomeDisplayCell(value) {
+    const s = String(value ?? "").trim();
+    return s ? escapeHtml(s) : "\u2014";
+  }
+
+  function renderRecruitmentVacancyTable(rows, vacancyTopLimit) {
+    const body = byId("adminOutcomeVacancyBody");
+    const help = byId("adminOutcomeVacancyHelp");
+    if (help) {
+      const cap = Number(vacancyTopLimit);
+      if (Number.isFinite(cap)) {
+        help.textContent = `Non-withdrawn jobs with unfilled slots, highest vacancy first (showing up to ${cap} rows).`;
+      }
+    }
+    if (!body) return;
+    const list = Array.isArray(rows) ? rows : [];
+    if (list.length === 0) {
+      body.innerHTML = `<tr><td colspan="8" class="desc" style="padding:12px;">No unfilled positions: every active job is fully hired or has zero headcount.</td></tr>`;
+      return;
+    }
+    body.innerHTML = list.map((r, idx) => `
+      <tr>
+        <td>${idx + 1}</td>
+        <td>${recruitmentOutcomeDisplayCell(r.moduleCode)}</td>
+        <td>${recruitmentOutcomeDisplayCell(r.title)}</td>
+        <td>${recruitmentOutcomeDisplayCell(r.department)}</td>
+        <td>${recruitmentOutcomeDisplayCell(r.teacherName)}</td>
+        <td>${Number(r.positions) || 0}</td>
+        <td>${Number(r.hiredCount) || 0}</td>
+        <td><span class="admin-outcome-vacancy-val">${Number(r.vacancyCount) || 0}</span></td>
+      </tr>
+    `).join("");
+  }
+
   async function loadRecruitmentOutcome() {
     try {
-      const data = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/recruitment-outcome`, {
+      const params = new URLSearchParams();
+      params.set("vacancyTop", String(RECRUITMENT_VACANCY_TOP));
+      const data = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/recruitment-outcome?${params.toString()}`, {
         method: "GET"
       });
       const slots = byId("adminOutcomeTotalSlots");
@@ -248,6 +285,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (hired) hired.textContent = data.totalHired ?? 0;
       if (vac) vac.textContent = data.totalVacancies ?? 0;
       renderRecruitmentDepartmentChart(data.departments);
+      renderRecruitmentVacancyTable(data.topVacancyJobs, data.vacancyTopLimit);
     } catch (err) {
       setNotice(err.message, true);
     }
