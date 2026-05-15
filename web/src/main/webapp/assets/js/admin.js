@@ -128,6 +128,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (tabName === "alerts") title.textContent = "Administrator Alerts";
     if (tabName === "account") title.textContent = "My Account";
     if (tabName === "overview") title.textContent = `Welcome, ${currentUserName}`;
+    if (tabName === "recruitment-outcome") {
+      title.textContent = "Recruitment Results (leadership view)";
+      void loadRecruitmentOutcome();
+    }
   }
 
   function prefersReducedMotion() {
@@ -187,6 +191,28 @@ document.addEventListener("DOMContentLoaded", async () => {
         .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
         .join("");
       archiveTeacherFilterEl.value = archiveFilters.teacher;
+    }
+  }
+
+  async function loadRecruitmentOutcome() {
+    try {
+      const data = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/recruitment-outcome`, {
+        method: "GET"
+      });
+      const slots = byId("adminOutcomeTotalSlots");
+      const closed = byId("adminOutcomeClosedJobs");
+      const recruiting = byId("adminOutcomeRecruitingJobs");
+      const apps = byId("adminOutcomeTotalApplications");
+      const hired = byId("adminOutcomeTotalHired");
+      const vac = byId("adminOutcomeTotalVacancies");
+      if (slots) slots.textContent = data.totalPositionSlots ?? 0;
+      if (closed) closed.textContent = data.closedJobs ?? 0;
+      if (recruiting) recruiting.textContent = data.recruitingJobs ?? 0;
+      if (apps) apps.textContent = data.totalApplications ?? 0;
+      if (hired) hired.textContent = data.totalHired ?? 0;
+      if (vac) vac.textContent = data.totalVacancies ?? 0;
+    } catch (err) {
+      setNotice(err.message, true);
     }
   }
 

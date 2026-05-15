@@ -39,6 +39,7 @@
       <button class="admin-tab" data-admin-tab="users" role="tab" aria-selected="false">Users</button>
       <button class="admin-tab" data-admin-tab="demands" role="tab" aria-selected="false">Demand Review</button>
       <button class="admin-tab" data-admin-tab="jobs" role="tab" aria-selected="false">Jobs</button>
+      <button class="admin-tab" data-admin-tab="recruitment-outcome" role="tab" aria-selected="false">Recruitment Results</button>
       <button class="admin-tab" data-admin-tab="archive" role="tab" aria-selected="false">Application Archive</button>
       <button class="admin-tab" data-admin-tab="alerts" role="tab" aria-selected="false">Alerts</button>
       <button class="admin-tab" data-admin-tab="account" role="tab" aria-selected="false">My Account</button>
@@ -347,6 +348,51 @@
             <tbody id="adminJobsBody"></tbody>
           </table>
         </div>
+      </div>
+    </section>
+
+    <section class="admin-panel admin-hidden" data-admin-panel="recruitment-outcome">
+      <div class="admin-headline">
+        <div>
+          <h2 class="admin-section-title">Recruitment Results</h2>
+          <p class="admin-section-desc">Campus-wide hiring and vacancy summary for leadership (read-only). Charts and vacancy ranking will appear in later updates.</p>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <h3 class="admin-subtitle">Key indicators</h3>
+        <p class="desc">Aggregated across all non-withdrawn job postings and active applications. Total vacancies = sum of (positions - hired) per job.</p>
+      </div>
+      <div class="admin-stats-grid">
+        <article class="admin-stat-card">
+          <p class="admin-stat-label">Total position slots</p>
+          <p id="adminOutcomeTotalSlots" class="admin-stat-value">0</p>
+          <p class="admin-stat-sub">Sum of headcount targets (non-withdrawn jobs)</p>
+        </article>
+        <article class="admin-stat-card">
+          <p class="admin-stat-label">Closed recruitment</p>
+          <p id="adminOutcomeClosedJobs" class="admin-stat-value">0</p>
+          <p class="admin-stat-sub">Jobs with recruitment closed or status closed</p>
+        </article>
+        <article class="admin-stat-card">
+          <p class="admin-stat-label">Still recruiting</p>
+          <p id="adminOutcomeRecruitingJobs" class="admin-stat-value">0</p>
+          <p class="admin-stat-sub">Open jobs not yet closed</p>
+        </article>
+        <article class="admin-stat-card">
+          <p class="admin-stat-label">Total applications</p>
+          <p id="adminOutcomeTotalApplications" class="admin-stat-value">0</p>
+          <p class="admin-stat-sub">Active application records</p>
+        </article>
+        <article class="admin-stat-card">
+          <p class="admin-stat-label">Total hired</p>
+          <p id="adminOutcomeTotalHired" class="admin-stat-value">0</p>
+          <p class="admin-stat-sub">Active applications marked hired</p>
+        </article>
+        <article class="admin-stat-card">
+          <p class="admin-stat-label">Total vacancies</p>
+          <p id="adminOutcomeTotalVacancies" class="admin-stat-value">0</p>
+          <p class="admin-stat-sub">Unfilled slots (positions minus hired)</p>
+        </article>
       </div>
     </section>
 
