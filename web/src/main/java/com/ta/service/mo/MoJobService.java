@@ -121,6 +121,9 @@ public class MoJobService {
             job.setPositions(request.getPlannedCount());
             job.setHourMin(request.getHourMin());
             job.setHourMax(request.getHourMax());
+            if (!isBlank(request.getRequirements())) {
+                job.setRequirements(request.getRequirements().trim());
+            }
             job.setPublished(false);
             job.setWithdrawn(false);
             job.setStatus("draft");

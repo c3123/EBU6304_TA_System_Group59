@@ -223,7 +223,8 @@ function renderTeacherJobCard(item) {
         </div>
         <div class="field">
           <label>Requirements</label>
-          <textarea name="requirements" placeholder="e.g. GPA>=3.0, Java foundation" required></textarea>
+          <textarea name="requirements" placeholder="Example: Java, SQL, Git, Communication Skills" required></textarea>
+          <p class="field-help">Enter required skills or qualifications for this TA role.</p>
         </div>
         <div class="row">
           <button type="submit" class="btn btn-primary">Confirm publish</button>
@@ -256,6 +257,11 @@ function renderTeacherJobCard(item) {
             <label>Hour Max</label>
             <input name="hourMax" type="number" min="1" required value="${teacherEscapeHtml(teacherSafeText(item.hourMax))}" />
           </div>
+        </div>
+        <div class="field">
+          <label>Requirements</label>
+          <textarea name="requirements" placeholder="Example: Java, SQL, Git, Communication Skills" required>${teacherEscapeHtml(teacherSafeText(item.requirements))}</textarea>
+          <p class="field-help">Enter required skills or qualifications for this TA role.</p>
         </div>
         <div class="row">
           <button type="submit" class="btn btn-primary">Save edit</button>
@@ -413,7 +419,8 @@ async function submitEditForm(form) {
       department: form.department.value.trim(),
       plannedCount: Number(form.plannedCount.value),
       hourMin: Number(form.hourMin.value),
-      hourMax: Number(form.hourMax.value)
+      hourMax: Number(form.hourMax.value),
+      requirements: form.requirements.value.trim()
     };
     await teacherRequest(`${teacherApiBase()}/jobs/edit/${encodeURIComponent(jobId)}`, {
       method: "POST",
