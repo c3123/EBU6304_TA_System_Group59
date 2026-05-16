@@ -418,6 +418,84 @@
       font-weight: 600;
     }
 
+    .student-portal-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .mo-notification-dot {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      background: #dc2626;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 0 6px;
+      margin-left: 6px;
+    }
+
+    .mo-notification-panel {
+      border: 1px solid #e5e7eb;
+      background: #fff;
+      border-radius: 10px;
+      padding: 10px;
+      margin: 0 0 16px;
+      display: none;
+      max-height: 260px;
+      overflow: auto;
+    }
+
+    .mo-notification-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px dashed #e2e8f0;
+      padding: 8px 0;
+    }
+
+    .mo-notification-item:last-child {
+      border-bottom: none;
+    }
+
+    .mo-notification-item--announcement {
+      align-items: flex-start;
+    }
+
+    .mo-notification-badge {
+      display: inline-block;
+      margin-bottom: 6px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .mo-notification-announcement-title {
+      margin: 0 0 4px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .mo-notification-announcement-body {
+      margin: 0;
+      font-size: 13px;
+      color: #334155;
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
+
     .job-detail-overlay {
       position: fixed;
       inset: 0;
@@ -533,11 +611,15 @@
         <p id="studentWelcome">Welcome back.</p>
       </div>
     </div>
-    <a class="mo-btn-logout" href="<%= request.getContextPath() %>/logout">Logout</a>
+    <div class="student-portal-header-actions">
+      <button id="studentNotificationBtn" class="btn btn-outline" type="button">Notifications <span id="studentNotificationDot" class="mo-notification-dot" style="display:none">0</span></button>
+      <a class="mo-btn-logout" href="<%= request.getContextPath() %>/logout">Logout</a>
+    </div>
   </div>
 </header>
 
 <main class="mo-portal-main student-content">
+  <div id="studentNotificationPanel" class="mo-notification-panel"></div>
   <nav class="mo-tabs student-tabs" aria-label="Student modules">
     <button type="button" class="mo-tab student-tab active" data-tab="jobs">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">

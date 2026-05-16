@@ -15,6 +15,20 @@ public class AdminAnnouncementsServlet extends AdminBaseServlet {
     private final AdminAnnouncementService announcementService = new AdminAnnouncementService();
 
     @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        try {
+            if (!requireAdmin(req, resp)) {
+                return;
+            }
+            writeSuccess(resp, announcementService.list(getServletContext()));
+        } catch (AdminBusinessException ex) {
+            writeError(resp, ex.getHttpStatus(), ex.getCode(), ex.getMessage());
+        } catch (Exception ex) {
+            writeError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", ex.getMessage());
+        }
+    }
+
+    @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         try {
             if (!requireAdmin(req, resp)) {

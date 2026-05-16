@@ -551,6 +551,18 @@
         </form>
         <p id="adminAnnouncementResult" class="desc" style="margin-top:12px;"></p>
       </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="admin-headline" style="margin-bottom:12px;">
+          <div>
+            <h3 class="admin-subtitle" style="margin:0;">Sent announcements</h3>
+            <p class="desc" style="margin:4px 0 0;">History of admin broadcasts (newest first).</p>
+          </div>
+          <button id="adminAnnouncementRefreshBtn" type="button" class="btn btn-outline">Refresh</button>
+        </div>
+        <div id="adminAnnouncementHistory" class="admin-list">
+          <p class="admin-empty-text">Loading history...</p>
+        </div>
+      </div>
     </section>
 
     <section class="admin-panel admin-hidden" data-admin-panel="account">
