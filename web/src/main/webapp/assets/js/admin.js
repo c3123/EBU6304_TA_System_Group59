@@ -77,6 +77,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const changePasswordForm = byId("adminChangePasswordForm");
   const changePasswordBtn = byId("adminChangePasswordBtn");
+  const announcementForm = byId("adminAnnouncementForm");
+  const announcementTitleEl = byId("adminAnnouncementTitle");
+  const announcementBodyEl = byId("adminAnnouncementBody");
+  const announcementTargetEl = byId("adminAnnouncementTarget");
+  const announcementSendBtn = byId("adminAnnouncementSendBtn");
+  const announcementResultEl = byId("adminAnnouncementResult");
 
   const currentUserId = portal?.getAttribute("data-current-user-id") || "";
   const currentUserName = portal?.getAttribute("data-current-user-name") || "Admin User";
@@ -139,6 +145,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (tabName === "jobs") title.textContent = "Job Management";
     if (tabName === "archive") title.textContent = "Application Archive";
     if (tabName === "alerts") title.textContent = "Administrator Alerts";
+    if (tabName === "announcements") title.textContent = "System Announcements";
     if (tabName === "account") title.textContent = "My Account";
     if (tabName === "overview") title.textContent = `Welcome, ${currentUserName}`;
     if (tabName === "recruitment-outcome") {
@@ -1115,6 +1122,43 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  async function sendAnnouncement(event) {
+    event.preventDefault();
+    const title = (announcementTitleEl && announcementTitleEl.value || "").trim();
+    const body = (announcementBodyEl && announcementBodyEl.value || "").trim();
+    const targetRole = announcementTargetEl ? announcementTargetEl.value : "student";
+    if (!title || !body) {
+      setNotice("Title and body are required.", true);
+      activateTab("announcements");
+      return;
+    }
+    try {
+      if (announcementSendBtn) {
+        announcementSendBtn.disabled = true;
+        announcementSendBtn.textContent = "Sending...";
+      }
+      const data = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/announcements`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, body, targetRole })
+      });
+      if (announcementForm) announcementForm.reset();
+      const count = data.recipientCount ?? 0;
+      const msg = `Announcement sent to ${count} recipient(s). ID: ${data.announcementId || ""}`;
+      if (announcementResultEl) announcementResultEl.textContent = msg;
+      setNotice(msg, false);
+      activateTab("announcements");
+    } catch (err) {
+      setNotice(err.message, true);
+      activateTab("announcements");
+    } finally {
+      if (announcementSendBtn) {
+        announcementSendBtn.disabled = false;
+        announcementSendBtn.textContent = "Send announcement";
+      }
+    }
+  }
+
   async function createUser(event) {
     event.preventDefault();
     const payload = {
@@ -1696,6 +1740,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (adminOutcomeExportCsvBtn) {
     adminOutcomeExportCsvBtn.addEventListener("click", () => void downloadRecruitmentOutcomeCsv());
   }
+  if (announcementForm) announcementForm.addEventListener("submit", sendAnnouncement);
   changePasswordForm.addEventListener("submit", changeOwnPassword);
 
   syncCreateRoleFields();

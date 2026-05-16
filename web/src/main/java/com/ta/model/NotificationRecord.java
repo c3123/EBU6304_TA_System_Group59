@@ -15,6 +15,12 @@ public class NotificationRecord {
     private String recipientId;
     private String recipientRole;
     private String message;
+    /** workflow (default) or announcement for admin broadcasts. */
+    private String type;
+    /** Announcement headline when type is announcement. */
+    private String title;
+    /** Shared id for all rows created in one admin broadcast. */
+    private String announcementId;
 
     public String getId() {
         return id;
@@ -102,5 +108,29 @@ public class NotificationRecord {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getAnnouncementId() {
+        return announcementId;
+    }
+
+    public void setAnnouncementId(String announcementId) {
+        this.announcementId = announcementId;
     }
 }
