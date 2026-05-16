@@ -32,6 +32,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   const panels = Array.from(document.querySelectorAll("[data-admin-panel]"));
   const workloadPanel = panels.find((p) => p.getAttribute("data-admin-panel") === "workload") || null;
   const noticeEl = byId("adminNotice");
+  const adminOutcomeJobSince = byId("adminOutcomeJobSince");
+  const adminOutcomeJobUntil = byId("adminOutcomeJobUntil");
+  const adminOutcomeApplyRangeBtn = byId("adminOutcomeApplyRangeBtn");
+  const adminOutcomeClearRangeBtn = byId("adminOutcomeClearRangeBtn");
+  const adminOutcomeRefreshBtn = byId("adminOutcomeRefreshBtn");
+  const adminOutcomeExportCsvBtn = byId("adminOutcomeExportCsvBtn");
 
   const createUserForm = byId("adminCreateUserForm");
   const createRoleEl = byId("adminCreateRole");
@@ -98,6 +104,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const demandFilters = {
     status: "pending"
   };
+  const RECRUITMENT_VACANCY_TOP = 10;
+  const outcomeJobDateRange = { since: "", until: "" };
   const jobApplicationFilters = {
     status: "all"
   };
@@ -118,6 +126,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       panel.classList.toggle("admin-hidden", panel.getAttribute("data-admin-panel") !== tabName);
     });
 
+    const portalMain = document.querySelector(".admin-portal-main");
+    if (portalMain) {
+      portalMain.classList.toggle("admin-portal-main--wide", tabName === "recruitment-outcome");
+    }
+
     const title = byId("adminSubTitle");
     if (!title) return;
     if (tabName === "workload") title.textContent = "TA Workload Statistics";
@@ -128,6 +141,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (tabName === "alerts") title.textContent = "Administrator Alerts";
     if (tabName === "account") title.textContent = "My Account";
     if (tabName === "overview") title.textContent = `Welcome, ${currentUserName}`;
+    if (tabName === "recruitment-outcome") {
+      title.textContent = "Recruitment Results (leadership view)";
+      void loadRecruitmentOutcome();
+    }
   }
 
   function prefersReducedMotion() {
@@ -187,6 +204,141 @@ document.addEventListener("DOMContentLoaded", async () => {
         .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
         .join("");
       archiveTeacherFilterEl.value = archiveFilters.teacher;
+    }
+  }
+
+  function buildRecruitmentOutcomeQueryParams() {
+    const params = new URLSearchParams();
+    params.set("vacancyTop", String(RECRUITMENT_VACANCY_TOP));
+    if (outcomeJobDateRange.since) {
+      params.set("jobSince", outcomeJobDateRange.since);
+    }
+    if (outcomeJobDateRange.until) {
+      params.set("jobUntil", outcomeJobDateRange.until);
+    }
+    return params;
+  }
+
+  function formatOutcomeGeneratedAt(iso) {
+    if (!iso) return "";
+    try {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) {
+        return String(iso);
+      }
+      return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    } catch {
+      return String(iso);
+    }
+  }
+
+  function renderRecruitmentDepartmentChart(rows) {
+    const chart = byId("adminOutcomeDeptChart");
+    if (!chart) return;
+    const list = Array.isArray(rows) ? rows : [];
+    if (list.length === 0) {
+      chart.innerHTML = `<p class="desc">No department breakdown (no jobs or applications yet).</p>`;
+      return;
+    }
+    let max = 1;
+    list.forEach((r) => {
+      max = Math.max(max, Number(r.hiredCount) || 0, Number(r.vacancyCount) || 0);
+    });
+    chart.innerHTML = list.map((r) => {
+      const h = Number(r.hiredCount) || 0;
+      const v = Number(r.vacancyCount) || 0;
+      const hw = max ? (h / max) * 100 : 0;
+      const vw = max ? (v / max) * 100 : 0;
+      return `
+      <div class="admin-outcome-dept-row">
+        <div class="admin-outcome-dept-name">${escapeHtml(r.department)}</div>
+        <div class="admin-outcome-dept-metrics">
+          <div class="admin-outcome-dept-metric">
+            <span class="admin-outcome-dept-metric-label">Hired</span>
+            <div class="admin-outcome-bar-track" role="presentation"><div class="admin-outcome-bar-fill admin-outcome-bar-fill--hired" style="width:${hw}%"></div></div>
+            <span class="admin-outcome-dept-metric-val">${h}</span>
+          </div>
+          <div class="admin-outcome-dept-metric">
+            <span class="admin-outcome-dept-metric-label">Vacancies</span>
+            <div class="admin-outcome-bar-track" role="presentation"><div class="admin-outcome-bar-fill admin-outcome-bar-fill--vac" style="width:${vw}%"></div></div>
+            <span class="admin-outcome-dept-metric-val">${v}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  function recruitmentOutcomeDisplayCell(value) {
+    const s = String(value ?? "").trim();
+    return s ? escapeHtml(s) : "\u2014";
+  }
+
+  function renderRecruitmentVacancyTable(rows, vacancyTopLimit) {
+    const body = byId("adminOutcomeVacancyBody");
+    const help = byId("adminOutcomeVacancyHelp");
+    if (help) {
+      const cap = Number(vacancyTopLimit);
+      if (Number.isFinite(cap)) {
+        help.textContent = `Non-withdrawn jobs with unfilled slots, highest vacancy first (showing up to ${cap} rows).`;
+      }
+    }
+    if (!body) return;
+    const list = Array.isArray(rows) ? rows : [];
+    if (list.length === 0) {
+      body.innerHTML = `<tr><td colspan="8" class="desc" style="padding:12px;">No unfilled positions: every active job is fully hired or has zero headcount.</td></tr>`;
+      return;
+    }
+    body.innerHTML = list.map((r, idx) => `
+      <tr>
+        <td>${idx + 1}</td>
+        <td>${recruitmentOutcomeDisplayCell(r.moduleCode)}</td>
+        <td>${recruitmentOutcomeDisplayCell(r.title)}</td>
+        <td>${recruitmentOutcomeDisplayCell(r.department)}</td>
+        <td>${recruitmentOutcomeDisplayCell(r.teacherName)}</td>
+        <td>${Number(r.positions) || 0}</td>
+        <td>${Number(r.hiredCount) || 0}</td>
+        <td><span class="admin-outcome-vacancy-val">${Number(r.vacancyCount) || 0}</span></td>
+      </tr>
+    `).join("");
+  }
+
+  async function loadRecruitmentOutcome() {
+    try {
+      const data = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/recruitment-outcome?${buildRecruitmentOutcomeQueryParams().toString()}`, {
+        method: "GET"
+      });
+      outcomeJobDateRange.since = data.jobSince || "";
+      outcomeJobDateRange.until = data.jobUntil || "";
+      if (adminOutcomeJobSince) {
+        adminOutcomeJobSince.value = outcomeJobDateRange.since;
+      }
+      if (adminOutcomeJobUntil) {
+        adminOutcomeJobUntil.value = outcomeJobDateRange.until;
+      }
+      const slots = byId("adminOutcomeTotalSlots");
+      const closed = byId("adminOutcomeClosedJobs");
+      const recruiting = byId("adminOutcomeRecruitingJobs");
+      const apps = byId("adminOutcomeTotalApplications");
+      const hired = byId("adminOutcomeTotalHired");
+      const vac = byId("adminOutcomeTotalVacancies");
+      if (slots) slots.textContent = data.totalPositionSlots ?? 0;
+      if (closed) closed.textContent = data.closedJobs ?? 0;
+      if (recruiting) recruiting.textContent = data.recruitingJobs ?? 0;
+      if (apps) apps.textContent = data.totalApplications ?? 0;
+      if (hired) hired.textContent = data.totalHired ?? 0;
+      if (vac) vac.textContent = data.totalVacancies ?? 0;
+      const genEl = byId("adminOutcomeGeneratedAt");
+      if (genEl && data.generatedAt) {
+        genEl.setAttribute("datetime", data.generatedAt);
+        genEl.textContent = formatOutcomeGeneratedAt(data.generatedAt);
+      } else if (genEl) {
+        genEl.removeAttribute("datetime");
+        genEl.textContent = "—";
+      }
+      renderRecruitmentDepartmentChart(data.departments);
+      renderRecruitmentVacancyTable(data.topVacancyJobs, data.vacancyTopLimit);
+    } catch (err) {
+      setNotice(err.message, true);
     }
   }
 
@@ -1143,6 +1295,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
   }
 
+  async function downloadRecruitmentOutcomeCsv() {
+    const button = adminOutcomeExportCsvBtn;
+    const defaultText = "Export CSV";
+    const params = buildRecruitmentOutcomeQueryParams();
+    await downloadAdminFile(
+      `/api/admin/recruitment-outcome/export?${params.toString()}`,
+      `recruitment-outcome-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}.csv`,
+      button,
+      defaultText,
+      "Recruitment outcome CSV exported.",
+      "recruitment-outcome"
+    );
+  }
+
   async function downloadArchiveReport(format) {
     const button = format === "csv" ? archiveExportCsvBtn : archiveExportTxtBtn;
     const defaultText = format === "csv" ? "Export Archive CSV" : "Export Archive TXT";
@@ -1508,6 +1674,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (jobApplicationsCloseBtn) jobApplicationsCloseBtn.addEventListener("click", closeJobApplications);
   if (jobApplicationsCsvBtn) jobApplicationsCsvBtn.addEventListener("click", () => downloadJobApplications("csv"));
   if (jobApplicationsTxtBtn) jobApplicationsTxtBtn.addEventListener("click", () => downloadJobApplications("txt"));
+  if (adminOutcomeApplyRangeBtn) {
+    adminOutcomeApplyRangeBtn.addEventListener("click", () => {
+      outcomeJobDateRange.since = (adminOutcomeJobSince && adminOutcomeJobSince.value) || "";
+      outcomeJobDateRange.until = (adminOutcomeJobUntil && adminOutcomeJobUntil.value) || "";
+      void loadRecruitmentOutcome();
+    });
+  }
+  if (adminOutcomeClearRangeBtn) {
+    adminOutcomeClearRangeBtn.addEventListener("click", () => {
+      outcomeJobDateRange.since = "";
+      outcomeJobDateRange.until = "";
+      if (adminOutcomeJobSince) adminOutcomeJobSince.value = "";
+      if (adminOutcomeJobUntil) adminOutcomeJobUntil.value = "";
+      void loadRecruitmentOutcome();
+    });
+  }
+  if (adminOutcomeRefreshBtn) {
+    adminOutcomeRefreshBtn.addEventListener("click", () => void loadRecruitmentOutcome());
+  }
+  if (adminOutcomeExportCsvBtn) {
+    adminOutcomeExportCsvBtn.addEventListener("click", () => void downloadRecruitmentOutcomeCsv());
+  }
   changePasswordForm.addEventListener("submit", changeOwnPassword);
 
   syncCreateRoleFields();
