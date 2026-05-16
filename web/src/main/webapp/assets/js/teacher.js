@@ -466,6 +466,37 @@ function startNotificationPolling() {
   window.setInterval(loadNotifications, 10000);
 }
 
+function renderNotificationItemHtml(n) {
+  if (n.type === "announcement") {
+    const title = teacherSafeText(n.title || "System announcement");
+    const body = teacherSafeText(n.message || "");
+    return `
+    <div class="mo-notification-item mo-notification-item--announcement">
+      <div style="min-width:0">
+        <span class="mo-notification-badge">System announcement</span>
+        <p class="mo-notification-announcement-title">${teacherEscapeHtml(title)}</p>
+        <p class="mo-notification-announcement-body">${teacherEscapeHtml(body)}</p>
+        <div style="font-size:12px;color:#64748b;margin-top:6px;">${teacherEscapeHtml(teacherSafeText(n.applicationTime))}</div>
+      </div>
+      <div class="row">
+        ${n.read ? '<span class="notice" style="margin:0">Read</span>' : `<button class="btn btn-outline" type="button" data-mark-read="${teacherEscapeHtml(n.notificationId)}">Mark as Read</button>`}
+      </div>
+    </div>`;
+  }
+  return `
+    <div class="mo-notification-item">
+      <div style="min-width:0">
+        <div>${n.message
+          ? teacherEscapeHtml(n.message)
+          : `<strong>${teacherEscapeHtml(teacherSafeText(n.applicantName))}</strong> applied to <strong>${teacherEscapeHtml(teacherSafeText(n.jobName || n.jobId))}</strong>`}</div>
+        <div style="font-size:12px;color:#64748b">${teacherEscapeHtml(teacherSafeText(n.applicationTime))}</div>
+      </div>
+      <div class="row">
+        ${n.read ? '<span class="notice" style="margin:0">Read</span>' : `<button class="btn btn-outline" type="button" data-mark-read="${teacherEscapeHtml(n.notificationId)}">Mark as Read</button>`}
+      </div>
+    </div>`;
+}
+
 function renderNotifications() {
   const dot = byId("notificationDot");
   const panel = byId("notificationPanel");
@@ -479,19 +510,7 @@ function renderNotifications() {
     panel.innerHTML = '<p class="notice" style="margin:0">No notifications.</p>';
     return;
   }
-  panel.innerHTML = teacherState.notifications.map((n) => `
-    <div class="mo-notification-item">
-      <div style="min-width:0">
-        <div>${n.message
-          ? teacherEscapeHtml(n.message)
-          : `<strong>${teacherEscapeHtml(teacherSafeText(n.applicantName))}</strong> applied to <strong>${teacherEscapeHtml(teacherSafeText(n.jobName || n.jobId))}</strong>`}</div>
-        <div style="font-size:12px;color:#64748b">${teacherEscapeHtml(teacherSafeText(n.applicationTime))}</div>
-      </div>
-      <div class="row">
-        ${n.read ? '<span class="notice" style="margin:0">Read</span>' : `<button class="btn btn-outline" type="button" data-mark-read="${teacherEscapeHtml(n.notificationId)}">Mark as Read</button>`}
-      </div>
-    </div>
-  `).join("");
+  panel.innerHTML = teacherState.notifications.map(renderNotificationItemHtml).join("");
 }
 
 async function markNotificationRead(notificationId) {

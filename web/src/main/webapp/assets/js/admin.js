@@ -77,6 +77,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const changePasswordForm = byId("adminChangePasswordForm");
   const changePasswordBtn = byId("adminChangePasswordBtn");
+  const announcementForm = byId("adminAnnouncementForm");
+  const announcementTitleEl = byId("adminAnnouncementTitle");
+  const announcementBodyEl = byId("adminAnnouncementBody");
+  const announcementTargetEl = byId("adminAnnouncementTarget");
+  const announcementSendBtn = byId("adminAnnouncementSendBtn");
+  const announcementResultEl = byId("adminAnnouncementResult");
+  const announcementHistoryEl = byId("adminAnnouncementHistory");
+  const announcementRefreshBtn = byId("adminAnnouncementRefreshBtn");
+  let latestAnnouncements = [];
 
   const currentUserId = portal?.getAttribute("data-current-user-id") || "";
   const currentUserName = portal?.getAttribute("data-current-user-name") || "Admin User";
@@ -139,6 +148,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (tabName === "jobs") title.textContent = "Job Management";
     if (tabName === "archive") title.textContent = "Application Archive";
     if (tabName === "alerts") title.textContent = "Administrator Alerts";
+    if (tabName === "announcements") {
+      title.textContent = "System Announcements";
+      void loadAnnouncements();
+    }
     if (tabName === "account") title.textContent = "My Account";
     if (tabName === "overview") title.textContent = `Welcome, ${currentUserName}`;
     if (tabName === "recruitment-outcome") {
@@ -1115,6 +1128,91 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  function formatAnnouncementTarget(targetRole) {
+    if (targetRole === "teacher") return "Module organisers";
+    if (targetRole === "all") return "All students and teachers";
+    return "Students";
+  }
+
+  function renderAnnouncements(items) {
+    if (!announcementHistoryEl) return;
+    if (!items.length) {
+      announcementHistoryEl.innerHTML = '<p class="admin-empty-text">No announcements sent yet.</p>';
+      return;
+    }
+    announcementHistoryEl.innerHTML = items.map((item) => `
+      <div class="admin-list-item">
+        <div style="min-width:0">
+          <p class="admin-list-name">${escapeHtml(item.title || "Untitled")}</p>
+          <p class="admin-list-meta">${escapeHtml(formatAnnouncementTarget(item.targetRole))} · ${item.recipientCount ?? 0} recipient(s) · ${escapeHtml(item.createdAt || "-")}</p>
+          <p class="desc" style="margin:6px 0 0;">${escapeHtml(item.bodyPreview || "")}</p>
+          <p class="admin-list-meta" style="margin-top:4px;">ID: ${escapeHtml(item.announcementId || "")}</p>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  async function loadAnnouncements() {
+    if (!announcementHistoryEl) return;
+    try {
+      if (announcementRefreshBtn) {
+        announcementRefreshBtn.disabled = true;
+        announcementRefreshBtn.textContent = "Loading...";
+      }
+      const data = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/announcements`, {
+        method: "GET"
+      });
+      latestAnnouncements = (data && Array.isArray(data.items)) ? data.items : [];
+      renderAnnouncements(latestAnnouncements);
+    } catch (err) {
+      latestAnnouncements = [];
+      announcementHistoryEl.innerHTML = `<p class="admin-empty-text">${escapeHtml(err.message || "Failed to load announcement history.")}</p>`;
+    } finally {
+      if (announcementRefreshBtn) {
+        announcementRefreshBtn.disabled = false;
+        announcementRefreshBtn.textContent = "Refresh";
+      }
+    }
+  }
+
+  async function sendAnnouncement(event) {
+    event.preventDefault();
+    const title = (announcementTitleEl && announcementTitleEl.value || "").trim();
+    const body = (announcementBodyEl && announcementBodyEl.value || "").trim();
+    const targetRole = announcementTargetEl ? announcementTargetEl.value : "student";
+    if (!title || !body) {
+      setNotice("Title and body are required.", true);
+      activateTab("announcements");
+      return;
+    }
+    try {
+      if (announcementSendBtn) {
+        announcementSendBtn.disabled = true;
+        announcementSendBtn.textContent = "Sending...";
+      }
+      const data = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/announcements`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, body, targetRole })
+      });
+      if (announcementForm) announcementForm.reset();
+      const count = data.recipientCount ?? 0;
+      const msg = `Announcement sent to ${count} recipient(s). ID: ${data.announcementId || ""}`;
+      if (announcementResultEl) announcementResultEl.textContent = msg;
+      setNotice(msg, false);
+      await loadAnnouncements();
+      activateTab("announcements");
+    } catch (err) {
+      setNotice(err.message, true);
+      activateTab("announcements");
+    } finally {
+      if (announcementSendBtn) {
+        announcementSendBtn.disabled = false;
+        announcementSendBtn.textContent = "Send announcement";
+      }
+    }
+  }
+
   async function createUser(event) {
     event.preventDefault();
     const payload = {
@@ -1696,6 +1794,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (adminOutcomeExportCsvBtn) {
     adminOutcomeExportCsvBtn.addEventListener("click", () => void downloadRecruitmentOutcomeCsv());
   }
+  if (announcementForm) announcementForm.addEventListener("submit", sendAnnouncement);
+  if (announcementRefreshBtn) announcementRefreshBtn.addEventListener("click", () => loadAnnouncements());
   changePasswordForm.addEventListener("submit", changeOwnPassword);
 
   syncCreateRoleFields();

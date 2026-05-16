@@ -42,6 +42,7 @@
       <button class="admin-tab admin-tab--outcome" data-admin-tab="recruitment-outcome" role="tab" aria-selected="false">Recruitment Results</button>
       <button class="admin-tab" data-admin-tab="archive" role="tab" aria-selected="false">Application Archive</button>
       <button class="admin-tab" data-admin-tab="alerts" role="tab" aria-selected="false">Alerts</button>
+      <button class="admin-tab" data-admin-tab="announcements" role="tab" aria-selected="false">Announcements</button>
       <button class="admin-tab" data-admin-tab="account" role="tab" aria-selected="false">My Account</button>
     </nav>
 
@@ -514,6 +515,54 @@
         </div>
       </div>
       <div id="adminAlertsList" class="admin-alert-list"></div>
+    </section>
+
+    <section class="admin-panel admin-hidden" data-admin-panel="announcements">
+      <div class="admin-headline">
+        <div>
+          <h2 class="admin-section-title">System Announcements</h2>
+          <p class="admin-section-desc">Broadcast a site message to students, module organisers, or both. Each recipient receives a notification record in notifications.json.</p>
+        </div>
+      </div>
+      <div class="card">
+        <h3 class="admin-subtitle">Send announcement</h3>
+        <form id="adminAnnouncementForm">
+          <div class="admin-form-grid">
+            <div class="field" style="grid-column: 1 / -1;">
+              <label for="adminAnnouncementTitle">Title</label>
+              <input id="adminAnnouncementTitle" name="title" type="text" maxlength="200" required placeholder="e.g. Semester recruitment schedule update" />
+            </div>
+            <div class="field" style="grid-column: 1 / -1;">
+              <label for="adminAnnouncementBody">Body</label>
+              <textarea id="adminAnnouncementBody" name="body" rows="6" maxlength="4000" required placeholder="Message shown to recipients"></textarea>
+            </div>
+            <div class="field">
+              <label for="adminAnnouncementTarget">Target role</label>
+              <select id="adminAnnouncementTarget" name="targetRole" required>
+                <option value="student">Students</option>
+                <option value="teacher">Module organisers (teachers)</option>
+                <option value="all">All students and teachers</option>
+              </select>
+            </div>
+          </div>
+          <div class="row" style="margin-top:16px;">
+            <button id="adminAnnouncementSendBtn" type="submit" class="btn btn-primary">Send announcement</button>
+          </div>
+        </form>
+        <p id="adminAnnouncementResult" class="desc" style="margin-top:12px;"></p>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="admin-headline" style="margin-bottom:12px;">
+          <div>
+            <h3 class="admin-subtitle" style="margin:0;">Sent announcements</h3>
+            <p class="desc" style="margin:4px 0 0;">History of admin broadcasts (newest first).</p>
+          </div>
+          <button id="adminAnnouncementRefreshBtn" type="button" class="btn btn-outline">Refresh</button>
+        </div>
+        <div id="adminAnnouncementHistory" class="admin-list">
+          <p class="admin-empty-text">Loading history...</p>
+        </div>
+      </div>
     </section>
 
     <section class="admin-panel admin-hidden" data-admin-panel="account">

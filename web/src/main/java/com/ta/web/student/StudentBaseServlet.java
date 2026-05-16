@@ -39,6 +39,16 @@ public abstract class StudentBaseServlet extends HttpServlet {
         return null;
     }
 
+    protected String getLastPathSegment(HttpServletRequest req) {
+        String pathInfo = req.getPathInfo();
+        if (pathInfo == null || pathInfo.isBlank() || "/".equals(pathInfo)) {
+            return null;
+        }
+        String trimmed = pathInfo.startsWith("/") ? pathInfo.substring(1) : pathInfo;
+        int slash = trimmed.indexOf('/');
+        return slash >= 0 ? trimmed.substring(0, slash) : trimmed;
+    }
+
     private void writeApi(HttpServletResponse resp,
                           int httpStatus,
                           boolean success,

@@ -13,7 +13,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       skills: "",
       experience: ""
     },
-    attachments: []
+    attachments: [],
+    notifications: [],
+    unreadCount: 0
   };
 
   const tabButtons = Array.from(document.querySelectorAll(".student-tab"));
@@ -46,6 +48,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   const assignedCountTextEl = byId("assignedCountText");
   const studentWelcomeEl = byId("studentWelcome");
   const noticeEl = byId("studentNotice");
+  const studentNotificationBtn = byId("studentNotificationBtn");
+  const studentNotificationDot = byId("studentNotificationDot");
+  const studentNotificationPanel = byId("studentNotificationPanel");
 
   const jobSearchInput = byId("jobSearchInput");
   const jobStatusFilter = byId("jobStatusFilter");
@@ -867,6 +872,23 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   changePasswordBtn.addEventListener("click", changePassword);
 
+  if (studentNotificationBtn && studentNotificationPanel) {
+    studentNotificationBtn.addEventListener("click", () => {
+      const visible = studentNotificationPanel.style.display === "block";
+      studentNotificationPanel.style.display = visible ? "none" : "block";
+      void loadStudentNotifications();
+    });
+    studentNotificationPanel.addEventListener("click", async (event) => {
+      const markBtn = event.target.closest("[data-student-mark-read]");
+      if (!markBtn) return;
+      try {
+        await markStudentNotificationRead(markBtn.getAttribute("data-student-mark-read"));
+      } catch (err) {
+        showNotice(err.message || "Failed to mark notification as read.", true);
+      }
+    });
+  }
+
   if (aiAdvisorBtn) {
     aiAdvisorBtn.addEventListener("click", askAiAdvisor);
   }
@@ -919,6 +941,79 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  function safeText(value) {
+    return String(value ?? "").trim();
+  }
+
+  function renderStudentNotificationItem(n) {
+    if (n.type === "announcement") {
+      const title = safeText(n.title || "System announcement");
+      const body = safeText(n.message || "");
+      return `
+        <div class="mo-notification-item mo-notification-item--announcement">
+          <div style="min-width:0">
+            <span class="mo-notification-badge">System announcement</span>
+            <p class="mo-notification-announcement-title">${escapeHtml(title)}</p>
+            <p class="mo-notification-announcement-body">${escapeHtml(body)}</p>
+            <div style="font-size:12px;color:#64748b;margin-top:6px;">${escapeHtml(safeText(n.applicationTime))}</div>
+          </div>
+          <div class="row">
+            ${n.read ? '<span class="notice" style="margin:0">Read</span>' : `<button class="btn btn-outline" type="button" data-student-mark-read="${escapeHtml(n.notificationId)}">Mark as Read</button>`}
+          </div>
+        </div>`;
+    }
+    const message = safeText(n.message) || `Update for ${safeText(n.jobName || n.jobId || "your application")}`;
+    return `
+      <div class="mo-notification-item">
+        <div style="min-width:0">
+          <div>${escapeHtml(message)}</div>
+          <div style="font-size:12px;color:#64748b">${escapeHtml(safeText(n.applicationTime))}</div>
+        </div>
+        <div class="row">
+          ${n.read ? '<span class="notice" style="margin:0">Read</span>' : `<button class="btn btn-outline" type="button" data-student-mark-read="${escapeHtml(n.notificationId)}">Mark as Read</button>`}
+        </div>
+      </div>`;
+  }
+
+  function renderStudentNotifications() {
+    if (!studentNotificationPanel) return;
+    if (studentNotificationDot) {
+      if (state.unreadCount > 0) {
+        studentNotificationDot.style.display = "inline-flex";
+        studentNotificationDot.textContent = String(state.unreadCount);
+      } else {
+        studentNotificationDot.style.display = "none";
+      }
+    }
+    if (!state.notifications.length) {
+      studentNotificationPanel.innerHTML = '<p class="notice" style="margin:0">No notifications.</p>';
+      return;
+    }
+    studentNotificationPanel.innerHTML = state.notifications.map(renderStudentNotificationItem).join("");
+  }
+
+  async function loadStudentNotifications() {
+    try {
+      const data = await requestApi("/notifications");
+      state.notifications = data && Array.isArray(data.items) ? data.items : [];
+      state.unreadCount = data && Number.isFinite(Number(data.unreadCount)) ? Number(data.unreadCount) : 0;
+    } catch (_) {
+      state.notifications = [];
+      state.unreadCount = 0;
+    }
+    renderStudentNotifications();
+  }
+
+  async function markStudentNotificationRead(notificationId) {
+    if (!notificationId) return;
+    await requestApi(`/notifications/read/${encodeURIComponent(notificationId)}`, { method: "POST" });
+    await loadStudentNotifications();
+  }
+
+  function startStudentNotificationPolling() {
+    window.setInterval(loadStudentNotifications, 10000);
+  }
+
   async function loadFromBackend() {
     const [jobData, appData, assignedData, profileData] = await Promise.all([
       requestApi("/jobs"),
@@ -953,6 +1048,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   try {
     await loadFromBackend();
+    await loadStudentNotifications();
+    startStudentNotificationPolling();
     showNotice("Connected to backend API.", false);
   } catch (backendErr) {
     showNotice(backendErr.message || "Failed to load data.", true);
