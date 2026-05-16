@@ -15,9 +15,12 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class MoNotificationService {
+
+    private static final String TYPE_ANNOUNCEMENT = "announcement";
 
     public MoNotificationListResponse list(ServletContext context, String moId) {
         try {
@@ -73,19 +76,28 @@ public class MoNotificationService {
             List<MoNotificationItemResponse> items = new ArrayList<>();
             int unread = 0;
             for (NotificationRecord record : notifications) {
-                if (!moId.equals(record.getMoId())) {
+                if (!ownsNotification(moId, record)) {
                     continue;
                 }
                 MoNotificationItemResponse item = new MoNotificationItemResponse();
                 item.setNotificationId(record.getId());
-                item.setApplicantName(record.getApplicantName());
-                item.setJobId(record.getJobId());
-                JobPosting job = ownedJobs.get(record.getJobId());
-                item.setJobName(job == null ? record.getJobId() : job.getTitle());
-                item.setApplicationTime(record.getApplicationTime());
-                item.setApplicationId(record.getApplicationId());
-                item.setMessage(record.getMessage());
                 item.setRead(record.isRead());
+                if (isAnnouncement(record)) {
+                    item.setType(TYPE_ANNOUNCEMENT);
+                    item.setTitle(trimToEmpty(record.getTitle()));
+                    item.setMessage(record.getMessage());
+                    item.setJobName("System announcement");
+                    item.setApplicationTime(firstNonBlank(record.getCreatedAt(), record.getApplicationTime()));
+                } else {
+                    item.setType("workflow");
+                    item.setApplicantName(record.getApplicantName());
+                    item.setJobId(record.getJobId());
+                    JobPosting job = ownedJobs.get(record.getJobId());
+                    item.setJobName(job == null ? record.getJobId() : job.getTitle());
+                    item.setApplicationTime(record.getApplicationTime());
+                    item.setApplicationId(record.getApplicationId());
+                    item.setMessage(record.getMessage());
+                }
                 if (!record.isRead()) {
                     unread += 1;
                 }
@@ -112,7 +124,7 @@ public class MoNotificationService {
                     .filter(r -> notificationId.equals(r.getId()))
                     .findFirst()
                     .orElseThrow(() -> new MoBusinessException(ErrorCodes.APPLICATION_NOT_FOUND, "Notification not found.", HttpServletResponse.SC_NOT_FOUND));
-            if (!moId.equals(record.getMoId())) {
+            if (!ownsNotification(moId, record)) {
                 throw new MoBusinessException(ErrorCodes.FORBIDDEN_NOT_OWNER, "You can only mark your own notifications.", HttpServletResponse.SC_FORBIDDEN);
             }
             record.setRead(true);
@@ -120,5 +132,30 @@ public class MoNotificationService {
         } catch (IOException e) {
             throw new RuntimeException("Failed to mark notification as read.", e);
         }
+    }
+
+    private boolean isAnnouncement(NotificationRecord record) {
+        return TYPE_ANNOUNCEMENT.equalsIgnoreCase(trimToEmpty(record.getType()));
+    }
+
+    private boolean ownsNotification(String moId, NotificationRecord record) {
+        if (moId.equals(record.getMoId())) {
+            return true;
+        }
+        return moId.equals(record.getRecipientId());
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            String trimmed = trimToEmpty(value);
+            if (!trimmed.isBlank()) {
+                return trimmed;
+            }
+        }
+        return "";
+    }
+
+    private String trimToEmpty(String value) {
+        return value == null ? "" : value.trim();
     }
 }

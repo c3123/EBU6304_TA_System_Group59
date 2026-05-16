@@ -9,6 +9,10 @@ public class MoNotificationItemResponse {
     private String applicationId;
     private String message;
     private Boolean read;
+    /** workflow (default) or announcement */
+    private String type;
+    /** Announcement headline when type is announcement. */
+    private String title;
 
     public String getNotificationId() {
         return notificationId;
@@ -72,5 +76,21 @@ public class MoNotificationItemResponse {
 
     public void setRead(Boolean read) {
         this.read = read;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
     }
 }
