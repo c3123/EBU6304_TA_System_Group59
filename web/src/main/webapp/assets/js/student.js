@@ -4,7 +4,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     loading: true,
     jobs: [],
     applications: [],
-    assignedJobs: [],
     student: null,
     search: "",
     statusFilter: "all",
@@ -23,7 +22,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     jobs: byId("panel-jobs"),
     applications: byId("panel-applications"),
     hired: byId("panel-hired"),
-    assigned: byId("panel-assigned"),
     profile: byId("panel-profile")
   };
 
@@ -42,10 +40,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const hiredCountTextEl = byId("hiredCountText");
   const hiredTotalHoursEl = byId("hiredTotalHours");
   const hiredSummaryNoteEl = byId("hiredSummaryNote");
-  const assignedListEl = byId("assignedList");
-  const assignedLoadingEl = byId("assignedLoading");
-  const assignedEmptyEl = byId("assignedEmpty");
-  const assignedCountTextEl = byId("assignedCountText");
   const studentWelcomeEl = byId("studentWelcome");
   const noticeEl = byId("studentNotice");
   const studentNotificationBtn = byId("studentNotificationBtn");
@@ -360,7 +354,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (hiredTotalHoursEl) hiredTotalHoursEl.textContent = `${totalHours}h`;
     if (hiredCountTextEl) {
-      hiredCountTextEl.textContent = `${hiredApps.length} hired job(s), ${totalHours}h/week in total.`;
+      hiredCountTextEl.textContent = `${hiredApps.length} confirmed job(s), ${totalHours}h/week in total.`;
     }
     if (hiredSummaryNoteEl) {
       hiredSummaryNoteEl.textContent = hiredApps.length
@@ -389,42 +383,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         </article>
       `;
     }).join("");
-  }
-
-  function renderAssignedJobs() {
-    if (state.loading) {
-      assignedLoadingEl.classList.remove("hidden");
-      assignedListEl.classList.add("hidden");
-      assignedEmptyEl.classList.add("hidden");
-      assignedCountTextEl.textContent = "Loading your confirmed TA jobs...";
-      return;
-    }
-
-    assignedLoadingEl.classList.add("hidden");
-    const items = state.assignedJobs;
-    if (!items.length) {
-      assignedListEl.classList.add("hidden");
-      assignedEmptyEl.classList.remove("hidden");
-      assignedCountTextEl.textContent = "No hired TA jobs found.";
-      return;
-    }
-
-    assignedEmptyEl.classList.add("hidden");
-    assignedListEl.classList.remove("hidden");
-    assignedCountTextEl.textContent = `${items.length} hired job(s) confirmed.`;
-    assignedListEl.innerHTML = items.map((item) => `
-      <article class="app-item status-hired">
-        <h3>${escapeHtml(item.title || "Untitled Job")}</h3>
-        <p class="app-meta">${escapeHtml(item.moduleCode || "-")} | ${escapeHtml(item.teacherName || "-")}</p>
-        <div class="app-feedback">
-          Weekly Hours: ${escapeHtml(String(item.weeklyHours || 0))}<br />
-          Schedule: ${escapeHtml(item.schedule || "-")}<br />
-          Location: ${escapeHtml(item.location || "-")}<br />
-          Deadline: ${escapeHtml(item.deadline || "-")}<br />
-          Recruitment Closed: ${item.recruitmentClosed ? "Yes" : "No"}
-        </div>
-      </article>
-    `).join("");
   }
 
   function renderProfile() {
@@ -577,17 +535,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  async function fetchApplicationsAndAssigned() {
+  async function fetchApplications() {
     try {
-      const [appData, assignedData] = await Promise.all([
-        requestApi("/applications"),
-        requestApi("/my-jobs")
-      ]);
+      const appData = await requestApi("/applications");
       state.applications = Array.isArray(appData.items) ? appData.items : [];
-      state.assignedJobs = Array.isArray(assignedData.items) ? assignedData.items : [];
       renderApplications();
       renderHiredJobs();
-      renderAssignedJobs();
     } catch (err) {
       showNotice(err.message || "Failed to refresh applications.", true);
     }
@@ -600,7 +553,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       await requestApi(`/applications?applicationId=${encodeURIComponent(applicationId)}`, {
         method: "DELETE"
       });
-      await fetchApplicationsAndAssigned();
+      await fetchApplications();
       renderJobs();
       showNotice("Application withdrawn successfully.", false);
     } catch (err) {
@@ -708,7 +661,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       method: "POST",
       body: { jobId, selectedAttachmentIds }
     });
-    await fetchApplicationsAndAssigned();
+    await fetchApplications();
     renderJobs();
     renderApplications();
     renderHiredJobs();
@@ -1015,16 +968,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function loadFromBackend() {
-    const [jobData, appData, assignedData, profileData] = await Promise.all([
+    const [jobData, appData, profileData] = await Promise.all([
       requestApi("/jobs"),
       requestApi("/applications"),
-      requestApi("/my-jobs"),
       requestApi("/profile")
     ]);
 
     state.jobs = Array.isArray(jobData.items) ? jobData.items : [];
     state.applications = Array.isArray(appData.items) ? appData.items : [];
-    state.assignedJobs = Array.isArray(assignedData.items) ? assignedData.items : [];
     state.student = {
       id: profileData.userId,
       name: profileData.name,
@@ -1044,7 +995,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderJobs();
   renderApplications();
   renderHiredJobs();
-  renderAssignedJobs();
 
   try {
     await loadFromBackend();
@@ -1058,7 +1008,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderJobs();
     renderApplications();
     renderHiredJobs();
-    renderAssignedJobs();
     renderProfile();
   }
 });

@@ -641,12 +641,6 @@
         <circle cx="12" cy="7" r="4"></circle>
         <path d="M20 8l-3 3-2-2"></path>
       </svg>
-      Hired Jobs
-    </button>
-    <button type="button" class="mo-tab student-tab" data-tab="assigned">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <path d="M5 12l5 5L20 7"></path>
-      </svg>
       My Jobs
     </button>
     <button type="button" class="mo-tab student-tab" data-tab="profile">
@@ -714,16 +708,16 @@
     </div>
   </section>
 
-  <section class="student-panel" id="panel-hired" aria-labelledby="Hired Jobs">
+  <section class="student-panel" id="panel-hired" aria-labelledby="My Jobs">
     <div class="student-panel-header mo-applicants-head">
       <div>
-        <h2 class="mo-section-title">Hired Jobs</h2>
+        <h2 class="mo-section-title">My Jobs</h2>
         <p class="mo-section-desc" id="hiredCountText">Preparing your confirmed workload...</p>
       </div>
     </div>
 
     <div class="module-frame">
-      <div id="hiredLoading" class="loading-state">Loading hired jobs...</div>
+      <div id="hiredLoading" class="loading-state">Loading jobs...</div>
       <div id="hiredContent" class="hidden">
         <div class="hired-summary">
           <div class="hired-total-card">
@@ -734,24 +728,9 @@
             Confirmed TA jobs are counted from applications with Hired status.
           </div>
         </div>
-        <div id="hiredEmpty" class="empty-state hidden">You do not have any hired jobs yet.</div>
+        <div id="hiredEmpty" class="empty-state hidden">You do not have any jobs yet.</div>
         <div id="hiredList" class="hired-list hidden"></div>
       </div>
-    </div>
-  </section>
-
-  <section class="student-panel" id="panel-assigned" aria-labelledby="My Jobs">
-    <div class="student-panel-header mo-applicants-head">
-      <div>
-        <h2 class="mo-section-title">My Assigned Jobs</h2>
-        <p class="mo-section-desc" id="assignedCountText">Preparing your confirmed TA assignments...</p>
-      </div>
-    </div>
-
-    <div class="module-frame">
-      <div id="assignedLoading" class="loading-state">Loading assigned jobs...</div>
-      <div id="assignedEmpty" class="empty-state hidden">You do not have any hired TA jobs yet.</div>
-      <div id="assignedList" class="apps-list hidden"></div>
     </div>
   </section>
 
