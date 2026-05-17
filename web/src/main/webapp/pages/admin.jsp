@@ -67,39 +67,29 @@
       <div class="admin-headline">
         <h2 class="admin-section-title">System Overview</h2>
       </div>
-      <div class="admin-stats-grid">
-        <article class="admin-stat-card">
-          <p class="admin-stat-label">Total Jobs</p>
-          <p id="statJobs" class="admin-stat-value">0</p>
-          <p class="admin-stat-sub">All published positions</p>
-        </article>
-        <article class="admin-stat-card">
-          <p class="admin-stat-label">Total Users</p>
-          <p id="statUsers" class="admin-stat-value">0</p>
-          <p class="admin-stat-sub">Students + Teachers + Admins</p>
-        </article>
-        <article class="admin-stat-card">
-          <p class="admin-stat-label">Total Applications</p>
-          <p id="statApps" class="admin-stat-value">0</p>
-          <p class="admin-stat-sub">Current application records</p>
-        </article>
-        <article class="admin-stat-card">
-          <p class="admin-stat-label">Students</p>
-          <p id="statStudents" class="admin-stat-value">0</p>
-          <p class="admin-stat-sub">Registered TA applicants</p>
-        </article>
-        <article class="admin-stat-card">
-          <p class="admin-stat-label">Module Organisers</p>
-          <p id="statTeachers" class="admin-stat-value">0</p>
-          <p class="admin-stat-sub">Teacher accounts</p>
-        </article>
-        <article class="admin-stat-card">
-          <p class="admin-stat-label">Open Applications</p>
-          <p id="statOpenApps" class="admin-stat-value">0</p>
-          <p class="admin-stat-sub">Pending, viewed, or shortlisted</p>
-        </article>
+      <div class="admin-overview-charts">
+        <div class="card admin-chart-card">
+          <h3 class="admin-subtitle">Users by role</h3>
+          <p class="desc">Distribution of student, teacher, and admin accounts.</p>
+          <div class="admin-chart-canvas-wrap">
+            <canvas id="adminOverviewUsersPie" aria-label="Users by role pie chart"></canvas>
+          </div>
+        </div>
+        <div class="card admin-chart-card">
+          <h3 class="admin-subtitle">Daily job publications</h3>
+          <p class="desc">Published TA positions per day (last 30 days).</p>
+          <div class="admin-chart-canvas-wrap admin-chart-canvas-wrap--line">
+            <canvas id="adminOverviewJobsLine" aria-label="Daily job publications line chart"></canvas>
+          </div>
+        </div>
+        <div class="card admin-chart-card admin-chart-card--wide">
+          <h3 class="admin-subtitle">Daily application trend</h3>
+          <p class="desc">New active applications submitted per day (last 30 days).</p>
+          <div class="admin-chart-canvas-wrap admin-chart-canvas-wrap--line">
+            <canvas id="adminOverviewAppsLine" aria-label="Daily application trend line chart"></canvas>
+          </div>
+        </div>
       </div>
-
       <div class="card">
         <h3 class="admin-subtitle">Quick Summary</h3>
         <p class="desc">Use the tabs above to manage workload, users, jobs, demand review, and announcements.</p>
@@ -321,6 +311,24 @@
           <button id="adminBackupBtn" type="button" class="btn btn-outline">Backup JSON</button>
         </div>
       </div>
+      <div class="admin-jobs-charts card" style="margin-bottom:16px;">
+        <h3 class="admin-subtitle">Application analytics</h3>
+        <p class="desc">Counts reflect the current job filters above.</p>
+        <div class="admin-jobs-charts-row">
+          <div class="admin-chart-card admin-chart-card--compact">
+            <h4 class="admin-chart-mini-title">By department</h4>
+            <div class="admin-chart-canvas-wrap">
+              <canvas id="adminJobsDeptPie" aria-label="Applications by department"></canvas>
+            </div>
+          </div>
+          <div class="admin-chart-card admin-chart-card--compact">
+            <h4 class="admin-chart-mini-title">By status</h4>
+            <div class="admin-chart-canvas-wrap">
+              <canvas id="adminJobsStatusPie" aria-label="Applications by status"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
       <div id="adminJobApplicationsPanel" class="card admin-job-applications-panel admin-hidden" style="margin-bottom:16px;">
         <div class="admin-panel-inline-head">
           <div>
@@ -368,33 +376,35 @@
     </section>
 
     <section class="admin-panel admin-hidden admin-panel--outcome-board" data-admin-panel="recruitment-outcome">
-      <div class="admin-outcome-hero">
-        <div class="admin-outcome-hero-text">
+      <div class="admin-outcome-header">
+        <div class="admin-outcome-header-text">
           <p class="admin-outcome-pill"><span class="admin-sr-only">Mode: </span>Read-only · Leadership view</p>
           <h2 class="admin-section-title admin-outcome-title">Recruitment Results</h2>
-          <p class="admin-section-desc admin-outcome-lede">Single-screen summary of hiring pressure: KPIs, department mix, and the largest role-level gaps. No edits are available on this tab.</p>
           <p class="admin-outcome-generated">Snapshot generated at <time id="adminOutcomeGeneratedAt" datetime="">—</time> <span class="admin-outcome-generated-note">(server UTC, shown in your time zone)</span></p>
-          <div class="admin-outcome-toolbar" role="group" aria-label="Recruitment outcome snapshot controls">
-            <div class="admin-outcome-toolbar-dates">
-              <div class="field">
-                <label for="adminOutcomeJobSince">Job reference from</label>
-                <input id="adminOutcomeJobSince" type="date" />
-              </div>
-              <div class="field">
-                <label for="adminOutcomeJobUntil">Job reference to</label>
-                <input id="adminOutcomeJobUntil" type="date" />
-              </div>
-            </div>
-            <div class="admin-outcome-toolbar-actions">
-              <button type="button" id="adminOutcomeBackBtn" class="btn btn-outline">Back to Overview</button>
-              <button type="button" id="adminOutcomeApplyRangeBtn" class="btn btn-primary">Apply range</button>
-              <button type="button" id="adminOutcomeClearRangeBtn" class="btn btn-outline">All jobs</button>
-              <button type="button" id="adminOutcomeRefreshBtn" class="btn btn-outline">Refresh snapshot</button>
-              <button type="button" id="adminOutcomeExportCsvBtn" class="btn btn-outline">Export CSV</button>
-            </div>
-            <p id="adminOutcomeFilterHint" class="admin-outcome-filter-hint desc">Filters use each job's reference day: published date if set, otherwise created, otherwise last updated. Jobs with no parseable date stay included when a range is active.</p>
+        </div>
+        <button type="button" id="adminOutcomeBackBtn" class="btn btn-outline admin-outcome-back-btn">Back to Overview</button>
+      </div>
+      <div class="admin-outcome-toolbar" role="group" aria-label="Recruitment outcome filters">
+        <div class="admin-outcome-toolbar-dates">
+          <div class="field">
+            <label for="adminOutcomeJobSince">Job reference from</label>
+            <input id="adminOutcomeJobSince" type="date" lang="en-US" />
+          </div>
+          <div class="field">
+            <label for="adminOutcomeJobUntil">Job reference to</label>
+            <input id="adminOutcomeJobUntil" type="date" lang="en-US" />
           </div>
         </div>
+        <div class="admin-outcome-toolbar-actions">
+          <button type="button" id="adminOutcomeApplyRangeBtn" class="btn btn-primary">Apply range</button>
+          <button type="button" id="adminOutcomeClearRangeBtn" class="btn btn-outline">All jobs</button>
+          <button type="button" id="adminOutcomeExportCsvBtn" class="btn btn-outline">Export CSV</button>
+        </div>
+      </div>
+      <div class="card admin-outcome-card admin-outcome-mix-card">
+        <h3 class="admin-subtitle">Overall hiring mix</h3>
+        <p class="desc">Visual split of hired seats and remaining vacancies against total position slots.</p>
+        <div id="adminOutcomeMixChart" class="admin-outcome-mix-chart"></div>
       </div>
       <div class="admin-outcome-board">
       <div class="card" style="margin-bottom:16px;">
@@ -434,13 +444,8 @@
         </article>
       </div>
       <div class="card admin-outcome-card">
-        <h3 class="admin-subtitle">Overall hiring mix</h3>
-        <p class="desc">Visual split of hired seats and remaining vacancies against total position slots.</p>
-        <div id="adminOutcomeMixChart" class="admin-outcome-mix-chart"></div>
-      </div>
-      <div class="card admin-outcome-card">
         <h3 class="admin-subtitle">By department</h3>
-        <p class="desc">Hired counts and unfilled slots grouped by each job posting's department field. Blank values are rolled up as 未填.</p>
+        <p class="desc">Hired counts and unfilled slots grouped by each job posting's department field. Blank values are rolled up as Unspecified.</p>
         <p class="admin-outcome-dept-legend" role="note">
           <span><span class="admin-outcome-legend-swatch admin-outcome-legend-swatch--hired" aria-hidden="true"></span>Hired</span>
           <span><span class="admin-outcome-legend-swatch admin-outcome-legend-swatch--vac" aria-hidden="true"></span>Vacancies</span>
@@ -553,6 +558,7 @@
     <p id="adminNotice" class="notice"></p>
   </main>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="../assets/js/common.js"></script>
 <script src="../assets/js/admin.js"></script>
 </body>

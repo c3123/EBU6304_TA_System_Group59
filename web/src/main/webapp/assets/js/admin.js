@@ -38,7 +38,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const adminOutcomeJobUntil = byId("adminOutcomeJobUntil");
   const adminOutcomeApplyRangeBtn = byId("adminOutcomeApplyRangeBtn");
   const adminOutcomeClearRangeBtn = byId("adminOutcomeClearRangeBtn");
-  const adminOutcomeRefreshBtn = byId("adminOutcomeRefreshBtn");
   const adminOutcomeExportCsvBtn = byId("adminOutcomeExportCsvBtn");
   const adminOutcomeBackBtn = byId("adminOutcomeBackBtn");
 
@@ -106,6 +105,153 @@ document.addEventListener("DOMContentLoaded", async () => {
     status: "all"
   };
 
+  const chartStore = {
+    overviewUsersPie: null,
+    overviewJobsLine: null,
+    overviewAppsLine: null,
+    jobsDeptPie: null,
+    jobsStatusPie: null
+  };
+
+  const CHART_COLORS = ["#2563eb", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4", "#64748b", "#ec4899"];
+
+  function destroyChart(key) {
+    if (chartStore[key]) {
+      chartStore[key].destroy();
+      chartStore[key] = null;
+    }
+  }
+
+  function chartPalette(size) {
+    return CHART_COLORS.slice(0, Math.max(size, 1));
+  }
+
+  function renderOverviewCharts(data) {
+    if (typeof Chart === "undefined") {
+      return;
+    }
+    const students = Number(data.totalStudents) || 0;
+    const teachers = Number(data.totalTeachers) || 0;
+    const admins = Number(data.totalAdmins) || 0;
+    const usersCanvas = byId("adminOverviewUsersPie");
+    if (usersCanvas) {
+      destroyChart("overviewUsersPie");
+      chartStore.overviewUsersPie = new Chart(usersCanvas, {
+        type: "pie",
+        data: {
+          labels: ["Students", "Teachers", "Admins"],
+          datasets: [{
+            data: [students, teachers, admins],
+            backgroundColor: chartPalette(3)
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: "bottom" } }
+        }
+      });
+    }
+
+    const jobDays = (data.dailyJobPublications || []).map((row) => row.day);
+    const jobCounts = (data.dailyJobPublications || []).map((row) => Number(row.count) || 0);
+    const jobsLineCanvas = byId("adminOverviewJobsLine");
+    if (jobsLineCanvas) {
+      destroyChart("overviewJobsLine");
+      chartStore.overviewJobsLine = new Chart(jobsLineCanvas, {
+        type: "line",
+        data: {
+          labels: jobDays,
+          datasets: [{
+            label: "Published jobs",
+            data: jobCounts,
+            borderColor: "#2563eb",
+            backgroundColor: "rgba(37, 99, 235, 0.12)",
+            fill: true,
+            tension: 0.25
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+        }
+      });
+    }
+
+    const appDays = (data.dailyApplications || []).map((row) => row.day);
+    const appCounts = (data.dailyApplications || []).map((row) => Number(row.count) || 0);
+    const appsLineCanvas = byId("adminOverviewAppsLine");
+    if (appsLineCanvas) {
+      destroyChart("overviewAppsLine");
+      chartStore.overviewAppsLine = new Chart(appsLineCanvas, {
+        type: "line",
+        data: {
+          labels: appDays,
+          datasets: [{
+            label: "Applications",
+            data: appCounts,
+            borderColor: "#10b981",
+            backgroundColor: "rgba(16, 185, 129, 0.12)",
+            fill: true,
+            tension: 0.25
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+        }
+      });
+    }
+  }
+
+  function renderJobCharts(data) {
+    if (typeof Chart === "undefined") {
+      return;
+    }
+    const deptSlices = data.applicationsByDepartment || [];
+    const statusSlices = data.applicationsByStatus || [];
+    const deptCanvas = byId("adminJobsDeptPie");
+    if (deptCanvas) {
+      destroyChart("jobsDeptPie");
+      chartStore.jobsDeptPie = new Chart(deptCanvas, {
+        type: "pie",
+        data: {
+          labels: deptSlices.map((s) => s.label),
+          datasets: [{
+            data: deptSlices.map((s) => Number(s.count) || 0),
+            backgroundColor: chartPalette(deptSlices.length)
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: "bottom" } }
+        }
+      });
+    }
+    const statusCanvas = byId("adminJobsStatusPie");
+    if (statusCanvas) {
+      destroyChart("jobsStatusPie");
+      chartStore.jobsStatusPie = new Chart(statusCanvas, {
+        type: "pie",
+        data: {
+          labels: statusSlices.map((s) => s.label),
+          datasets: [{
+            data: statusSlices.map((s) => Number(s.count) || 0),
+            backgroundColor: chartPalette(statusSlices.length)
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: "bottom" } }
+        }
+      });
+    }
+  }
+
   function setNotice(message, isError) {
     if (!noticeEl) return;
     noticeEl.textContent = message || "";
@@ -132,7 +278,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (tabName === "workload") title.textContent = "TA Workload Statistics";
     if (tabName === "users") title.textContent = "User Management";
     if (tabName === "demands") title.textContent = "Demand Approval Workbench";
-    if (tabName === "jobs") title.textContent = "Job Management";
+    if (tabName === "jobs") {
+      title.textContent = "Job Management";
+      if (latestData) {
+        renderJobCharts(latestData);
+      }
+    }
     if (tabName === "announcements") {
       title.textContent = "System Announcements";
       void loadAnnouncements();
@@ -225,7 +376,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (Number.isNaN(d.getTime())) {
         return String(iso);
       }
-      return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+      return d.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
     } catch {
       return String(iso);
     }
@@ -394,13 +545,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderTeacherOptions();
     }
 
-    byId("statJobs").textContent = latestData.totalJobs ?? 0;
-    byId("statUsers").textContent = latestData.totalUsers ?? 0;
-    byId("statApps").textContent = latestData.totalApplications ?? 0;
-    byId("statStudents").textContent = latestData.totalStudents ?? 0;
-    byId("statTeachers").textContent = latestData.totalTeachers ?? 0;
-    byId("statOpenApps").textContent = latestData.totalOpenApplications ?? 0;
     renderOverview(latestData);
+    renderOverviewCharts(latestData);
+    renderJobCharts(latestData);
     renderUsers(latestData.users || []);
     renderJobs(filteredJobsForDisplay(latestData.jobs || []));
     renderWorkload(latestData.workload || []);
@@ -1297,7 +1444,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         headers: { "Content-Type": "application/json;charset=UTF-8" },
         body: JSON.stringify({ reason })
       });
-      setNotice(`Demand ${jobId} set to ${nextStatus}.`, false);
+      setNotice(`Demand ${jobId} set to ${nextStatus}. The module organiser was notified via system announcement.`, false);
       await Promise.all([loadDemands(), loadAdminDashboard()]);
       activateTab("demands");
     } catch (err) {
@@ -1753,9 +1900,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (adminOutcomeJobUntil) adminOutcomeJobUntil.value = "";
       void loadRecruitmentOutcome();
     });
-  }
-  if (adminOutcomeRefreshBtn) {
-    adminOutcomeRefreshBtn.addEventListener("click", () => void loadRecruitmentOutcome());
   }
   if (adminOutcomeExportCsvBtn) {
     adminOutcomeExportCsvBtn.addEventListener("click", () => void downloadRecruitmentOutcomeCsv());

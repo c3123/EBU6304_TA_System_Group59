@@ -31,7 +31,7 @@ import java.util.Set;
  */
 public class AdminRecruitmentOutcomeService {
 
-    private static final String DEPARTMENT_UNKNOWN = "\u672a\u586b";
+    private static final String DEPARTMENT_UNKNOWN = "Unspecified";
 
     public AdminRecruitmentOutcomeResponse load(ServletContext context,
                                                 int vacancyTopLimit,

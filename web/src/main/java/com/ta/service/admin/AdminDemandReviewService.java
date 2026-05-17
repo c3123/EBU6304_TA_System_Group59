@@ -23,6 +23,7 @@ import java.util.Set;
 public class AdminDemandReviewService {
     private static final Set<String> ALLOWED_STATUS_FILTERS = Set.of("all", "pending", "approved", "rejected");
     private static final int MAX_REJECTION_REASON_LENGTH = 200;
+    private final AdminAnnouncementService announcementService = new AdminAnnouncementService();
 
     public AdminDemandListResponse listDemands(ServletContext context, String statusFilter) {
         String normalizedStatus = normalizeStatusFilter(statusFilter);
@@ -80,6 +81,12 @@ public class AdminDemandReviewService {
                 );
             }
 
+            String previousStatus = trimToEmpty(job.getApprovalStatus()).toLowerCase(Locale.ROOT);
+            if (previousStatus.isBlank()) {
+                previousStatus = "pending";
+            }
+
+
             String now = Instant.now().toString();
             job.setApprovalStatus(targetStatus);
             job.setReviewedAt(now);
@@ -93,6 +100,10 @@ public class AdminDemandReviewService {
             job.setUpdatedAt(now);
 
             JsonUtility.saveJobs(context, jobs);
+
+            if (!previousStatus.equalsIgnoreCase(targetStatus)) {
+                notifyTeacherDemandStatusChange(context, job, previousStatus, targetStatus, normalizedReason);
+            }
 
             AdminDemandReviewResponse response = new AdminDemandReviewResponse();
             response.setJobId(job.getId());
@@ -226,5 +237,38 @@ public class AdminDemandReviewService {
             return second;
         }
         return fallback == null ? "" : fallback;
+    }
+
+    private void notifyTeacherDemandStatusChange(ServletContext context,
+                                                 JobPosting job,
+                                                 String previousStatus,
+                                                 String targetStatus,
+                                                 String rejectionReason) throws IOException {
+        String teacherId = trimToEmpty(job.getTeacherId());
+        if (teacherId.isBlank()) {
+            return;
+        }
+        String module = firstNonBlank(job.getModuleCode(), job.getTitle(), job.getId());
+        String title = "Demand review update: " + module;
+        StringBuilder body = new StringBuilder();
+        body.append("Your TA demand for ").append(module).append(" was reviewed.\n");
+        body.append("Previous status: ").append(capitalizeStatus(previousStatus)).append("\n");
+        body.append("New status: ").append(capitalizeStatus(targetStatus)).append(".");
+        if ("rejected".equalsIgnoreCase(targetStatus) && rejectionReason != null && !rejectionReason.isBlank()) {
+            body.append("\nReason: ").append(rejectionReason.trim());
+        }
+        announcementService.notifyTeacher(context, teacherId, title, body.toString());
+    }
+
+    private String capitalizeStatus(String status) {
+        String value = trimToEmpty(status);
+        if (value.isBlank()) {
+            return "Pending";
+        }
+        return value.substring(0, 1).toUpperCase(Locale.ROOT) + value.substring(1).toLowerCase(Locale.ROOT);
+    }
+
+    private String trimToEmpty(String value) {
+        return value == null ? "" : value.trim();
     }
 }

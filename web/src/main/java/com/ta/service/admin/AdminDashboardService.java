@@ -2,6 +2,8 @@ package com.ta.service.admin;
 
 import com.ta.constant.ErrorCodes;
 import com.ta.dto.admin.AdminDashboardAlertResponse;
+import com.ta.dto.admin.AdminDashboardCountSlice;
+import com.ta.dto.admin.AdminDashboardDailyCountItem;
 import com.ta.dto.admin.AdminDashboardJobItemResponse;
 import com.ta.dto.admin.AdminDashboardResponse;
 import com.ta.dto.admin.AdminDashboardUserItemResponse;
@@ -33,6 +35,8 @@ import java.util.Set;
 public class AdminDashboardService {
     private static final Set<String> ALLOWED_STATUS_FILTERS = Set.of("all", "draft", "open", "closed", "withdrawn");
     private static final int DEADLINE_WARNING_DAYS = 7;
+    private static final int DAILY_TREND_DAYS = 30;
+    private static final String DEPARTMENT_UNKNOWN = "Unspecified";
 
     public AdminDashboardResponse loadDashboard(ServletContext context, String statusFilter, String departmentFilter) {
         try {
@@ -46,6 +50,18 @@ public class AdminDashboardService {
             String normalizedDepartment = normalizeDepartmentFilter(jobs, departmentFilter);
             List<JobPosting> filteredJobs = filterJobs(jobs, normalizedStatus, normalizedDepartment);
             List<AdminDashboardWorkloadItemResponse> workload = toWorkload(applications, jobs, settings.getWorkloadThresholdHours(), hiringHistory);
+            Map<String, JobPosting> jobsById = new HashMap<>();
+            for (JobPosting job : jobs) {
+                if (job.getId() != null) {
+                    jobsById.put(job.getId(), job);
+                }
+            }
+            Set<String> filteredJobIds = new LinkedHashSet<>();
+            for (JobPosting job : filteredJobs) {
+                if (job.getId() != null) {
+                    filteredJobIds.add(job.getId());
+                }
+            }
 
             AdminDashboardResponse data = new AdminDashboardResponse();
             data.setTotalUsers(users.size());
@@ -56,6 +72,10 @@ public class AdminDashboardService {
             data.setJobs(toJobs(filteredJobs, applications));
             data.setWorkload(workload);
             data.setAlerts(buildAlerts(jobs, applications, workload, settings.getWorkloadThresholdHours()));
+            data.setDailyJobPublications(buildDailyJobPublicationTrend(jobs));
+            data.setDailyApplications(buildDailyApplicationTrend(applications));
+            data.setApplicationsByDepartment(buildApplicationDepartmentSlices(applications, jobsById, filteredJobIds));
+            data.setApplicationsByStatus(buildApplicationStatusSlices(applications, filteredJobIds));
             return data;
         } catch (IOException e) {
             throw new RuntimeException("Failed to load admin dashboard.", e);
@@ -649,6 +669,134 @@ public class AdminDashboardService {
 
     private String safeText(String value) {
         return value == null ? "" : value + " ";
+    }
+
+    private List<AdminDashboardDailyCountItem> buildDailyJobPublicationTrend(List<JobPosting> jobs) {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        seedDailyBuckets(counts);
+        for (JobPosting job : jobs) {
+            if (Boolean.TRUE.equals(job.getWithdrawn())) {
+                continue;
+            }
+            if (!Boolean.TRUE.equals(job.getPublished()) && trimToEmpty(job.getPublishedAt()).isBlank()) {
+                continue;
+            }
+            String day = toDayKey(firstNonBlank(job.getPublishedAt(), job.getUpdatedAt(), job.getCreatedAt()));
+            if (day == null) {
+                continue;
+            }
+            counts.merge(day, 1, Integer::sum);
+        }
+        return toDailyItems(counts);
+    }
+
+    private List<AdminDashboardDailyCountItem> buildDailyApplicationTrend(List<ApplicationRecord> applications) {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        seedDailyBuckets(counts);
+        for (ApplicationRecord application : applications) {
+            if (!application.isActive()) {
+                continue;
+            }
+            String day = toDayKey(application.getAppliedAt());
+            if (day == null) {
+                continue;
+            }
+            counts.merge(day, 1, Integer::sum);
+        }
+        return toDailyItems(counts);
+    }
+
+    private List<AdminDashboardCountSlice> buildApplicationDepartmentSlices(List<ApplicationRecord> applications,
+                                                                            Map<String, JobPosting> jobsById,
+                                                                            Set<String> filteredJobIds) {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (ApplicationRecord application : applications) {
+            if (!application.isActive()) {
+                continue;
+            }
+            String jobId = trimToEmpty(application.getJobId());
+            if (jobId.isBlank() || !filteredJobIds.contains(jobId)) {
+                continue;
+            }
+            JobPosting job = jobsById.get(jobId);
+            String department = job == null ? DEPARTMENT_UNKNOWN : departmentLabel(job.getDepartment());
+            counts.merge(department, 1, Integer::sum);
+        }
+        return toSortedSlices(counts);
+    }
+
+    private List<AdminDashboardCountSlice> buildApplicationStatusSlices(List<ApplicationRecord> applications,
+                                                                        Set<String> filteredJobIds) {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (ApplicationRecord application : applications) {
+            if (!application.isActive()) {
+                continue;
+            }
+            String jobId = trimToEmpty(application.getJobId());
+            if (jobId.isBlank() || !filteredJobIds.contains(jobId)) {
+                continue;
+            }
+            String status = trimToEmpty(application.getStatus());
+            if (status.isBlank()) {
+                status = "pending";
+            }
+            String label = status.substring(0, 1).toUpperCase(Locale.ROOT) + status.substring(1).toLowerCase(Locale.ROOT);
+            counts.merge(label, 1, Integer::sum);
+        }
+        return toSortedSlices(counts);
+    }
+
+    private void seedDailyBuckets(Map<String, Integer> counts) {
+        LocalDate today = LocalDate.now();
+        for (int i = DAILY_TREND_DAYS - 1; i >= 0; i--) {
+            counts.put(today.minusDays(i).toString(), 0);
+        }
+    }
+
+    private List<AdminDashboardDailyCountItem> toDailyItems(Map<String, Integer> counts) {
+        List<AdminDashboardDailyCountItem> items = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : counts.entrySet()) {
+            AdminDashboardDailyCountItem item = new AdminDashboardDailyCountItem();
+            item.setDay(entry.getKey());
+            item.setCount(entry.getValue());
+            items.add(item);
+        }
+        return items;
+    }
+
+    private List<AdminDashboardCountSlice> toSortedSlices(Map<String, Integer> counts) {
+        List<AdminDashboardCountSlice> slices = new ArrayList<>();
+        counts.entrySet().stream()
+                .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                .forEach(entry -> slices.add(new AdminDashboardCountSlice(entry.getKey(), entry.getValue())));
+        return slices;
+    }
+
+    private String departmentLabel(String department) {
+        String value = trimToEmpty(department);
+        return value.isBlank() ? DEPARTMENT_UNKNOWN : value;
+    }
+
+    private String toDayKey(String isoTimestamp) {
+        String value = trimToEmpty(isoTimestamp);
+        if (value.length() < 10) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(value.substring(0, 10)).toString();
+        } catch (DateTimeParseException ex) {
+            return null;
+        }
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            String trimmed = trimToEmpty(value);
+            if (!trimmed.isBlank()) {
+                return trimmed;
+            }
+        }
+        return "";
     }
 
     private String trimToEmpty(String value) {

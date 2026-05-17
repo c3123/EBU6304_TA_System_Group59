@@ -859,6 +859,69 @@ th { background: #f8fbff; }
   margin: 0 auto 8px;
 }
 
+.admin-overview-charts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.admin-chart-card {
+  min-height: 0;
+}
+
+.admin-chart-card--wide {
+  grid-column: 1 / -1;
+}
+
+.admin-chart-canvas-wrap {
+  position: relative;
+  height: 260px;
+  margin-top: 8px;
+}
+
+.admin-chart-canvas-wrap--line {
+  height: 220px;
+}
+
+.admin-jobs-charts-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.admin-chart-card--compact .admin-chart-canvas-wrap {
+  height: 240px;
+}
+
+.admin-chart-mini-title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.admin-outcome-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 20px 22px 18px;
+  border-radius: 18px;
+  border: 1px solid #c7d2fe;
+  background: radial-gradient(120% 80% at 10% 0%, rgba(224, 231, 255, 0.9) 0%, rgba(248, 250, 252, 0.98) 45%, #f8fafc 100%);
+  box-shadow: 0 10px 35px rgba(30, 64, 175, 0.08);
+}
+
+.admin-outcome-back-btn {
+  flex-shrink: 0;
+}
+
+.admin-outcome-mix-card {
+  margin-bottom: 16px;
+}
+
 .admin-outcome-hero {
   margin-bottom: 20px;
   padding: 20px 22px 18px;

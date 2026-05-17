@@ -214,7 +214,7 @@ function renderTeacherJobCard(item) {
           </div>
           <div class="field">
             <label>Deadline</label>
-            <input name="deadline" type="date" required />
+            <input name="deadline" type="date" lang="en-US" required />
           </div>
           <div class="field">
             <label>Schedule</label>
