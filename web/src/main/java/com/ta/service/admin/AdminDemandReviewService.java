@@ -80,14 +80,6 @@ public class AdminDemandReviewService {
                 );
             }
 
-            if (!"pending".equalsIgnoreCase(job.getApprovalStatus())) {
-                throw new AdminBusinessException(
-                        ErrorCodes.VALIDATION_ERROR,
-                        "Only pending demands can be reviewed.",
-                        HttpServletResponse.SC_BAD_REQUEST
-                );
-            }
-
             String now = Instant.now().toString();
             job.setApprovalStatus(targetStatus);
             job.setReviewedAt(now);
@@ -145,10 +137,15 @@ public class AdminDemandReviewService {
         }
 
         String normalized = action.trim().toLowerCase();
-        if (!"approve".equals(normalized) && !"reject".equals(normalized)) {
+        if ("approved".equals(normalized)) {
+            normalized = "approve";
+        } else if ("rejected".equals(normalized)) {
+            normalized = "reject";
+        }
+        if (!"approve".equals(normalized) && !"reject".equals(normalized) && !"pending".equals(normalized)) {
             throw new AdminBusinessException(
                     ErrorCodes.VALIDATION_ERROR,
-                    "action must be approve or reject.",
+                    "action must be pending, approve, or reject.",
                     HttpServletResponse.SC_BAD_REQUEST
             );
         }
@@ -171,7 +168,13 @@ public class AdminDemandReviewService {
     }
 
     private String toApprovalStatus(String normalizedAction) {
-        return "approve".equals(normalizedAction) ? "approved" : "rejected";
+        if ("approve".equals(normalizedAction)) {
+            return "approved";
+        }
+        if ("reject".equals(normalizedAction)) {
+            return "rejected";
+        }
+        return "pending";
     }
 
     private boolean isDemandRecord(JobPosting job) {

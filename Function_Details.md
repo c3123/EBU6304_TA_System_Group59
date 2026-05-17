@@ -554,10 +554,10 @@ The feature provides a dedicated view of accepted jobs, associated schedule info
 - **ADM_08:** As an Admin, I want to view enhanced overview statistics, so that I can quickly understand current user, job, application, vacancy, and recruitment progress across the system.
 - **ADM_09:** As an Admin, I want to monitor recruitment health by job, so that I can identify posts with too few applicants, unfilled vacancies, or approaching deadlines.
 - **ADM_10:** As an Admin, I want workload risk to be displayed with clear levels such as Low, Normal, Warning, and Overload, so that I can distinguish normal workload from potential over-assignment instead of relying on one generic threshold only.
-- **ADM_11:** As an Admin, I want to view and filter an application archive, so that I can audit recruitment decisions and preserve hiring records after recruitment is complete.
+- **ADM_11:** As an Admin, I want to inspect applications from a specific job, so that I can audit applicant status and MO notes without exposing a separate global archive screen.
 - **ADM_12:** As an Admin, I want to export and back up recruitment data in simple file formats, so that the school can keep offline records and share summaries with management.
-- **ADM_13:** As an Admin, I want to receive system alerts for risky or incomplete recruitment situations, so that I can follow up with Module Organisers before issues affect TA allocation.
-- **ADM_14:** As an Admin, I want a demand approval workbench, so that newly submitted Module Organiser TA demands are visible and can be approved or rejected from one place.
+- **ADM_13:** As an Admin, I want to receive system alerts from a header alert modal, so that risks are visible on demand without occupying the main dashboard area.
+- **ADM_14:** As an Admin, I want a demand approval workbench with editable pending / approved / rejected decisions, so that demand review can be corrected or reset from one place.
 - **ADM_15:** As an Admin, I want to drill down from a job to its applications, so that I can audit applicant status and MO notes for a specific post without leaving the administrator portal.
 - **ADM_16:** As an Admin, I want recruitment exports to respect the current job filters, so that exported reports match what is shown on screen.
 
@@ -591,38 +591,48 @@ The scope of this feature is not to replace the Module Organiser workflow. The a
    - Workload cards and legend use the same classification rules so that the UI and backend remain consistent.
    - Assigned job chips show the module/job title and weekly hours used in the calculation.
 
-4. **Application archive**
-   - The admin can view application records including applicant identity, job, organiser, status, timestamps, evaluation notes, and decision feedback where available.
-   - The archive can be filtered by status, job, organiser, or student where the UI supports the filter.
-   - Archive access is read-only; administrators must not edit MO evaluation notes or decision feedback from the archive.
+4. **Single-job application audit**
+   - The standalone application archive page is not exposed in the administrator navigation.
+   - The admin can still open applications from an individual job row or card.
+   - The selected job drilldown shows applicant identity, student number, status, applied time, evaluation notes, and decision feedback where available.
+   - The drilldown is read-only; administrators must not edit MO evaluation notes or decision feedback.
    - Withdrawn, rejected, hired, shortlisted, and pending records remain distinguishable.
 
 5. **Data export and backup**
    - The admin can export weekly recruitment reports in CSV and TXT formats.
    - Exported reports include at least job title, organiser, status, hired count, available positions, and unfilled positions.
    - Export actions do not modify live recruitment data.
-   - The system can be extended to export workload reports, application archives, and JSON backups using the same admin-only access model.
+   - The system can be extended to export workload reports, job-level application drilldowns, and JSON backups using the same admin-only access model.
 
 6. **Administrator alerts**
    - The admin dashboard can surface alerts for overload risk, unfilled jobs, jobs close to deadline, jobs with no applicants, and unusual incomplete records.
    - Alerts include enough context for follow-up, such as job title, organiser, student name, current workload, or deadline.
-   - Alerts can be shown as dashboard cards or a dedicated alert panel.
+   - Alerts are opened from a warning button next to Logout, with a badge showing the active alert count.
+   - The alert modal supports close button, backdrop click, and Escape key dismissal.
    - If no alerts exist, the page shows a clear "No alerts" state.
 
 7. **Demand approval workbench**
    - The admin can view demand records by approval status, especially newly submitted `pending` demands.
    - Demand rows show module code, title, submitting organiser, submitted time, planned count, hour range, demand notes where provided, and current approval status.
-   - The admin can approve a pending demand, after which the MO can publish it through the existing publish workflow.
-   - The admin can reject a pending demand and optionally provide a short rejection reason.
+   - The admin can set each demand to `pending`, `approved`, or `rejected` from the workbench.
+   - Setting a demand to `approved` allows the MO to publish it through the existing publish workflow.
+   - Setting a demand to `pending` or `rejected` prevents MO publishing until it is approved again.
+   - The admin can optionally provide a short rejection reason when selecting `rejected`.
    - Rejected demand reasons are persisted and visible to the submitting MO in the demand progress view.
 
-8. **Single-job application drilldown**
+8. **Recruitment results overview entry**
+   - Recruitment Results is not shown as a top-level tab.
+   - The System Overview panel provides a clear button to open the Recruitment Results view.
+   - Recruitment Results retains KPI cards and adds visual charts, including department hired/vacancy bars and an overall hiring mix chart.
+   - Empty recruitment result datasets show a clear empty chart state instead of broken graphics.
+
+9. **Single-job application drilldown**
    - Each admin job row or card provides a read-only "View Applications" action.
    - The drilldown shows only applications for the selected job, including applicant name, student number, applied time, status, evaluation notes, and decision feedback.
-   - The drilldown can be filtered by application status without changing the global application archive.
+   - The drilldown can be filtered by application status without exposing a separate global application page.
    - The admin can export the selected job's application rows in CSV or TXT format.
 
-9. **Filtered weekly export**
+10. **Filtered weekly export**
    - Weekly recruitment report exports include the same `status` and `department` filters used by the jobs dashboard.
    - Exporting with no filters or `all` filters still produces the full report.
    - Export file names include the selected filter scope and export date where possible.
@@ -634,19 +644,20 @@ The scope of this feature is not to replace the Module Organiser workflow. The a
   - `AdminDashboardServlet` (`GET /api/admin/dashboard`) remains the main dashboard endpoint and may be extended with additional overview, recruitment health, workload, and alert fields.
   - `AdminWorkloadSettingsServlet` (`GET/POST /api/admin/settings/workload-threshold`) remains responsible for loading and saving the overload threshold.
   - `AdminRecruitmentReportExportServlet` (`GET /api/admin/reports/weekly?format=csv|txt`) remains responsible for downloadable weekly recruitment summaries.
-  - `AdminApplicationsServlet` (`GET /api/admin/applications`) provides read-only application archive rows for administrator audit.
+  - `AdminApplicationsServlet` (`GET /api/admin/applications?jobId=&status=`) provides read-only application rows for the selected job drilldown.
   - `AdminDemandsServlet` (`GET /api/admin/demands?status=pending|approved|rejected|all`) provides the administrator demand approval workbench data.
-  - `AdminDemandReviewServlet` (`POST /api/admin/demands/review/{jobId}?action=approve|reject`) approves or rejects pending demand records; reject accepts an optional JSON body containing `reason`.
+  - `AdminDemandReviewServlet` (`POST /api/admin/demands/review/{jobId}?action=pending|approve|reject`) sets demand approval status; reject accepts an optional JSON body containing `reason`.
   - `AdminWorkloadReportExportServlet` (`GET /api/admin/reports/workload?format=csv|txt`) exports workload rows and assigned job details.
-  - `AdminApplicationArchiveExportServlet` (`GET /api/admin/reports/applications?format=csv|txt&jobId=&status=`) exports the read-only application archive or a single job's filtered application rows.
+  - `AdminApplicationArchiveExportServlet` (`GET /api/admin/reports/applications?format=csv|txt&jobId=&status=`) remains available for exporting a single job's filtered application rows.
   - `AdminBackupExportServlet` (`GET /api/admin/reports/backup`) exports a JSON backup bundle for the current file-based data.
-  - Administrator alerts are returned through `GET /api/admin/dashboard` so the overview and alert panel share one data source.
+  - `AdminRecruitmentOutcomeServlet` (`GET /api/admin/recruitment-outcome`) provides the Recruitment Results view launched from System Overview.
+  - Administrator alerts are returned through `GET /api/admin/dashboard` so the header alert modal shares the dashboard data source.
 
 - **Service Layer:**
   - `AdminDashboardService` computes overview statistics, job health fields, workload rows, and risk labels from `jobs.json`, `applications.json`, `users.json`, and `students.json`.
   - `AdminDemandReviewService` lists demand records and applies approval or rejection decisions while preserving MO-owned job publishing rules.
   - `AdminReportService` prepares CSV and TXT export content using the same job and application aggregation rules as the dashboard, including current job filters for weekly reports.
-  - Application archive logic reads existing `ApplicationRecord` fields without changing MO-owned decision data.
+  - Single-job application drilldown logic reads existing `ApplicationRecord` fields without changing MO-owned decision data.
   - Workload calculation must reuse the shared weekly-hours rule:
     - if `job.hours > 0`, use `hours`;
     - otherwise, if both `hourMin` and `hourMax` exist, use `round((min + max) / 2)`;
@@ -660,24 +671,27 @@ The scope of this feature is not to replace the Module Organiser workflow. The a
   - Sprint 4 admin features must remain compatible with old JSON records that do not contain newer optional fields such as `department`, `schedule`, or decision feedback.
 
 - **Frontend Integration:**
-  - `admin.jsp` provides separate dashboard areas for overview, workload, users, jobs, demand review, archive, and alerts where implemented.
+  - `admin.jsp` provides separate dashboard areas for overview, workload, users, jobs, demand review, announcements, account settings, and a Recruitment Results view opened from System Overview.
   - `admin.js` loads dashboard data, applies status/department/organiser filters, renders workload level cards, handles demand approval actions, opens single-job application drilldowns, and triggers CSV/TXT export downloads.
+  - Admin alerts are opened through the header warning button instead of a persistent overview card or top-level tab.
+  - The standalone Application Archive tab is removed; job-level application drilldown remains available from Jobs.
   - Workload UI must show level labels, weekly hours, assigned positions, and a legend matching backend classification.
   - Job cards should display business-friendly recruitment health information instead of only raw table columns.
-  - Empty states must be explicit for no jobs, no workload records, no archived applications, and no alerts.
+  - Empty states must be explicit for no jobs, no workload records, no job applications, no recruitment result data, and no alerts.
 
 - **Validation / Business Rules:**
   - All admin APIs require an authenticated admin session.
-  - Admin monitoring views must not expose student-only private upload files unless the existing application archive explicitly requires a downloadable attachment link.
-  - Archive and report APIs are read-only and must not change job status, application status, or MO feedback.
+  - Admin monitoring views must not expose student-only private upload files unless the job-level application drilldown explicitly requires a downloadable attachment link.
+  - Application drilldown and report APIs are read-only and must not change job status, application status, or MO feedback.
   - Filters must be optional; when no filter is supplied, the dashboard returns the full admin-visible dataset.
   - Invalid export formats must return a clear validation error instead of generating an ambiguous file.
-  - Only `pending` demand records can be approved or rejected.
+  - Demand records can be switched between `pending`, `approved`, and `rejected` by admins.
+  - Only `approved` demand records can be published by MOs.
   - Rejection reason text is optional but must remain short enough for display in the MO demand progress view.
 
 - **Session / Access Control:**
   - Non-admin users must be rejected from `/api/admin/*`.
-  - Student and teacher sessions must not be able to access admin reports, archive, workload settings, or alert data.
+  - Student and teacher sessions must not be able to access admin reports, job application drilldown, workload settings, or alert data.
   - Admin actions that modify settings, such as threshold saving, must use POST and must validate the submitted value before persistence.
 
 **Assignee:** Sihan Chen / Tianxiao Ma  

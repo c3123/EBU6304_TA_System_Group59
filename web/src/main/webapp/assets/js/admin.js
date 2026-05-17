@@ -11,10 +11,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   const usersGrouped = byId("adminUsersGrouped");
   const jobsCards = byId("adminJobsCards");
   const workloadCards = byId("adminWorkloadCards");
-  const archiveCards = byId("adminArchiveCards");
-  const archiveBody = byId("adminArchiveBody");
-  const alertsPreview = byId("adminAlertsPreview");
+  const alertsButton = byId("adminAlertsButton");
+  const alertsBadge = byId("adminAlertsBadge");
+  const alertsModal = byId("adminAlertsModal");
+  const alertsCloseBtn = byId("adminAlertsCloseBtn");
   const alertsList = byId("adminAlertsList");
+  const overviewOutcomeBtn = byId("adminOverviewOutcomeBtn");
   const demandStatusFilterEl = byId("adminDemandStatusFilter");
   const demandRefreshBtn = byId("adminDemandRefreshBtn");
   const demandCards = byId("adminDemandCards");
@@ -38,6 +40,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const adminOutcomeClearRangeBtn = byId("adminOutcomeClearRangeBtn");
   const adminOutcomeRefreshBtn = byId("adminOutcomeRefreshBtn");
   const adminOutcomeExportCsvBtn = byId("adminOutcomeExportCsvBtn");
+  const adminOutcomeBackBtn = byId("adminOutcomeBackBtn");
 
   const createUserForm = byId("adminCreateUserForm");
   const createRoleEl = byId("adminCreateRole");
@@ -66,15 +69,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const exportTxtBtn = byId("adminExportTxtBtn");
   const backupBtn = byId("adminBackupBtn");
 
-  const archiveStatusFilterEl = byId("adminArchiveStatusFilter");
-  const archiveJobFilterEl = byId("adminArchiveJobFilter");
-  const archiveTeacherFilterEl = byId("adminArchiveTeacherFilter");
-  const archiveStudentFilterEl = byId("adminArchiveStudentFilter");
-  const archiveApplyBtn = byId("adminArchiveApplyBtn");
-  const archiveResetBtn = byId("adminArchiveResetBtn");
-  const archiveExportCsvBtn = byId("adminArchiveExportCsvBtn");
-  const archiveExportTxtBtn = byId("adminArchiveExportTxtBtn");
-
   const changePasswordForm = byId("adminChangePasswordForm");
   const changePasswordBtn = byId("adminChangePasswordBtn");
   const announcementForm = byId("adminAnnouncementForm");
@@ -91,7 +85,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const currentUserName = portal?.getAttribute("data-current-user-name") || "Admin User";
 
   let latestData = null;
-  let latestArchive = null;
   let latestDemands = null;
   /** When set, workload table re-expands this student after dashboard reload (e.g. save threshold). */
   let openWorkloadStudentId = null;
@@ -104,14 +97,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     department: "all",
     teacher: "all"
   };
-  const archiveFilters = {
-    status: "all",
-    jobId: "all",
-    teacher: "all",
-    student: ""
-  };
   const demandFilters = {
-    status: "pending"
+    status: "all"
   };
   const RECRUITMENT_VACANCY_TOP = 10;
   const outcomeJobDateRange = { since: "", until: "" };
@@ -146,18 +133,32 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (tabName === "users") title.textContent = "User Management";
     if (tabName === "demands") title.textContent = "Demand Approval Workbench";
     if (tabName === "jobs") title.textContent = "Job Management";
-    if (tabName === "archive") title.textContent = "Application Archive";
-    if (tabName === "alerts") title.textContent = "Administrator Alerts";
     if (tabName === "announcements") {
       title.textContent = "System Announcements";
       void loadAnnouncements();
     }
     if (tabName === "account") title.textContent = "My Account";
     if (tabName === "overview") title.textContent = `Welcome, ${currentUserName}`;
-    if (tabName === "recruitment-outcome") {
-      title.textContent = "Recruitment Results (leadership view)";
-      void loadRecruitmentOutcome();
+    if (tabName === "recruitment-outcome") title.textContent = "Recruitment Results (leadership view)";
+  }
+
+  function openRecruitmentOutcome() {
+    tabs.forEach((tab) => {
+      tab.classList.remove("active");
+      tab.setAttribute("aria-selected", "false");
+    });
+    panels.forEach((panel) => {
+      panel.classList.toggle("admin-hidden", panel.getAttribute("data-admin-panel") !== "recruitment-outcome");
+    });
+    const portalMain = document.querySelector(".admin-portal-main");
+    if (portalMain) {
+      portalMain.classList.add("admin-portal-main--wide");
     }
+    const title = byId("adminSubTitle");
+    if (title) {
+      title.textContent = "Recruitment Results (leadership view)";
+    }
+    void loadRecruitmentOutcome();
   }
 
   function prefersReducedMotion() {
@@ -203,21 +204,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
       .join("");
     teacherFilterEl.value = filters.teacher;
-  }
-
-  function renderArchiveOptions(jobs) {
-    if (archiveJobFilterEl) {
-      archiveJobFilterEl.innerHTML = `<option value="all">All Jobs</option>` + (jobs || [])
-        .map((job) => `<option value="${escapeHtml(job.id)}">${escapeHtml(job.moduleCode || job.id)} - ${escapeHtml(job.title || "Untitled")}</option>`)
-        .join("");
-      archiveJobFilterEl.value = archiveFilters.jobId;
-    }
-    if (archiveTeacherFilterEl) {
-      archiveTeacherFilterEl.innerHTML = `<option value="all">All Teachers</option>` + knownTeachers
-        .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
-        .join("");
-      archiveTeacherFilterEl.value = archiveFilters.teacher;
-    }
   }
 
   function buildRecruitmentOutcomeQueryParams() {
@@ -279,6 +265,35 @@ document.addEventListener("DOMContentLoaded", async () => {
         </div>
       </div>`;
     }).join("");
+  }
+
+  function renderRecruitmentMixChart(data) {
+    const chart = byId("adminOutcomeMixChart");
+    if (!chart) return;
+    const slots = Math.max(Number(data.totalPositionSlots) || 0, 0);
+    const hired = Math.max(Number(data.totalHired) || 0, 0);
+    const vacancies = Math.max(Number(data.totalVacancies) || 0, 0);
+    if (slots === 0 && hired === 0 && vacancies === 0) {
+      chart.innerHTML = `<p class="desc">No recruitment result data yet.</p>`;
+      return;
+    }
+    const total = Math.max(slots, hired + vacancies, 1);
+    const hiredDeg = Math.min(360, Math.round((hired / total) * 360));
+    const vacancyDeg = Math.min(360 - hiredDeg, Math.round((vacancies / total) * 360));
+    const spareDeg = Math.max(0, 360 - hiredDeg - vacancyDeg);
+    chart.innerHTML = `
+      <div class="admin-donut" style="--hired-deg:${hiredDeg}deg;--vacancy-deg:${vacancyDeg}deg;--spare-deg:${spareDeg}deg;" role="img" aria-label="Hired ${hired}, vacancies ${vacancies}, total slots ${slots}">
+        <div class="admin-donut-hole">
+          <strong>${escapeHtml(String(slots))}</strong>
+          <span>slots</span>
+        </div>
+      </div>
+      <div class="admin-donut-legend">
+        <span><i class="admin-dot admin-dot-hired"></i>Hired ${escapeHtml(String(hired))}</span>
+        <span><i class="admin-dot admin-dot-vacancy"></i>Vacancies ${escapeHtml(String(vacancies))}</span>
+        <span><i class="admin-dot admin-dot-capacity"></i>Total slots ${escapeHtml(String(slots))}</span>
+      </div>
+    `;
   }
 
   function recruitmentOutcomeDisplayCell(value) {
@@ -346,9 +361,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         genEl.textContent = formatOutcomeGeneratedAt(data.generatedAt);
       } else if (genEl) {
         genEl.removeAttribute("datetime");
-        genEl.textContent = "—";
+        genEl.textContent = "-";
       }
       renderRecruitmentDepartmentChart(data.departments);
+      renderRecruitmentMixChart(data);
       renderRecruitmentVacancyTable(data.topVacancyJobs, data.vacancyTopLimit);
     } catch (err) {
       setNotice(err.message, true);
@@ -376,7 +392,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         .sort((a, b) => a.localeCompare(b));
       renderDepartmentOptions();
       renderTeacherOptions();
-      renderArchiveOptions(latestData.jobs || []);
     }
 
     byId("statJobs").textContent = latestData.totalJobs ?? 0;
@@ -397,20 +412,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       return jobs;
     }
     return jobs.filter((job) => String(job.teacherName || "").trim() === filters.teacher);
-  }
-
-  async function loadArchive() {
-    const params = new URLSearchParams();
-    params.set("status", archiveFilters.status || "all");
-    params.set("jobId", archiveFilters.jobId || "all");
-    params.set("teacher", archiveFilters.teacher || "all");
-    if (archiveFilters.student) {
-      params.set("student", archiveFilters.student);
-    }
-    latestArchive = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/applications?${params.toString()}`, {
-      method: "GET"
-    });
-    renderArchive((latestArchive && latestArchive.items) || []);
   }
 
   async function loadDemands() {
@@ -515,9 +516,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             </div>
             <p class="admin-demand-requirements">${escapeHtml(item.requirements || "No demand notes yet.")}</p>
             ${item.rejectionReason ? `<p class="admin-demand-reason"><strong>Reject reason:</strong> ${escapeHtml(item.rejectionReason)}</p>` : ""}
-            <div class="row" style="margin-top:12px;">
-              ${demandActionButtons(item)}
-            </div>
+            ${demandDecisionControl(item)}
           </article>
         `;
       }).join("") || `<div class="card"><p class="admin-empty-text">No demands found for this status.</p></div>`;
@@ -531,19 +530,25 @@ document.addEventListener("DOMContentLoaded", async () => {
           <td>${escapeHtml(item.teacherName || item.moId || "-")}</td>
           <td>${escapeHtml(formatDate(item.createdAt) || "-")}</td>
           <td>${escapeHtml(formatStatus(item.approvalStatus))}</td>
-          <td>${demandActionButtons(item)}</td>
+          <td>${demandDecisionControl(item, true)}</td>
         </tr>
       `).join("") || `<tr><td colspan="6">No demands found for this status.</td></tr>`;
     }
   }
 
-  function demandActionButtons(item) {
-    if (String(item.approvalStatus || "").toLowerCase() !== "pending") {
-      return `<span class="admin-list-meta">Reviewed ${escapeHtml(formatDate(item.reviewedAt) || "-")}</span>`;
-    }
+  function demandDecisionControl(item, compact) {
+    const status = String(item.approvalStatus || "pending").toLowerCase();
+    const reason = item.rejectionReason || "";
     return `
-      <button class="btn btn-primary" type="button" data-demand-review="${escapeHtml(item.jobId)}" data-demand-action="approve">Approve</button>
-      <button class="btn btn-outline" type="button" data-demand-review="${escapeHtml(item.jobId)}" data-demand-action="reject">Reject</button>
+      <div class="admin-demand-review-control ${compact ? "admin-demand-review-control--compact" : ""}" data-demand-control="${escapeHtml(item.jobId)}">
+        <select data-demand-status="${escapeHtml(item.jobId)}" aria-label="Demand approval status">
+          <option value="pending" ${status === "pending" ? "selected" : ""}>Pending</option>
+          <option value="approved" ${status === "approved" ? "selected" : ""}>Approved</option>
+          <option value="rejected" ${status === "rejected" ? "selected" : ""}>Rejected</option>
+        </select>
+        <input type="text" maxlength="200" data-demand-reason="${escapeHtml(item.jobId)}" placeholder="Reject reason" value="${escapeHtml(reason)}" ${status === "rejected" ? "" : "disabled"} />
+        <button class="btn btn-primary" type="button" data-demand-review="${escapeHtml(item.jobId)}">Save</button>
+      </div>
     `;
   }
 
@@ -950,6 +955,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (event.key !== "Escape") {
       return;
     }
+    if (alertsModal && !alertsModal.classList.contains("admin-hidden")) {
+      closeAlertsModal();
+      event.preventDefault();
+      return;
+    }
     if (event.target.closest("input, textarea, select, option, [contenteditable='true']")) {
       return;
     }
@@ -995,10 +1005,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function renderAlerts(alerts) {
     const items = Array.isArray(alerts) ? alerts : [];
-    const previewItems = items.slice(0, 4);
-    if (alertsPreview) {
-      alertsPreview.innerHTML = previewItems.map(alertHtml).join("")
-        || `<div class="admin-alert admin-alert-info"><strong>No alerts</strong><p>No active admin alerts.</p></div>`;
+    if (alertsBadge) {
+      alertsBadge.textContent = String(items.length);
+      alertsBadge.classList.toggle("is-empty", items.length === 0);
+    }
+    if (alertsButton) {
+      alertsButton.classList.toggle("has-alerts", items.length > 0);
     }
     if (alertsList) {
       alertsList.innerHTML = items.map(alertHtml).join("")
@@ -1020,40 +1032,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     `;
   }
 
-  function renderArchive(items) {
-    const rows = Array.isArray(items) ? items : [];
-    if (archiveCards) {
-      archiveCards.innerHTML = rows.map((item) => `
-        <article class="card admin-archive-card">
-          <div class="admin-job-title-line">
-            <h3 class="admin-job-title">${escapeHtml(item.moduleCode || item.jobId || "-")} - ${escapeHtml(item.title || "Unknown Job")}</h3>
-            <span class="tag ${archiveStatusClass(item.status)}">${escapeHtml(formatStatus(item.status))}</span>
-          </div>
-          <p class="admin-list-meta">Student: ${escapeHtml(item.studentName || item.studentId || "-")} - Organiser: ${escapeHtml(item.teacherName || "-")} - Applied: ${escapeHtml(formatDate(item.appliedAt) || "-")}</p>
-          <div class="admin-archive-notes">
-            <div><span class="admin-key">Evaluation Notes</span><p>${escapeHtml(item.evaluationNotes || "-")}</p></div>
-            <div><span class="admin-key">Decision Feedback</span><p>${escapeHtml(item.decisionFeedback || "-")}</p></div>
-          </div>
-        </article>
-      `).join("") || `<div class="card"><p class="admin-empty-text">No archived applications found.</p></div>`;
-    }
-
-    if (archiveBody) {
-      archiveBody.innerHTML = rows.map((item) => `
-        <tr>
-          <td>${escapeHtml(item.applicationId || "-")}</td>
-          <td>${escapeHtml(item.studentName || item.studentId || "-")}</td>
-          <td>${escapeHtml(item.moduleCode || item.jobId || "-")}</td>
-          <td>${escapeHtml(item.teacherName || "-")}</td>
-          <td>${escapeHtml(formatStatus(item.status))}</td>
-          <td>${escapeHtml(formatDate(item.appliedAt) || "-")}</td>
-          <td>${escapeHtml(item.decisionFeedback || item.evaluationNotes || "-")}</td>
-        </tr>
-      `).join("") || `<tr><td colspan="7">No archived applications found.</td></tr>`;
-    }
-  }
-
-  function archiveStatusClass(status) {
+  function applicationStatusClass(status) {
     const value = String(status || "").toLowerCase();
     if (value === "hired") return "ok";
     if (value === "rejected") return "danger";
@@ -1101,10 +1080,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         <article class="card admin-app-card">
           <div class="admin-job-title-line">
             <h3 class="admin-subtitle">${escapeHtml(item.studentName || item.studentId || "-")}</h3>
-            <span class="tag ${archiveStatusClass(item.status)}">${escapeHtml(formatStatus(item.status))}</span>
+            <span class="tag ${applicationStatusClass(item.status)}">${escapeHtml(formatStatus(item.status))}</span>
           </div>
           <p class="admin-list-meta">Student No: ${escapeHtml(item.studentNo || "-")} | Applied: ${escapeHtml(formatDate(item.appliedAt) || "-")}</p>
-          <div class="admin-archive-notes">
+          <div class="admin-application-notes">
             <div><span class="admin-key">Evaluation Notes</span><p>${escapeHtml(item.evaluationNotes || "-")}</p></div>
             <div><span class="admin-key">Decision Feedback</span><p>${escapeHtml(item.decisionFeedback || "-")}</p></div>
           </div>
@@ -1291,35 +1270,34 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function reviewDemand(button) {
     const jobId = button.getAttribute("data-demand-review");
-    const action = button.getAttribute("data-demand-action");
-    if (!jobId || !action) {
+    const control = button.closest("[data-demand-control]");
+    const statusEl = control ? control.querySelector("[data-demand-status]") : null;
+    const reasonEl = control ? control.querySelector("[data-demand-reason]") : null;
+    const nextStatus = statusEl ? statusEl.value : "";
+    if (!jobId || !nextStatus) {
       return;
     }
-    let reason = "";
-    if (action === "reject") {
-      const entered = window.prompt("Enter a short rejection reason (optional):", "");
-      if (entered === null) {
-        return;
-      }
-      reason = entered.trim();
+    const action = nextStatus === "approved" ? "approve" : (nextStatus === "rejected" ? "reject" : "pending");
+    const reason = nextStatus === "rejected" && reasonEl ? reasonEl.value.trim() : "";
+    if (nextStatus === "rejected") {
       if (reason.length > 200) {
         setNotice("Rejection reason must be 200 characters or fewer.", true);
         activateTab("demands");
         return;
       }
-    } else if (!window.confirm(`Approve demand ${jobId}?`)) {
+    } else if (!window.confirm(`Set demand ${jobId} to ${nextStatus}?`)) {
       return;
     }
 
     try {
       button.disabled = true;
-      button.textContent = action === "approve" ? "Approving..." : "Rejecting...";
+      button.textContent = "Saving...";
       await requestJson(`${window.location.origin}${getContextPath()}/api/admin/demands/review/${encodeURIComponent(jobId)}?action=${encodeURIComponent(action)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json;charset=UTF-8" },
         body: JSON.stringify({ reason })
       });
-      setNotice(`Demand ${jobId} ${action === "approve" ? "approved" : "rejected"}.`, false);
+      setNotice(`Demand ${jobId} set to ${nextStatus}.`, false);
       await Promise.all([loadDemands(), loadAdminDashboard()]);
       activateTab("demands");
     } catch (err) {
@@ -1327,7 +1305,25 @@ document.addEventListener("DOMContentLoaded", async () => {
       activateTab("demands");
     } finally {
       button.disabled = false;
-      button.textContent = action === "approve" ? "Approve" : "Reject";
+      button.textContent = "Save";
+    }
+  }
+
+  function openAlertsModal() {
+    if (!alertsModal) return;
+    alertsModal.classList.remove("admin-hidden");
+    document.body.classList.add("admin-modal-open");
+    if (alertsCloseBtn) {
+      alertsCloseBtn.focus();
+    }
+  }
+
+  function closeAlertsModal() {
+    if (!alertsModal) return;
+    alertsModal.classList.add("admin-hidden");
+    document.body.classList.remove("admin-modal-open");
+    if (alertsButton) {
+      alertsButton.focus();
     }
   }
 
@@ -1404,27 +1400,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       defaultText,
       "Recruitment outcome CSV exported.",
       "recruitment-outcome"
-    );
-  }
-
-  async function downloadArchiveReport(format) {
-    const button = format === "csv" ? archiveExportCsvBtn : archiveExportTxtBtn;
-    const defaultText = format === "csv" ? "Export Archive CSV" : "Export Archive TXT";
-    const params = new URLSearchParams();
-    params.set("format", format);
-    params.set("status", archiveFilters.status || "all");
-    params.set("jobId", archiveFilters.jobId || "all");
-    params.set("teacher", archiveFilters.teacher || "all");
-    if (archiveFilters.student) {
-      params.set("student", archiveFilters.student);
-    }
-    await downloadAdminFile(
-      `/api/admin/reports/applications?${params.toString()}`,
-      `application-archive.${format}`,
-      button,
-      defaultText,
-      `Application archive ${format.toUpperCase()} exported.`,
-      "archive"
     );
   }
 
@@ -1541,40 +1516,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     return String(value || "all").trim().replace(/[^A-Za-z0-9_-]+/g, "-") || "all";
   }
 
-  async function applyArchiveFilters() {
-    archiveFilters.status = archiveStatusFilterEl.value || "all";
-    archiveFilters.jobId = archiveJobFilterEl.value || "all";
-    archiveFilters.teacher = archiveTeacherFilterEl.value || "all";
-    archiveFilters.student = archiveStudentFilterEl.value.trim();
-    try {
-      await loadArchive();
-      setNotice("Archive filters applied.", false);
-      activateTab("archive");
-    } catch (err) {
-      setNotice(err.message, true);
-      activateTab("archive");
-    }
-  }
-
-  async function resetArchiveFilters() {
-    archiveFilters.status = "all";
-    archiveFilters.jobId = "all";
-    archiveFilters.teacher = "all";
-    archiveFilters.student = "";
-    archiveStatusFilterEl.value = "all";
-    archiveJobFilterEl.value = "all";
-    archiveTeacherFilterEl.value = "all";
-    archiveStudentFilterEl.value = "";
-    try {
-      await loadArchive();
-      setNotice("Archive filters reset.", false);
-      activateTab("archive");
-    } catch (err) {
-      setNotice(err.message, true);
-      activateTab("archive");
-    }
-  }
-
   async function changeOwnPassword(event) {
     event.preventDefault();
     const oldPassword = byId("adminOldPassword").value.trim();
@@ -1676,6 +1617,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     reviewDemand(reviewButton);
   }
 
+  function handleDemandStatusChange(event) {
+    const statusSelect = event.target.closest("[data-demand-status]");
+    if (!statusSelect) {
+      return;
+    }
+    const control = statusSelect.closest("[data-demand-control]");
+    const reasonInput = control ? control.querySelector("[data-demand-reason]") : null;
+    if (!reasonInput) {
+      return;
+    }
+    const rejected = statusSelect.value === "rejected";
+    reasonInput.disabled = !rejected;
+    if (!rejected) {
+      reasonInput.value = "";
+    }
+  }
+
   function onJobDetails(event) {
     const btn = event.target.closest("[data-job-details]");
     if (!btn || !jobsCards.contains(btn)) return;
@@ -1743,6 +1701,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   usersGrouped.addEventListener("click", handleUserActions);
   if (demandCards) demandCards.addEventListener("click", handleDemandActions);
   if (demandBody) demandBody.addEventListener("click", handleDemandActions);
+  if (demandCards) demandCards.addEventListener("change", handleDemandStatusChange);
+  if (demandBody) demandBody.addEventListener("change", handleDemandStatusChange);
   jobsBody.addEventListener("click", onJobsTableClick);
   jobsCards.addEventListener("click", onJobsCardsClick);
   workloadBody.addEventListener("click", onWorkloadTableClick);
@@ -1753,6 +1713,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => activateTab(tab.getAttribute("data-admin-tab")));
   });
+  if (overviewOutcomeBtn) overviewOutcomeBtn.addEventListener("click", openRecruitmentOutcome);
+  if (adminOutcomeBackBtn) adminOutcomeBackBtn.addEventListener("click", () => activateTab("overview"));
+  if (alertsButton) alertsButton.addEventListener("click", openAlertsModal);
+  if (alertsModal) {
+    alertsModal.addEventListener("click", (event) => {
+      if (event.target.closest("[data-alerts-close]")) {
+        closeAlertsModal();
+      }
+    });
+  }
   createRoleEl.addEventListener("change", syncCreateRoleFields);
   createUserForm.addEventListener("submit", createUser);
   thresholdForm.addEventListener("submit", saveThreshold);
@@ -1764,10 +1734,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   exportWorkloadCsvBtn.addEventListener("click", () => downloadWorkloadReport("csv"));
   exportWorkloadTxtBtn.addEventListener("click", () => downloadWorkloadReport("txt"));
   backupBtn.addEventListener("click", downloadBackup);
-  archiveApplyBtn.addEventListener("click", applyArchiveFilters);
-  archiveResetBtn.addEventListener("click", resetArchiveFilters);
-  archiveExportCsvBtn.addEventListener("click", () => downloadArchiveReport("csv"));
-  archiveExportTxtBtn.addEventListener("click", () => downloadArchiveReport("txt"));
   if (jobApplicationsApplyBtn) jobApplicationsApplyBtn.addEventListener("click", applyJobApplicationFilter);
   if (jobApplicationsCloseBtn) jobApplicationsCloseBtn.addEventListener("click", closeJobApplications);
   if (jobApplicationsCsvBtn) jobApplicationsCsvBtn.addEventListener("click", () => downloadJobApplications("csv"));
@@ -1801,7 +1767,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   syncCreateRoleFields();
   activateTab("overview");
   try {
-    await Promise.all([loadAdminDashboard(), loadThresholdSettings(), loadArchive(), loadDemands()]);
+    await Promise.all([loadAdminDashboard(), loadThresholdSettings(), loadDemands()]);
   } catch (err) {
     setNotice(err.message, true);
   }

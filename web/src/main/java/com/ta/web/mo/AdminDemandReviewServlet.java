@@ -19,7 +19,7 @@ import java.io.IOException;
  * POST /api/admin/demands/{jobId}/reject
  *
  * Temporary mapping in this scaffold:
- * POST /api/admin/demands/review/{jobId}?action=approve|reject
+ * POST /api/admin/demands/review/{jobId}?action=pending|approve|reject
  */
 @WebServlet(name = "AdminDemandReviewServlet", urlPatterns = {"/api/admin/demands/review/*"})
 public class AdminDemandReviewServlet extends AdminBaseServlet {

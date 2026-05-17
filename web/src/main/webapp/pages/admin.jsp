@@ -28,9 +28,29 @@
           <p id="adminSubTitle">Welcome, <%= currentUserName %></p>
         </div>
       </div>
-      <a class="admin-btn-logout" href="<%= request.getContextPath() %>/logout">Logout</a>
+      <div class="admin-header-actions">
+        <button id="adminAlertsButton" class="admin-alert-trigger" type="button" aria-haspopup="dialog" aria-controls="adminAlertsModal" aria-label="Open administrator alerts">
+          <span aria-hidden="true">!</span>
+          <strong id="adminAlertsBadge">0</strong>
+        </button>
+        <a class="admin-btn-logout" href="<%= request.getContextPath() %>/logout">Logout</a>
+      </div>
     </div>
   </header>
+
+  <div id="adminAlertsModal" class="admin-modal admin-hidden" role="dialog" aria-modal="true" aria-labelledby="adminAlertsModalTitle">
+    <div class="admin-modal-backdrop" data-alerts-close></div>
+    <div class="admin-modal-card admin-alert-modal-card">
+      <div class="admin-modal-head">
+        <div>
+          <h2 id="adminAlertsModalTitle" class="admin-section-title">Administrator Alerts</h2>
+          <p class="admin-section-desc">Workload, vacancy, deadline, and data-quality risk cases.</p>
+        </div>
+        <button id="adminAlertsCloseBtn" type="button" class="btn btn-outline" data-alerts-close>Close</button>
+      </div>
+      <div id="adminAlertsList" class="admin-alert-list"></div>
+    </div>
+  </div>
 
   <main class="admin-portal-main">
     <nav class="admin-tabs" role="tablist" aria-label="Admin sections">
@@ -39,9 +59,6 @@
       <button class="admin-tab" data-admin-tab="users" role="tab" aria-selected="false">Users</button>
       <button class="admin-tab" data-admin-tab="demands" role="tab" aria-selected="false">Demand Review</button>
       <button class="admin-tab" data-admin-tab="jobs" role="tab" aria-selected="false">Jobs</button>
-      <button class="admin-tab admin-tab--outcome" data-admin-tab="recruitment-outcome" role="tab" aria-selected="false">Recruitment Results</button>
-      <button class="admin-tab" data-admin-tab="archive" role="tab" aria-selected="false">Application Archive</button>
-      <button class="admin-tab" data-admin-tab="alerts" role="tab" aria-selected="false">Alerts</button>
       <button class="admin-tab" data-admin-tab="announcements" role="tab" aria-selected="false">Announcements</button>
       <button class="admin-tab" data-admin-tab="account" role="tab" aria-selected="false">My Account</button>
     </nav>
@@ -85,7 +102,7 @@
 
       <div class="card">
         <h3 class="admin-subtitle">Quick Summary</h3>
-        <p class="desc">Use the tabs above to manage workload, users, jobs, archive, and alerts.</p>
+        <p class="desc">Use the tabs above to manage workload, users, jobs, demand review, and announcements.</p>
         <div class="admin-summary-grid">
           <div class="admin-summary-item">
             <span id="overviewOpenJobs">0</span>
@@ -112,11 +129,9 @@
             <small>Active Alerts</small>
           </div>
         </div>
-      </div>
-
-      <div class="card" style="margin-top:16px;">
-        <h3 class="admin-subtitle">Priority Alerts</h3>
-        <div id="adminAlertsPreview" class="admin-alert-list"></div>
+        <div class="row" style="margin-top:16px;">
+          <button id="adminOverviewOutcomeBtn" type="button" class="btn btn-primary">View Recruitment Results</button>
+        </div>
       </div>
     </section>
 
@@ -242,10 +257,10 @@
           <div class="field">
             <label for="adminDemandStatusFilter">Approval Status</label>
             <select id="adminDemandStatusFilter">
+              <option value="all">All</option>
               <option value="pending">Pending</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
-              <option value="all">All</option>
             </select>
           </div>
         </div>
@@ -258,7 +273,7 @@
         <h3 class="admin-subtitle">Demand Review Table</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Module</th><th>Title</th><th>Organiser</th><th>Submitted</th><th>Status</th><th>Action</th></tr></thead>
+            <thead><tr><th>Module</th><th>Title</th><th>Organiser</th><th>Submitted</th><th>Current Status</th><th>Review Decision</th></tr></thead>
             <tbody id="adminDemandBody"></tbody>
           </table>
         </div>
@@ -371,6 +386,7 @@
               </div>
             </div>
             <div class="admin-outcome-toolbar-actions">
+              <button type="button" id="adminOutcomeBackBtn" class="btn btn-outline">Back to Overview</button>
               <button type="button" id="adminOutcomeApplyRangeBtn" class="btn btn-primary">Apply range</button>
               <button type="button" id="adminOutcomeClearRangeBtn" class="btn btn-outline">All jobs</button>
               <button type="button" id="adminOutcomeRefreshBtn" class="btn btn-outline">Refresh snapshot</button>
@@ -418,6 +434,11 @@
         </article>
       </div>
       <div class="card admin-outcome-card">
+        <h3 class="admin-subtitle">Overall hiring mix</h3>
+        <p class="desc">Visual split of hired seats and remaining vacancies against total position slots.</p>
+        <div id="adminOutcomeMixChart" class="admin-outcome-mix-chart"></div>
+      </div>
+      <div class="card admin-outcome-card">
         <h3 class="admin-subtitle">By department</h3>
         <p class="desc">Hired counts and unfilled slots grouped by each job posting's department field. Blank values are rolled up as 未填.</p>
         <p class="admin-outcome-dept-legend" role="note">
@@ -448,73 +469,6 @@
         </div>
       </div>
       </div>
-    </section>
-
-    <section class="admin-panel admin-hidden" data-admin-panel="archive">
-      <div class="admin-headline">
-        <div>
-          <h2 class="admin-section-title">Application Archive</h2>
-          <p class="admin-section-desc">Read-only audit view of applications, MO notes, and decision feedback.</p>
-        </div>
-      </div>
-      <div class="card" style="margin-bottom:16px;">
-        <h3 class="admin-subtitle">Archive Filters and Export</h3>
-        <div class="admin-form-grid">
-          <div class="field">
-            <label for="adminArchiveStatusFilter">Status</label>
-            <select id="adminArchiveStatusFilter">
-              <option value="all">All</option>
-              <option value="pending">Pending</option>
-              <option value="viewed">Viewed</option>
-              <option value="shortlisted">Shortlisted</option>
-              <option value="hired">Hired</option>
-              <option value="rejected">Rejected</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="adminArchiveJobFilter">Job</label>
-            <select id="adminArchiveJobFilter">
-              <option value="all">All Jobs</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="adminArchiveTeacherFilter">Module Organiser</label>
-            <select id="adminArchiveTeacherFilter">
-              <option value="all">All Teachers</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="adminArchiveStudentFilter">Student Search</label>
-            <input id="adminArchiveStudentFilter" type="text" placeholder="Name, user ID, or student no." />
-          </div>
-        </div>
-        <div class="row" style="margin-top:16px;">
-          <button id="adminArchiveApplyBtn" type="button" class="btn btn-primary">Apply Archive Filters</button>
-          <button id="adminArchiveResetBtn" type="button" class="btn btn-outline">Reset</button>
-          <button id="adminArchiveExportCsvBtn" type="button" class="btn btn-outline">Export Archive CSV</button>
-          <button id="adminArchiveExportTxtBtn" type="button" class="btn btn-outline">Export Archive TXT</button>
-        </div>
-      </div>
-      <div id="adminArchiveCards" class="admin-feed"></div>
-      <div class="card">
-        <h3 class="admin-subtitle">Archive Table</h3>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Application</th><th>Student</th><th>Job</th><th>Organiser</th><th>Status</th><th>Applied</th><th>Feedback</th></tr></thead>
-            <tbody id="adminArchiveBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <section class="admin-panel admin-hidden" data-admin-panel="alerts">
-      <div class="admin-headline">
-        <div>
-          <h2 class="admin-section-title">Administrator Alerts</h2>
-          <p class="admin-section-desc">Follow up workload, vacancy, deadline, and data-quality risk cases.</p>
-        </div>
-      </div>
-      <div id="adminAlertsList" class="admin-alert-list"></div>
     </section>
 
     <section class="admin-panel admin-hidden" data-admin-panel="announcements">
