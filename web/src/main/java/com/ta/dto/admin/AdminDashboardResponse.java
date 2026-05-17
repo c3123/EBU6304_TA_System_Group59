@@ -23,6 +23,10 @@ public class AdminDashboardResponse {
     private List<AdminDashboardJobItemResponse> jobs = new ArrayList<>();
     private List<AdminDashboardWorkloadItemResponse> workload = new ArrayList<>();
     private List<AdminDashboardAlertResponse> alerts = new ArrayList<>();
+    private List<AdminDashboardDailyCountItem> dailyJobPublications = new ArrayList<>();
+    private List<AdminDashboardDailyCountItem> dailyApplications = new ArrayList<>();
+    private List<AdminDashboardCountSlice> applicationsByDepartment = new ArrayList<>();
+    private List<AdminDashboardCountSlice> applicationsByStatus = new ArrayList<>();
 
     public int getTotalJobs() {
         return totalJobs;
@@ -174,5 +178,37 @@ public class AdminDashboardResponse {
 
     public void setAlerts(List<AdminDashboardAlertResponse> alerts) {
         this.alerts = alerts == null ? new ArrayList<>() : alerts;
+    }
+
+    public List<AdminDashboardDailyCountItem> getDailyJobPublications() {
+        return dailyJobPublications;
+    }
+
+    public void setDailyJobPublications(List<AdminDashboardDailyCountItem> dailyJobPublications) {
+        this.dailyJobPublications = dailyJobPublications == null ? new ArrayList<>() : dailyJobPublications;
+    }
+
+    public List<AdminDashboardDailyCountItem> getDailyApplications() {
+        return dailyApplications;
+    }
+
+    public void setDailyApplications(List<AdminDashboardDailyCountItem> dailyApplications) {
+        this.dailyApplications = dailyApplications == null ? new ArrayList<>() : dailyApplications;
+    }
+
+    public List<AdminDashboardCountSlice> getApplicationsByDepartment() {
+        return applicationsByDepartment;
+    }
+
+    public void setApplicationsByDepartment(List<AdminDashboardCountSlice> applicationsByDepartment) {
+        this.applicationsByDepartment = applicationsByDepartment == null ? new ArrayList<>() : applicationsByDepartment;
+    }
+
+    public List<AdminDashboardCountSlice> getApplicationsByStatus() {
+        return applicationsByStatus;
+    }
+
+    public void setApplicationsByStatus(List<AdminDashboardCountSlice> applicationsByStatus) {
+        this.applicationsByStatus = applicationsByStatus == null ? new ArrayList<>() : applicationsByStatus;
     }
 }
