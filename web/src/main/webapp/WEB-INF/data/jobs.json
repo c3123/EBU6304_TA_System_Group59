@@ -19,10 +19,20 @@
     "hours": 12,
     "positions": 2,
     "status": "open",
-    "deadline": "2026-04-25",
+    "deadline": "2026-05-21",
     "hourMin": 8,
     "hourMax": 12,
-    "updatedAt": "2026-04-11T05:57:36.930699700Z"
+    "department": "-",
+    "schedule": "Tue 16:00- 18:00",
+    "approvalStatus": "approved",
+    "published": true,
+    "withdrawn": false,
+    "location": "offline",
+    "requirements": "Linux",
+    "updatedAt": "2026-05-17T14:04:54.271896900Z",
+    "publishedAt": "2026-05-17T14:04:54.271896900Z",
+    "reviewedAt": "2026-05-17T14:03:20.805950Z",
+    "rejectionReason": ""
   },
   {
     "id": "103",
