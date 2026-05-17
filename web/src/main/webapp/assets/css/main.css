@@ -894,6 +894,17 @@ th { background: #f8fbff; }
   height: 240px;
 }
 
+.admin-date-input {
+  min-width: 11rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.admin-date-input::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+
 .admin-chart-mini-title {
   margin: 0 0 4px;
   font-size: 14px;

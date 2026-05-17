@@ -10,6 +10,7 @@ import com.ta.model.Attachment;
 import com.ta.model.HiringHistoryRecord;
 import com.ta.model.JobPosting;
 import com.ta.model.StudentProfile;
+import com.ta.service.admin.WorkloadOverloadAnnouncementService;
 import com.ta.util.AgentDebugLog;
 import com.ta.util.JsonUtility;
 import jakarta.servlet.ServletContext;
@@ -43,6 +44,8 @@ import java.util.stream.Collectors;
 public class MoApplicationService {
 
     private static final int MAX_DECISION_FEEDBACK_CHARS = 200;
+    private final WorkloadOverloadAnnouncementService workloadOverloadAnnouncementService =
+            new WorkloadOverloadAnnouncementService();
     /** Query param value: show no applicants (all status checkboxes off in MO UI). */
     static final String STATUS_FILTER_NONE_SENTINEL = "__none__";
 
@@ -259,6 +262,11 @@ public class MoApplicationService {
                 );
             }
 
+            int weeklyHoursBefore = 0;
+            if ("hired".equals(normalized) && !"hired".equalsIgnoreCase(normalizeStatus(record.getStatus()))) {
+                weeklyHoursBefore = workloadOverloadAnnouncementService.calculateWeeklyHours(context, record.getStudentId());
+            }
+
             applyMoApplicationStatusTransition(record, job, normalized);
             // #region agent log
             try {
@@ -277,6 +285,9 @@ public class MoApplicationService {
                 appendManualHireHistory(context, moId, record);
             }
             JsonUtility.saveApplications(context, applications);
+            if ("hired".equals(normalized)) {
+                workloadOverloadAnnouncementService.notifyIfNewlyOverloaded(context, record.getStudentId(), weeklyHoursBefore);
+            }
 
             MoApplicationListItemResponse item = toListItem(record);
             List<StudentProfile> profiles = JsonUtility.loadStudents(context);
@@ -359,6 +370,27 @@ public class MoApplicationService {
                 targets.add(record);
             }
 
+            Map<String, Integer> weeklyHoursBeforeByStudent = new LinkedHashMap<>();
+            if ("hired".equals(normalized)) {
+                for (ApplicationRecord record : targets) {
+                    if (record.getStudentId() == null || record.getStudentId().isBlank()) {
+                        continue;
+                    }
+                    if (!"hired".equalsIgnoreCase(normalizeStatus(record.getStatus()))) {
+                        weeklyHoursBeforeByStudent.computeIfAbsent(
+                                record.getStudentId(),
+                                studentId -> {
+                                    try {
+                                        return workloadOverloadAnnouncementService.calculateWeeklyHours(context, studentId);
+                                    } catch (IOException ex) {
+                                        throw new RuntimeException(ex);
+                                    }
+                                }
+                        );
+                    }
+                }
+            }
+
             for (int i = 0; i < targets.size(); i++) {
                 ApplicationRecord record = targets.get(i);
                 JobPosting job = jobById.get(record.getJobId());
@@ -382,6 +414,12 @@ public class MoApplicationService {
             // #endregion
 
             JsonUtility.saveApplications(context, applications);
+            if ("hired".equals(normalized)) {
+                for (Map.Entry<String, Integer> entry : weeklyHoursBeforeByStudent.entrySet()) {
+                    workloadOverloadAnnouncementService.notifyIfNewlyOverloaded(
+                            context, entry.getKey(), entry.getValue());
+                }
+            }
             return Map.of("updated", targets.size());
         } catch (IOException e) {
             throw new RuntimeException("Failed to batch update application status.", e);

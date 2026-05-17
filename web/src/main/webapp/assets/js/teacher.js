@@ -214,7 +214,7 @@ function renderTeacherJobCard(item) {
           </div>
           <div class="field">
             <label>Deadline</label>
-            <input name="deadline" type="date" lang="en-US" required />
+            <input name="deadline" type="text" class="admin-date-input" placeholder="yyyy/mm/dd" inputmode="numeric" lang="en" autocomplete="off" required />
           </div>
           <div class="field">
             <label>Schedule</label>
@@ -346,7 +346,7 @@ async function submitPublishForm(form) {
   try {
     const payload = {
       location: form.location.value,
-      deadline: form.deadline.value,
+      deadline: (form.deadline.value || "").trim().replace(/\//g, "-"),
       schedule: form.schedule.value.trim(),
       requirements: form.requirements.value.trim()
     };

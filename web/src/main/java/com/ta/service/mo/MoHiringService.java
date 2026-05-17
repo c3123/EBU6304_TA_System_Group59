@@ -10,6 +10,7 @@ import com.ta.model.HiringHistoryRecord;
 import com.ta.model.JobPosting;
 import com.ta.model.NotificationRecord;
 import com.ta.model.User;
+import com.ta.service.admin.WorkloadOverloadAnnouncementService;
 import com.ta.util.AgentDebugLog;
 import com.ta.util.JsonUtility;
 import jakarta.servlet.ServletContext;
@@ -30,6 +31,9 @@ import java.util.stream.Collectors;
  * Final hiring workflow: finalize, state and history.
  */
 public class MoHiringService {
+
+    private final WorkloadOverloadAnnouncementService workloadOverloadAnnouncementService =
+            new WorkloadOverloadAnnouncementService();
 
     public MoHiringStateResponse getState(ServletContext context, String moId) {
         try {
@@ -115,6 +119,7 @@ public class MoHiringService {
             List<String> hiredNames = new ArrayList<>();
             List<String> hiredIds = new ArrayList<>();
             List<NotificationRecord> notifications = JsonUtility.loadNotifications(context);
+            Map<String, Integer> weeklyHoursBeforeByStudent = new LinkedHashMap<>();
 
             for (ApplicationRecord app : applications) {
                 if (!app.isActive() || !jobId.equals(app.getJobId())) {
@@ -124,6 +129,18 @@ public class MoHiringService {
                     continue;
                 }
                 if (selected.contains(app.getId())) {
+                    if (app.getStudentId() != null && !app.getStudentId().isBlank()) {
+                        weeklyHoursBeforeByStudent.computeIfAbsent(
+                                app.getStudentId(),
+                                studentId -> {
+                                    try {
+                                        return workloadOverloadAnnouncementService.calculateWeeklyHours(context, studentId);
+                                    } catch (IOException ex) {
+                                        throw new RuntimeException(ex);
+                                    }
+                                }
+                        );
+                    }
                     app.setStatus("hired");
                     hiredIds.add(app.getId());
                     String studentName = app.getStudentName() == null ? app.getStudentId() : app.getStudentName();
@@ -182,6 +199,11 @@ public class MoHiringService {
             JsonUtility.saveJobs(context, jobs);
             JsonUtility.saveHiringHistory(context, history);
             JsonUtility.saveNotifications(context, notifications);
+
+            for (Map.Entry<String, Integer> entry : weeklyHoursBeforeByStudent.entrySet()) {
+                workloadOverloadAnnouncementService.notifyIfNewlyOverloaded(
+                        context, entry.getKey(), entry.getValue());
+            }
 
             MoHiringHistoryItemResponse response = new MoHiringHistoryItemResponse();
             response.setAction(record.getAction());

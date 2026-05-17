@@ -56,6 +56,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const thresholdHoursEl = byId("adminThresholdHours");
   const thresholdUpdatedAtEl = byId("adminThresholdUpdatedAt");
   const thresholdSaveBtn = byId("adminThresholdSaveBtn");
+  const notifyOverloadBtn = byId("adminNotifyOverloadBtn");
   const exportWorkloadCsvBtn = byId("adminExportWorkloadCsvBtn");
   const exportWorkloadTxtBtn = byId("adminExportWorkloadTxtBtn");
 
@@ -101,6 +102,30 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
   const RECRUITMENT_VACANCY_TOP = 10;
   const outcomeJobDateRange = { since: "", until: "" };
+  const JOB_STATUS_CHART_COLORS = {
+    Pending: "#f59e0b",
+    Reject: "#ef4444",
+    Open: "#10b981",
+    Overdue: "#dc2626"
+  };
+
+  function toApiDate(displayValue) {
+    const raw = (displayValue || "").trim();
+    if (!raw) {
+      return "";
+    }
+    const normalized = raw.replace(/\//g, "-");
+    return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : "";
+  }
+
+  function toDisplayDate(apiValue) {
+    const raw = (apiValue || "").trim();
+    if (!raw) {
+      return "";
+    }
+    const part = raw.length >= 10 ? raw.substring(0, 10) : raw;
+    return /^\d{4}-\d{2}-\d{2}$/.test(part) ? part.replace(/-/g, "/") : raw.replace(/-/g, "/");
+  }
   const jobApplicationFilters = {
     status: "all"
   };
@@ -210,8 +235,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (typeof Chart === "undefined") {
       return;
     }
-    const deptSlices = data.applicationsByDepartment || [];
-    const statusSlices = data.applicationsByStatus || [];
+    const deptSlices = data.jobsByDepartment || [];
+    const statusSlices = data.jobsByStatus || [];
     const deptCanvas = byId("adminJobsDeptPie");
     if (deptCanvas) {
       destroyChart("jobsDeptPie");
@@ -240,7 +265,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           labels: statusSlices.map((s) => s.label),
           datasets: [{
             data: statusSlices.map((s) => Number(s.count) || 0),
-            backgroundColor: chartPalette(statusSlices.length)
+            backgroundColor: statusSlices.map((s) => JOB_STATUS_CHART_COLORS[s.label] || "#64748b")
           }]
         },
         options: {
@@ -489,10 +514,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       outcomeJobDateRange.since = data.jobSince || "";
       outcomeJobDateRange.until = data.jobUntil || "";
       if (adminOutcomeJobSince) {
-        adminOutcomeJobSince.value = outcomeJobDateRange.since;
+        adminOutcomeJobSince.value = toDisplayDate(outcomeJobDateRange.since);
       }
       if (adminOutcomeJobUntil) {
-        adminOutcomeJobUntil.value = outcomeJobDateRange.until;
+        adminOutcomeJobUntil.value = toDisplayDate(outcomeJobDateRange.until);
       }
       const slots = byId("adminOutcomeTotalSlots");
       const closed = byId("adminOutcomeClosedJobs");
@@ -1878,6 +1903,44 @@ document.addEventListener("DOMContentLoaded", async () => {
   resetFiltersBtn.addEventListener("click", resetFilters);
   exportCsvBtn.addEventListener("click", () => downloadReport("csv"));
   exportTxtBtn.addEventListener("click", () => downloadReport("txt"));
+  async function notifyAllOverloadStudents() {
+    if (!notifyOverloadBtn) {
+      return;
+    }
+    const overloaded = (latestData && Array.isArray(latestData.workload) ? latestData.workload : [])
+      .filter((item) => String(item.workloadLevel || "").toLowerCase() === "overload");
+    if (!overloaded.length) {
+      setNotice("No students are currently at overload level.", true);
+      activateTab("workload");
+      return;
+    }
+    if (!window.confirm(`Send workload reminder announcements to ${overloaded.length} overloaded student(s)?`)) {
+      return;
+    }
+    try {
+      notifyOverloadBtn.disabled = true;
+      notifyOverloadBtn.textContent = "Sending...";
+      const result = await requestJson(
+        `${window.location.origin}${getContextPath()}/api/admin/workload/notify-overload`,
+        { method: "POST" }
+      );
+      const count = result.notifiedCount || 0;
+      setNotice(`Sent workload overload reminders to ${count} student(s).`, false);
+      activateTab("workload");
+    } catch (err) {
+      setNotice(err.message, true);
+      activateTab("workload");
+    } finally {
+      notifyOverloadBtn.disabled = false;
+      notifyOverloadBtn.textContent = "Notify All Overload Students";
+    }
+  }
+
+  if (notifyOverloadBtn) {
+    notifyOverloadBtn.addEventListener("click", () => {
+      void notifyAllOverloadStudents();
+    });
+  }
   exportWorkloadCsvBtn.addEventListener("click", () => downloadWorkloadReport("csv"));
   exportWorkloadTxtBtn.addEventListener("click", () => downloadWorkloadReport("txt"));
   backupBtn.addEventListener("click", downloadBackup);
@@ -1887,8 +1950,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (jobApplicationsTxtBtn) jobApplicationsTxtBtn.addEventListener("click", () => downloadJobApplications("txt"));
   if (adminOutcomeApplyRangeBtn) {
     adminOutcomeApplyRangeBtn.addEventListener("click", () => {
-      outcomeJobDateRange.since = (adminOutcomeJobSince && adminOutcomeJobSince.value) || "";
-      outcomeJobDateRange.until = (adminOutcomeJobUntil && adminOutcomeJobUntil.value) || "";
+      outcomeJobDateRange.since = toApiDate(adminOutcomeJobSince && adminOutcomeJobSince.value);
+      outcomeJobDateRange.until = toApiDate(adminOutcomeJobUntil && adminOutcomeJobUntil.value);
       void loadRecruitmentOutcome();
     });
   }
