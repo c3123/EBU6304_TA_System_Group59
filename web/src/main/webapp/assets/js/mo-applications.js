@@ -37,6 +37,13 @@ function statusSelectValue(st) {
   return s || "pending";
 }
 
+const FEEDBACK_TEMPLATES = [
+  { value: "", label: "Quick template…" },
+  { value: "Insufficient relevant experience for this module.", label: "Insufficient experience" },
+  { value: "Skills do not meet the module requirements.", label: "Skills not met" },
+  { value: "Position has been filled.", label: "Position filled" }
+];
+
 const state = {
   items: [],
   jobTitles: {},
@@ -44,8 +51,189 @@ const state = {
   hiringState: {},
   pollingTimer: null,
   finalModalJobId: null,
-  selectedIds: new Set()
+  selectedIds: new Set(),
+  sortMode: "applied",
+  highMatchOnly: false
 };
+
+function normalizeSkillList(value) {
+  return Array.isArray(value) ? value.filter(item => String(item || "").trim()) : [];
+}
+
+function matchPercent(item) {
+  const score = Number(item && item.matchScore);
+  if (!Number.isFinite(score) || score < 0) return 0;
+  return Math.round(score * 100);
+}
+
+function matchBadgeClass(percent) {
+  if (percent >= 80) return "mo-match-high";
+  if (percent >= 50) return "mo-match-mid";
+  return "mo-match-low";
+}
+
+function renderSkillTags(skills, cssClass) {
+  const list = normalizeSkillList(skills);
+  if (!list.length) return `<span style="color:#94a3b8;">—</span>`;
+  return list.map(s => `<span class="mo-skill-tag ${cssClass}">${escapeHtml(s)}</span>`).join("");
+}
+
+function jobRequirementsRaw(jobId) {
+  const j = state.jobMeta[jobId];
+  if (!j || j.requirements == null) return "";
+  return String(j.requirements).trim();
+}
+
+function renderMatchBadge(item) {
+  const pct = matchPercent(item);
+  const req = normalizeSkillList(item.requiredSkills);
+  const matched = normalizeSkillList(item.matchedSkills);
+  const rawReq = jobRequirementsRaw(item.jobId);
+  if (!req.length) {
+    const tip = rawReq
+      ? `Job text: "${rawReq}" — not mapped to our skill list yet`
+      : "This job has no requirements text";
+    return `<span class="mo-match-badge mo-match-low" title="${escapeHtml(tip)}">N/A</span>`;
+  }
+  const tone = matchBadgeClass(pct);
+  const related = normalizeSkillList(item.relatedMatches);
+  const tip = related.length
+    ? `Weighted score ${pct}%: exact matches plus partial credit for related skills (e.g. MATLAB for Statistics).`
+    : `Match = ${matched.length} exact of ${req.length} required (${pct}%). Strict skills need exact names.`;
+  return `<span class="mo-match-badge ${tone}" title="${escapeHtml(tip)}">${pct}% Match</span>`;
+}
+
+function renderSkillFitBlock(item) {
+  const matched = normalizeSkillList(item.matchedSkills);
+  const missing = normalizeSkillList(item.missingSkills);
+  const required = normalizeSkillList(item.requiredSkills);
+  const detected = normalizeSkillList(item.detectedStudentSkills);
+  const rawProfileSkills = safeText(item.skills);
+  const rawReq = jobRequirementsRaw(item.jobId);
+  const pct = matchPercent(item);
+  const tone = matchBadgeClass(pct);
+
+  if (!required.length) {
+    const hint = rawReq
+      ? `Job requirements text: <strong>${escapeHtml(rawReq)}</strong>. We could not map this to known skills — please review manually.`
+      : "This job has no requirements text. Add requirements in <strong>My Jobs</strong> to enable automatic matching.";
+    const profileHtml =
+      rawProfileSkills === "-"
+        ? '<span style="color:#94a3b8;">No skills on profile</span>'
+        : escapeHtml(rawProfileSkills);
+    return `
+      <div class="mo-skill-fit">
+        <div class="mo-skill-fit-head">
+          <h4 class="mo-skill-fit-title">Skill match</h4>
+          <span class="mo-match-badge mo-match-low">N/A</span>
+        </div>
+        <p class="mo-skill-fit-formula">${hint}</p>
+        <div class="mo-skill-compare">
+          <div class="mo-skill-compare-cell">
+            <span class="mo-app-lbl">Applicant profile (raw)</span>
+            <div>${profileHtml}</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  const related = normalizeSkillList(item.relatedMatches);
+  const formula = `Weighted score <strong>${pct}%</strong>: programming skills need an <strong>exact</strong> match; topics like Statistics accept <strong>related</strong> tools (e.g. MATLAB) at 50–80% credit each.`;
+  const applicantLine = detected.length
+    ? renderSkillTags(detected, "neutral")
+    : rawProfileSkills !== "-"
+      ? `<span style="color:#64748b;">${escapeHtml(rawProfileSkills)} (not recognised)</span>`
+      : `<span style="color:#94a3b8;">No skills on profile</span>`;
+  const relatedBlock = related.length
+    ? `<div><span class="mo-app-lbl">↔ Related (partial credit)</span><div class="mo-skill-tags">${related.map(r => `<span class="mo-skill-tag related">${escapeHtml(r)}</span>`).join("")}</div></div>`
+    : "";
+  let resultHint =
+    pct >= 80
+      ? "Strong fit — exact or closely related skills cover the requirements."
+      : pct >= 50
+        ? "Partial fit — some requirements met via related skills; review gaps."
+        : pct > 0
+          ? "Weak fit — limited overlap; consider training or other candidates."
+          : "No overlap — strict skills need exact matches; no related credit applied.";
+  if (related.length && pct > 0 && pct < 80) {
+    resultHint = "Partial credit applied: related tools count toward flexible requirements (not for strict language skills like Java-only roles).";
+  }
+
+  return `
+    <div class="mo-skill-fit">
+      <div class="mo-skill-fit-head">
+        <h4 class="mo-skill-fit-title">Skill match</h4>
+        <span class="mo-match-score-big ${tone}">${pct}%</span>
+      </div>
+      <div class="mo-match-bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
+        <div class="mo-match-bar-fill ${tone}" style="width:${pct}%"></div>
+      </div>
+      <p class="mo-skill-fit-formula">${formula}</p>
+      <div class="mo-skill-compare">
+        <div class="mo-skill-compare-cell">
+          <span class="mo-app-lbl">Job requires</span>
+          <div class="mo-skill-tags">${renderSkillTags(required, "neutral")}</div>
+        </div>
+        <div class="mo-skill-compare-cell">
+          <span class="mo-app-lbl">Applicant has (detected)</span>
+          <div class="mo-skill-tags">${applicantLine}</div>
+        </div>
+      </div>
+      <div><span class="mo-app-lbl">✓ Matched (exact)</span><div class="mo-skill-tags">${renderSkillTags(matched, "matched")}</div></div>
+      ${relatedBlock}
+      <div><span class="mo-app-lbl">✗ Still missing</span><div class="mo-skill-tags">${renderSkillTags(missing, "missing")}</div></div>
+      <p class="mo-skill-fit-hint">${escapeHtml(resultHint)}</p>
+    </div>`;
+}
+
+function ifHiredTotalForItem(item, items) {
+  const positionHrs = jobWeeklyHours(item.jobId);
+  const currentOther = currentHiredHoursElsewhere(items, item.studentId, item.applicationId);
+  return currentOther + positionHrs;
+}
+
+function sortGroupItems(groupItems, items, sortMode) {
+  const copy = [...groupItems];
+  if (sortMode === "match") {
+    copy.sort((a, b) => matchPercent(b) - matchPercent(a) || String(b.appliedAt || "").localeCompare(String(a.appliedAt || "")));
+  } else if (sortMode === "workload") {
+    copy.sort((a, b) => ifHiredTotalForItem(b, items) - ifHiredTotalForItem(a, items) || String(b.appliedAt || "").localeCompare(String(a.appliedAt || "")));
+  } else {
+    copy.sort((a, b) => String(b.appliedAt || "").localeCompare(String(a.appliedAt || "")));
+  }
+  return copy;
+}
+
+function filterItemsForDisplay(items) {
+  if (!state.highMatchOnly) return items;
+  return items.filter(it => {
+    const req = normalizeSkillList(it.requiredSkills);
+    if (!req.length) return false;
+    return matchPercent(it) >= 60;
+  });
+}
+
+function jobStatusCounts(groupItems) {
+  const counts = { pending: 0, shortlisted: 0, rejected: 0, hired: 0 };
+  for (const it of groupItems) {
+    const st = String(it.status || "").toLowerCase();
+    if (st === "pending" || st === "viewed") counts.pending += 1;
+    else if (st === "shortlisted") counts.shortlisted += 1;
+    else if (st === "rejected") counts.rejected += 1;
+    else if (st === "hired") counts.hired += 1;
+  }
+  return counts;
+}
+
+function renderJobStatsBar(groupItems) {
+  const c = jobStatusCounts(groupItems);
+  return `<div class="mo-job-stats" aria-label="Application status summary">
+    <span class="mo-stat-pill">Pending ${c.pending}</span>
+    <span class="mo-stat-pill">Shortlisted ${c.shortlisted}</span>
+    <span class="mo-stat-pill">Rejected ${c.rejected}</span>
+    <span class="mo-stat-pill">Hired ${c.hired}</span>
+  </div>`;
+}
 
 async function getJson(url) {
   const res = await fetch(url, { method: "GET", credentials: "same-origin" });
@@ -257,6 +445,12 @@ function renderNotesAndFeedback(item, closed) {
   const fbVal = escapeHtml(fbRaw);
   const fbLen = String(fbRaw).length;
   const notesDis = closed ? "disabled" : "";
+  const fbTemplateOpts = FEEDBACK_TEMPLATES.map(
+    t => `<option value="${escapeHtml(t.value)}">${escapeHtml(t.label)}</option>`
+  ).join("");
+  const fbTemplate = fbAllowed && !closed
+    ? `<select class="mo-fb-template" data-fb-template data-app-id="${id}" aria-label="Feedback template">${fbTemplateOpts}</select>`
+    : "";
   const fbBlock = fbAllowed
     ? `<input type="text" maxlength="200" style="flex:1;min-width:140px;" data-mo-feedback data-app-id="${id}" placeholder="Reason (max 200 chars)" value="${fbVal}" ${closed ? "disabled" : ""}/>`
     : `<span style="color:#94a3b8;">—</span>`;
@@ -275,6 +469,7 @@ function renderNotesAndFeedback(item, closed) {
     <div class="mo-field-inline" data-fb-wrap>
       <label>Decision feedback</label>
       <div style="flex:1;display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
+        ${fbTemplate}
         ${fbBlock}
         ${fbSaveBtn}
         <span class="mo-save-indicator" data-fb-ind data-app-id="${id}"></span>
@@ -330,10 +525,11 @@ function renderApplicantCard(item, closed) {
       <div class="mo-app-card-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
         <div style="display:flex;align-items:flex-start;gap:8px;min-width:0;">
           ${chk}
-          <div style="min-width:0;"><h4>${escapeHtml(safeText(item.studentName))}</h4><p class="mo-app-meta">${jobLabel} • Applied: ${escapeHtml(safeText(item.appliedAt))}</p></div>
+          <div style="min-width:0;"><h4 style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">${escapeHtml(safeText(item.studentName))} ${renderMatchBadge(item)}</h4><p class="mo-app-meta">${jobLabel} • Applied: ${escapeHtml(safeText(item.appliedAt))}</p></div>
         </div>
         <div class="mo-app-status-slot" style="flex-shrink:0;">${renderStatusSelect(item, closed)}</div>
       </div>
+      ${renderSkillFitBlock(item)}
       ${workloadBlock}
       ${actionsBlock}
       ${renderNotesAndFeedback(item, closed)}
@@ -363,7 +559,8 @@ function renderApplicantCard(item, closed) {
 function renderApplicantFeed(items) {
   const feed = byId("applicationsFeed");
   const emptyEl = byId("applicationsEmpty");
-  if (!items || !items.length) {
+  const displayItems = filterItemsForDisplay(items || []);
+  if (!displayItems.length) {
     emptyEl.style.display = "block";
     feed.style.display = "none";
     feed.innerHTML = "";
@@ -372,7 +569,7 @@ function renderApplicantFeed(items) {
   emptyEl.style.display = "none";
   feed.style.display = "flex";
   const groups = new Map();
-  for (const item of items) {
+  for (const item of displayItems) {
     const j = item.jobId != null ? String(item.jobId) : "";
     if (!groups.has(j)) groups.set(j, []);
     groups.get(j).push(item);
@@ -380,7 +577,7 @@ function renderApplicantFeed(items) {
   const keys = Array.from(groups.keys()).sort();
   const parts = [];
   for (const jobId of keys) {
-    const groupItems = groups.get(jobId);
+    const groupItems = sortGroupItems(groups.get(jobId), items, state.sortMode);
     const label = state.jobTitles[jobId] || (jobId ? `Job ${jobId}` : "Unknown job");
     const posHrs = jobWeeklyHours(jobId);
     const closed = jobClosed(jobId);
@@ -391,6 +588,8 @@ function renderApplicantFeed(items) {
     parts.push(`<h3 class="mo-job-group-title">${escapeHtml(label)} <span style="font-weight:500;color:#64748b">(${groupItems.length} applicant${groupItems.length === 1 ? "" : "s"})</span></h3>`);
     parts.push(`<div class="mo-job-tools"><label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-right:8px;color:#475569;"><input type="checkbox" data-select-all-job="${jEsc}" ${closed ? "disabled" : ""}/> Select all</label><span class="mo-pos-hrs">This position: <strong>${posHrs || "—"}</strong> hours/week</span>${closed ? `<span class="mo-closed-flag">Recruitment Closed${closedAt ? ` (${escapeHtml(closedAt)})` : ""}</span>` : ""}<button class="btn btn-outline" type="button" data-open-history="${jEsc}">View history</button><button class="btn btn-primary" type="button" data-open-final="${jEsc}" ${closed ? "disabled" : ""}>Confirm Final Hiring</button></div>`);
     parts.push(`</div>`);
+    const allForJob = (items || []).filter(it => String(it.jobId ?? "") === jobId);
+    parts.push(renderJobStatsBar(allForJob));
     if (!closed && shortlistedCount === 0) {
       parts.push(`<p class="notice">No shortlisted applicant yet for final confirmation.</p>`);
     }
@@ -594,9 +793,9 @@ async function queryWithFeedback() {
 }
 
 function exportCsv() {
-  const lines = ["applicationId,jobId,studentName,status,appliedAt,evaluationNotes,decisionFeedback"];
+  const lines = ["applicationId,jobId,studentName,status,matchPercent,appliedAt,evaluationNotes,decisionFeedback"];
   for (const it of state.items) {
-    const row = [it.applicationId, it.jobId, it.studentName, it.status, it.appliedAt, it.evaluationNotes, it.decisionFeedback].map(v =>
+    const row = [it.applicationId, it.jobId, it.studentName, it.status, matchPercent(it), it.appliedAt, it.evaluationNotes, it.decisionFeedback].map(v =>
       `"${String(v ?? "").replace(/"/g, '""')}"`
     );
     lines.push(row.join(","));
@@ -631,7 +830,30 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
+  byId("sortMode").addEventListener("change", e => {
+    state.sortMode = e.target.value || "applied";
+    renderApplicantFeed(state.items);
+  });
+
+  byId("filterHighMatch").addEventListener("change", e => {
+    state.highMatchOnly = e.target.checked;
+    renderApplicantFeed(state.items);
+  });
+
   feed.addEventListener("change", async e => {
+    const fbTemplate = e.target.closest("[data-fb-template]");
+    if (fbTemplate) {
+      const appId = fbTemplate.getAttribute("data-app-id");
+      const fbEl = feed.querySelector(`[data-mo-feedback][data-app-id="${appId}"]`);
+      if (fbEl && fbTemplate.value) {
+        fbEl.value = fbTemplate.value;
+        const cnt = feed.querySelector(`[data-fb-count][data-app-id="${appId}"]`);
+        if (cnt) cnt.textContent = `${fbEl.value.length}/200`;
+      }
+      fbTemplate.selectedIndex = 0;
+      return;
+    }
+
     if (e.target.matches("input[type=checkbox][data-select-all-job]")) {
       const section = e.target.closest(".mo-job-group");
       if (!section) return;
@@ -796,6 +1018,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     byId("filterShortlisted").checked = true;
     byId("filterRejected").checked = true;
     byId("filterHired").checked = true;
+    byId("sortMode").value = "applied";
+    state.sortMode = "applied";
+    byId("filterHighMatch").checked = false;
+    state.highMatchOnly = false;
     await queryWithFeedback();
   });
   byId("exportCsvBtn").addEventListener("click", exportCsv);

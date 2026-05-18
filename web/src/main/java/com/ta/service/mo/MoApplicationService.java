@@ -10,6 +10,11 @@ import com.ta.model.Attachment;
 import com.ta.model.HiringHistoryRecord;
 import com.ta.model.JobPosting;
 import com.ta.model.StudentProfile;
+import com.ta.service.admin.WorkloadOverloadAnnouncementService;
+import com.ta.service.student.JobMatchResult;
+import com.ta.service.student.JobMatchingService;
+import com.ta.service.student.SkillRelationHint;
+import com.ta.util.AgentDebugLog;
 import com.ta.util.JsonUtility;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletResponse;
@@ -20,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +47,17 @@ import java.util.stream.Collectors;
 public class MoApplicationService {
 
     private static final int MAX_DECISION_FEEDBACK_CHARS = 200;
+    private final WorkloadOverloadAnnouncementService workloadOverloadAnnouncementService =
+            new WorkloadOverloadAnnouncementService();
+    private final JobMatchingService jobMatchingService;
+
+    public MoApplicationService() {
+        this(new JobMatchingService());
+    }
+
+    public MoApplicationService(JobMatchingService jobMatchingService) {
+        this.jobMatchingService = jobMatchingService != null ? jobMatchingService : new JobMatchingService();
+    }
     /** Query param value: show no applicants (all status checkboxes off in MO UI). */
     static final String STATUS_FILTER_NONE_SENTINEL = "__none__";
 
@@ -76,6 +93,9 @@ public class MoApplicationService {
             Map<String, StudentProfile> profileByUserId = profiles.stream()
                     .filter(p -> p.getUserId() != null)
                     .collect(Collectors.toMap(StudentProfile::getUserId, Function.identity(), (a, b) -> a));
+            Map<String, JobPosting> jobById = jobs.stream()
+                    .filter(j -> j.getId() != null)
+                    .collect(Collectors.toMap(JobPosting::getId, Function.identity(), (a, b) -> a));
 
             Set<String> statusTokens = parseStatusFilter(statusFilterCsv);
 
@@ -95,7 +115,9 @@ public class MoApplicationService {
                     continue;
                 }
                 MoApplicationListItemResponse item = toListItem(a);
-                enrichFromProfile(item, profileByUserId.get(a.getStudentId()));
+                StudentProfile profile = profileByUserId.get(a.getStudentId());
+                enrichFromProfile(item, profile);
+                enrichWithSkillMatch(item, profile, jobById.get(a.getJobId()));
                 items.add(item);
             }
 
@@ -116,9 +138,13 @@ public class MoApplicationService {
         try {
             List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
             List<StudentProfile> profiles = JsonUtility.loadStudents(context);
+            List<JobPosting> jobs = JsonUtility.loadJobs(context);
             Map<String, StudentProfile> profileByUserId = profiles.stream()
                     .filter(p -> p.getUserId() != null)
                     .collect(Collectors.toMap(StudentProfile::getUserId, Function.identity(), (a, b) -> a));
+            Map<String, JobPosting> jobById = jobs.stream()
+                    .filter(j -> j.getId() != null)
+                    .collect(Collectors.toMap(JobPosting::getId, Function.identity(), (a, b) -> a));
 
             List<MoApplicationListItemResponse> items = new ArrayList<>();
             for (ApplicationRecord a : applications) {
@@ -129,7 +155,9 @@ public class MoApplicationService {
                     continue;
                 }
                 MoApplicationListItemResponse item = toListItem(a);
-                enrichFromProfile(item, profileByUserId.get(a.getStudentId()));
+                StudentProfile profile = profileByUserId.get(a.getStudentId());
+                enrichFromProfile(item, profile);
+                enrichWithSkillMatch(item, profile, jobById.get(a.getJobId()));
                 items.add(item);
             }
             items.sort(Comparator.comparing(MoApplicationListItemResponse::getAppliedAt, Comparator.nullsLast(String::compareTo)).reversed());
@@ -257,11 +285,32 @@ public class MoApplicationService {
                 );
             }
 
+            int weeklyHoursBefore = 0;
+            if ("hired".equals(normalized) && !"hired".equalsIgnoreCase(normalizeStatus(record.getStatus()))) {
+                weeklyHoursBefore = workloadOverloadAnnouncementService.calculateWeeklyHours(context, record.getStudentId());
+            }
+
             applyMoApplicationStatusTransition(record, job, normalized);
+            // #region agent log
+            try {
+                Map<String, Object> d = new LinkedHashMap<>();
+                d.put("normalized", normalized);
+                d.put("recordStatusAfter", record.getStatus());
+                d.put("applicationId", applicationId);
+                d.put("jobId", record.getJobId());
+                d.put("willAppendManualHistory", Boolean.valueOf("hired".equals(normalized)));
+                AgentDebugLog.log("H1", "MoApplicationService.updateApplicationStatus", "after_transition", d);
+            } catch (Throwable ignored) {
+                // ignore
+            }
+            // #endregion
             if ("hired".equals(normalized)) {
                 appendManualHireHistory(context, moId, record);
             }
             JsonUtility.saveApplications(context, applications);
+            if ("hired".equals(normalized)) {
+                workloadOverloadAnnouncementService.notifyIfNewlyOverloaded(context, record.getStudentId(), weeklyHoursBefore);
+            }
 
             MoApplicationListItemResponse item = toListItem(record);
             List<StudentProfile> profiles = JsonUtility.loadStudents(context);
@@ -344,6 +393,27 @@ public class MoApplicationService {
                 targets.add(record);
             }
 
+            Map<String, Integer> weeklyHoursBeforeByStudent = new LinkedHashMap<>();
+            if ("hired".equals(normalized)) {
+                for (ApplicationRecord record : targets) {
+                    if (record.getStudentId() == null || record.getStudentId().isBlank()) {
+                        continue;
+                    }
+                    if (!"hired".equalsIgnoreCase(normalizeStatus(record.getStatus()))) {
+                        weeklyHoursBeforeByStudent.computeIfAbsent(
+                                record.getStudentId(),
+                                studentId -> {
+                                    try {
+                                        return workloadOverloadAnnouncementService.calculateWeeklyHours(context, studentId);
+                                    } catch (IOException ex) {
+                                        throw new RuntimeException(ex);
+                                    }
+                                }
+                        );
+                    }
+                }
+            }
+
             for (int i = 0; i < targets.size(); i++) {
                 ApplicationRecord record = targets.get(i);
                 JobPosting job = jobById.get(record.getJobId());
@@ -353,7 +423,26 @@ public class MoApplicationService {
                 }
             }
 
+            // #region agent log
+            if ("hired".equals(normalized)) {
+                try {
+                    Map<String, Object> d = new LinkedHashMap<>();
+                    d.put("targetCount", Integer.valueOf(targets.size()));
+                    d.put("note", "batch path now appends manual_hire per record");
+                    AgentDebugLog.log("H5", "MoApplicationService.batchUpdateApplicationStatus", "batch_hired_complete", d);
+                } catch (Throwable ignored) {
+                    // ignore
+                }
+            }
+            // #endregion
+
             JsonUtility.saveApplications(context, applications);
+            if ("hired".equals(normalized)) {
+                for (Map.Entry<String, Integer> entry : weeklyHoursBeforeByStudent.entrySet()) {
+                    workloadOverloadAnnouncementService.notifyIfNewlyOverloaded(
+                            context, entry.getKey(), entry.getValue());
+                }
+            }
             return Map.of("updated", targets.size());
         } catch (IOException e) {
             throw new RuntimeException("Failed to batch update application status.", e);
@@ -547,6 +636,17 @@ public class MoApplicationService {
     }
 
     private void appendManualHireHistory(ServletContext context, String moId, ApplicationRecord hiredRecord) throws IOException {
+        // #region agent log
+        try {
+            Map<String, Object> d = new LinkedHashMap<>();
+            d.put("jobId", hiredRecord.getJobId());
+            d.put("applicationId", hiredRecord.getId());
+            d.put("moId", moId);
+            AgentDebugLog.log("H1", "MoApplicationService.appendManualHireHistory", "entry", d);
+        } catch (Throwable ignored) {
+            // ignore
+        }
+        // #endregion
         List<HiringHistoryRecord> history = JsonUtility.loadHiringHistory(context);
         HiringHistoryRecord record = new HiringHistoryRecord();
         record.setId("hist_" + UUID.randomUUID().toString().replace("-", ""));
@@ -641,6 +741,45 @@ public class MoApplicationService {
         item.setProgramme(p.getProgramme());
         item.setSkills(p.getSkills());
         item.setExperience(p.getExperience());
+    }
+
+    private void enrichWithSkillMatch(MoApplicationListItemResponse item, StudentProfile profile, JobPosting job) {
+        if (item == null) {
+            return;
+        }
+        if (profile == null || job == null) {
+            item.setMatchScore(0.0);
+            item.setMatchedSkills(new ArrayList<>());
+            item.setMissingSkills(new ArrayList<>());
+            item.setRequiredSkills(new ArrayList<>());
+            item.setDetectedStudentSkills(new ArrayList<>());
+            item.setRelatedMatches(new ArrayList<>());
+            return;
+        }
+        JobMatchResult match = jobMatchingService.match(profile, job);
+        item.setMatchScore(roundToTwoDecimals(match.getMatchScore()));
+        item.setMatchedSkills(new ArrayList<>(match.getMatchedSkills()));
+        item.setMissingSkills(new ArrayList<>(match.getMissingSkills()));
+        item.setRequiredSkills(new ArrayList<>(match.getRequiredSkills()));
+        item.setDetectedStudentSkills(new ArrayList<>(match.getStudentSkills()));
+        item.setRelatedMatches(toRelatedLabels(match.getRelatedMatches()));
+    }
+
+    private static List<String> toRelatedLabels(List<SkillRelationHint> hints) {
+        List<String> labels = new ArrayList<>();
+        if (hints == null) {
+            return labels;
+        }
+        for (SkillRelationHint hint : hints) {
+            if (hint != null) {
+                labels.add(hint.toDisplayLabel());
+            }
+        }
+        return labels;
+    }
+
+    private static double roundToTwoDecimals(double value) {
+        return Math.round(value * 100.0) / 100.0;
     }
 
     private static MoApplicationDetailResponse toDetail(ApplicationRecord a) {

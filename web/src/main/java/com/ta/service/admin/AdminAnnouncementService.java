@@ -70,6 +70,60 @@ public class AdminAnnouncementService {
         return response;
     }
 
+    /**
+     * Sends a system announcement to one module organiser (teacher) account.
+     */
+    /**
+     * Sends a system announcement to one student account.
+     */
+    public void notifyStudent(ServletContext context, String studentUserId, String title, String body) throws IOException {
+        if (studentUserId == null || studentUserId.isBlank()) {
+            return;
+        }
+        String safeTitle = trim(title);
+        String safeBody = trim(body);
+        if (safeTitle.isBlank() || safeBody.isBlank()) {
+            return;
+        }
+        List<User> users = JsonUtility.loadUsers(context);
+        User student = users.stream()
+                .filter(u -> studentUserId.equals(u.getId()))
+                .findFirst()
+                .orElse(null);
+        if (student == null || !"student".equalsIgnoreCase(trim(student.getRole()))) {
+            return;
+        }
+        String announcementId = "ann_workload_overload_" + studentUserId + "_" + System.currentTimeMillis();
+        String createdAt = IsoTime.utcNowSeconds();
+        List<NotificationRecord> notifications = JsonUtility.loadNotifications(context);
+        notifications.add(toAnnouncementRecord(announcementId, safeTitle, safeBody, createdAt, student));
+        JsonUtility.saveNotifications(context, notifications);
+    }
+
+    public void notifyTeacher(ServletContext context, String teacherUserId, String title, String body) throws IOException {
+        if (teacherUserId == null || teacherUserId.isBlank()) {
+            return;
+        }
+        String safeTitle = trim(title);
+        String safeBody = trim(body);
+        if (safeTitle.isBlank() || safeBody.isBlank()) {
+            return;
+        }
+        List<User> users = JsonUtility.loadUsers(context);
+        User teacher = users.stream()
+                .filter(u -> teacherUserId.equals(u.getId()))
+                .findFirst()
+                .orElse(null);
+        if (teacher == null || !"teacher".equalsIgnoreCase(trim(teacher.getRole()))) {
+            return;
+        }
+        String announcementId = "ann_" + System.currentTimeMillis();
+        String createdAt = IsoTime.utcNowSeconds();
+        List<NotificationRecord> notifications = JsonUtility.loadNotifications(context);
+        notifications.add(toAnnouncementRecord(announcementId, safeTitle, safeBody, createdAt, teacher));
+        JsonUtility.saveNotifications(context, notifications);
+    }
+
     public AdminAnnouncementListResponse list(ServletContext context) throws IOException {
         List<NotificationRecord> notifications = JsonUtility.loadNotifications(context);
         Map<String, List<NotificationRecord>> byAnnouncement = new LinkedHashMap<>();
