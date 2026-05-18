@@ -75,6 +75,9 @@ public class SkillExtractionService {
         dictionary.put("Google Cloud", aliases("Google Cloud", "GCP"));
         dictionary.put("Cybersecurity", aliases("Cybersecurity", "Cyber Security", "Security"));
         dictionary.put("Data Analysis", aliases("Data Analysis", "Data Analytics"));
+        dictionary.put("Statistics", aliases("Statistics", "Statistical"));
+        dictionary.put("Research", aliases("Research"));
+        dictionary.put("Writing", aliases("Writing", "Academic Writing"));
         dictionary.put("R", aliases("R"));
         dictionary.put("MATLAB", aliases("MATLAB"));
         dictionary.put("Spring", aliases("Spring", "Spring Boot"));

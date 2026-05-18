@@ -11,6 +11,9 @@ import com.ta.model.HiringHistoryRecord;
 import com.ta.model.JobPosting;
 import com.ta.model.StudentProfile;
 import com.ta.service.admin.WorkloadOverloadAnnouncementService;
+import com.ta.service.student.JobMatchResult;
+import com.ta.service.student.JobMatchingService;
+import com.ta.service.student.SkillRelationHint;
 import com.ta.util.AgentDebugLog;
 import com.ta.util.JsonUtility;
 import jakarta.servlet.ServletContext;
@@ -46,6 +49,15 @@ public class MoApplicationService {
     private static final int MAX_DECISION_FEEDBACK_CHARS = 200;
     private final WorkloadOverloadAnnouncementService workloadOverloadAnnouncementService =
             new WorkloadOverloadAnnouncementService();
+    private final JobMatchingService jobMatchingService;
+
+    public MoApplicationService() {
+        this(new JobMatchingService());
+    }
+
+    public MoApplicationService(JobMatchingService jobMatchingService) {
+        this.jobMatchingService = jobMatchingService != null ? jobMatchingService : new JobMatchingService();
+    }
     /** Query param value: show no applicants (all status checkboxes off in MO UI). */
     static final String STATUS_FILTER_NONE_SENTINEL = "__none__";
 
@@ -81,6 +93,9 @@ public class MoApplicationService {
             Map<String, StudentProfile> profileByUserId = profiles.stream()
                     .filter(p -> p.getUserId() != null)
                     .collect(Collectors.toMap(StudentProfile::getUserId, Function.identity(), (a, b) -> a));
+            Map<String, JobPosting> jobById = jobs.stream()
+                    .filter(j -> j.getId() != null)
+                    .collect(Collectors.toMap(JobPosting::getId, Function.identity(), (a, b) -> a));
 
             Set<String> statusTokens = parseStatusFilter(statusFilterCsv);
 
@@ -100,7 +115,9 @@ public class MoApplicationService {
                     continue;
                 }
                 MoApplicationListItemResponse item = toListItem(a);
-                enrichFromProfile(item, profileByUserId.get(a.getStudentId()));
+                StudentProfile profile = profileByUserId.get(a.getStudentId());
+                enrichFromProfile(item, profile);
+                enrichWithSkillMatch(item, profile, jobById.get(a.getJobId()));
                 items.add(item);
             }
 
@@ -121,9 +138,13 @@ public class MoApplicationService {
         try {
             List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
             List<StudentProfile> profiles = JsonUtility.loadStudents(context);
+            List<JobPosting> jobs = JsonUtility.loadJobs(context);
             Map<String, StudentProfile> profileByUserId = profiles.stream()
                     .filter(p -> p.getUserId() != null)
                     .collect(Collectors.toMap(StudentProfile::getUserId, Function.identity(), (a, b) -> a));
+            Map<String, JobPosting> jobById = jobs.stream()
+                    .filter(j -> j.getId() != null)
+                    .collect(Collectors.toMap(JobPosting::getId, Function.identity(), (a, b) -> a));
 
             List<MoApplicationListItemResponse> items = new ArrayList<>();
             for (ApplicationRecord a : applications) {
@@ -134,7 +155,9 @@ public class MoApplicationService {
                     continue;
                 }
                 MoApplicationListItemResponse item = toListItem(a);
-                enrichFromProfile(item, profileByUserId.get(a.getStudentId()));
+                StudentProfile profile = profileByUserId.get(a.getStudentId());
+                enrichFromProfile(item, profile);
+                enrichWithSkillMatch(item, profile, jobById.get(a.getJobId()));
                 items.add(item);
             }
             items.sort(Comparator.comparing(MoApplicationListItemResponse::getAppliedAt, Comparator.nullsLast(String::compareTo)).reversed());
@@ -718,6 +741,45 @@ public class MoApplicationService {
         item.setProgramme(p.getProgramme());
         item.setSkills(p.getSkills());
         item.setExperience(p.getExperience());
+    }
+
+    private void enrichWithSkillMatch(MoApplicationListItemResponse item, StudentProfile profile, JobPosting job) {
+        if (item == null) {
+            return;
+        }
+        if (profile == null || job == null) {
+            item.setMatchScore(0.0);
+            item.setMatchedSkills(new ArrayList<>());
+            item.setMissingSkills(new ArrayList<>());
+            item.setRequiredSkills(new ArrayList<>());
+            item.setDetectedStudentSkills(new ArrayList<>());
+            item.setRelatedMatches(new ArrayList<>());
+            return;
+        }
+        JobMatchResult match = jobMatchingService.match(profile, job);
+        item.setMatchScore(roundToTwoDecimals(match.getMatchScore()));
+        item.setMatchedSkills(new ArrayList<>(match.getMatchedSkills()));
+        item.setMissingSkills(new ArrayList<>(match.getMissingSkills()));
+        item.setRequiredSkills(new ArrayList<>(match.getRequiredSkills()));
+        item.setDetectedStudentSkills(new ArrayList<>(match.getStudentSkills()));
+        item.setRelatedMatches(toRelatedLabels(match.getRelatedMatches()));
+    }
+
+    private static List<String> toRelatedLabels(List<SkillRelationHint> hints) {
+        List<String> labels = new ArrayList<>();
+        if (hints == null) {
+            return labels;
+        }
+        for (SkillRelationHint hint : hints) {
+            if (hint != null) {
+                labels.add(hint.toDisplayLabel());
+            }
+        }
+        return labels;
+    }
+
+    private static double roundToTwoDecimals(double value) {
+        return Math.round(value * 100.0) / 100.0;
     }
 
     private static MoApplicationDetailResponse toDetail(ApplicationRecord a) {

@@ -1,5 +1,8 @@
 package com.ta.dto.mo;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Application list item for MO view.
  */
@@ -18,6 +21,15 @@ public class MoApplicationListItemResponse {
     private String experience;
     private String evaluationNotes;
     private String decisionFeedback;
+    /** Skill match vs job requirements (0.0–1.0), from JobMatchingService */
+    private double matchScore;
+    private List<String> matchedSkills = new ArrayList<>();
+    private List<String> missingSkills = new ArrayList<>();
+    private List<String> requiredSkills = new ArrayList<>();
+    /** Skills detected from applicant profile text (normalized) */
+    private List<String> detectedStudentSkills = new ArrayList<>();
+    /** Partial credit links e.g. "MATLAB → Statistics (80%)" */
+    private List<String> relatedMatches = new ArrayList<>();
 
     public String getApplicationId() {
         return applicationId;
@@ -121,5 +133,53 @@ public class MoApplicationListItemResponse {
 
     public void setDecisionFeedback(String decisionFeedback) {
         this.decisionFeedback = decisionFeedback;
+    }
+
+    public double getMatchScore() {
+        return matchScore;
+    }
+
+    public void setMatchScore(double matchScore) {
+        this.matchScore = matchScore;
+    }
+
+    public List<String> getMatchedSkills() {
+        return matchedSkills;
+    }
+
+    public void setMatchedSkills(List<String> matchedSkills) {
+        this.matchedSkills = matchedSkills != null ? matchedSkills : new ArrayList<>();
+    }
+
+    public List<String> getMissingSkills() {
+        return missingSkills;
+    }
+
+    public void setMissingSkills(List<String> missingSkills) {
+        this.missingSkills = missingSkills != null ? missingSkills : new ArrayList<>();
+    }
+
+    public List<String> getRequiredSkills() {
+        return requiredSkills;
+    }
+
+    public void setRequiredSkills(List<String> requiredSkills) {
+        this.requiredSkills = requiredSkills != null ? requiredSkills : new ArrayList<>();
+    }
+
+    public List<String> getDetectedStudentSkills() {
+        return detectedStudentSkills;
+    }
+
+    public void setDetectedStudentSkills(List<String> detectedStudentSkills) {
+        this.detectedStudentSkills = detectedStudentSkills != null ? detectedStudentSkills : new ArrayList<>();
+    }
+
+    public List<String> getRelatedMatches() {
+        return relatedMatches;
+    }
+
+    public void setRelatedMatches(List<String> relatedMatches) {
+        this.relatedMatches = relatedMatches != null ? relatedMatches : new ArrayList<>();
     }
 }

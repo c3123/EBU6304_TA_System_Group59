@@ -304,6 +304,158 @@
       color: #64748b;
       margin: 0 0 8px;
     }
+    .mo-toolbar-extra {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 14px 20px;
+      margin-bottom: 14px;
+      padding-top: 4px;
+      border-top: 1px solid #e2e8f0;
+    }
+    .mo-toolbar-extra label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      color: #334155;
+      cursor: pointer;
+    }
+    .mo-sort-select {
+      font-size: 13px;
+      padding: 4px 8px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+    }
+    .mo-match-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .mo-match-high { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+    .mo-match-mid { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+    .mo-match-low { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
+    .mo-skill-fit {
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin: 12px 0;
+      background: #f8fafc;
+      border: 1px solid #dbe2ee;
+      font-size: 13px;
+    }
+    .mo-skill-fit-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .mo-skill-fit-title {
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0;
+      font-size: 14px;
+    }
+    .mo-match-score-big {
+      font-size: 1.35rem;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+    .mo-match-score-big.mo-match-high { color: #059669; }
+    .mo-match-score-big.mo-match-mid { color: #d97706; }
+    .mo-match-score-big.mo-match-low { color: #64748b; }
+    .mo-match-bar {
+      height: 8px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      overflow: hidden;
+      margin: 8px 0 12px;
+    }
+    .mo-match-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.2s ease;
+    }
+    .mo-match-bar-fill.mo-match-high { background: #22c55e; }
+    .mo-match-bar-fill.mo-match-mid { background: #eab308; }
+    .mo-match-bar-fill.mo-match-low { background: #94a3b8; }
+    .mo-skill-compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 16px;
+      margin-bottom: 10px;
+    }
+    @media (max-width: 560px) {
+      .mo-skill-compare { grid-template-columns: 1fr; }
+    }
+    .mo-skill-compare-cell .mo-app-lbl {
+      display: block;
+      margin-bottom: 4px;
+    }
+    .mo-skill-tag.neutral { background: #e0e7ff; color: #3730a3; }
+    .mo-skill-fit-formula {
+      font-size: 12px;
+      color: #475569;
+      margin: 0 0 10px;
+      line-height: 1.45;
+    }
+    .mo-skill-fit-hint {
+      font-size: 12px;
+      color: #64748b;
+      margin: 8px 0 0;
+      padding-top: 8px;
+      border-top: 1px dashed #e2e8f0;
+    }
+    .mo-skill-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 4px 0 8px;
+    }
+    .mo-skill-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .mo-skill-tag.matched { background: #d1fae5; color: #065f46; }
+    .mo-skill-tag.missing { background: #fee2e2; color: #991b1b; }
+    .mo-skill-tag.related { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+    .mo-skill-fit-summary {
+      font-size: 12px;
+      color: #64748b;
+      margin: 0;
+    }
+    .mo-job-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 12px;
+    }
+    .mo-stat-pill {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+    }
+    .mo-fb-template {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      max-width: 220px;
+    }
   </style>
 </head>
 <body class="mo-portal mo-applicants-figma">
@@ -372,6 +524,17 @@
       <label><input type="checkbox" id="filterRejected" checked /> Rejected</label>
       <label><input type="checkbox" id="filterHired" checked /> Hired</label>
     </div>
+    <div class="mo-toolbar-extra">
+      <label>
+        <span style="font-weight:600;">Sort within job:</span>
+        <select id="sortMode" class="mo-sort-select">
+          <option value="applied">Applied date</option>
+          <option value="match">Best match</option>
+          <option value="workload">Workload risk</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="filterHighMatch" /> High match only (≥60%)</label>
+    </div>
     <div class="row mo-filter-row" style="align-items:flex-end;">
       <div class="field" style="min-width:220px;">
         <label for="jobIdInput">Filter by Job ID (optional)</label>
@@ -429,6 +592,6 @@
   </div>
 </main>
 <script src="../assets/js/common.js?v=mo6"></script>
-<script src="../assets/js/mo-applications.js?v=mo9"></script>
+<script src="../assets/js/mo-applications.js?v=mo12"></script>
 </body>
 </html>
