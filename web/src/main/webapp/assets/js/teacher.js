@@ -223,7 +223,8 @@ function renderTeacherJobCard(item) {
         </div>
         <div class="field">
           <label>Requirements</label>
-          <textarea name="requirements" placeholder="e.g. GPA>=3.0, Java foundation" required></textarea>
+          <textarea name="requirements" placeholder="Example: Java, SQL, Git, Communication Skills" required></textarea>
+          <p class="field-help">Enter required skills or qualifications for this TA role.</p>
         </div>
         <div class="row">
           <button type="submit" class="btn btn-primary">Confirm publish</button>
@@ -257,6 +258,11 @@ function renderTeacherJobCard(item) {
             <input name="hourMax" type="number" min="1" required value="${teacherEscapeHtml(teacherSafeText(item.hourMax))}" />
           </div>
         </div>
+        <div class="field">
+          <label>Requirements</label>
+          <textarea name="requirements" placeholder="Example: Java, SQL, Git, Communication Skills" required>${teacherEscapeHtml(teacherSafeText(item.requirements))}</textarea>
+          <p class="field-help">Enter required skills or qualifications for this TA role.</p>
+        </div>
         <div class="row">
           <button type="submit" class="btn btn-primary">Save edit</button>
           <button type="button" class="btn btn-outline" data-cancel-edit="${teacherEscapeHtml(item.jobId)}">Cancel</button>
@@ -283,6 +289,7 @@ function renderTeacherJobCard(item) {
       </div>
 
       <p class="notice">Approval status: <strong>${teacherEscapeHtml(teacherSafeText(item.approvalStatus || "pending"))}</strong>. Job status: <strong>${teacherEscapeHtml(teacherSafeText(item.status || "-"))}</strong>. Published: <strong>${teacherEscapeHtml(String(item.published === true))}</strong>. Withdrawn: <strong>${teacherEscapeHtml(String(item.withdrawn === true))}</strong>.</p>
+      ${item.rejectionReason ? `<p class="notice" style="color:#dc2626;">Rejection reason: <strong>${teacherEscapeHtml(item.rejectionReason)}</strong></p>` : ""}
       <p class="notice">Schedule: <strong>${teacherEscapeHtml(teacherSafeText(item.schedule))}</strong>. Location: <strong>${teacherEscapeHtml(teacherSafeText(item.location))}</strong>. Deadline: <strong>${teacherEscapeHtml(teacherSafeText(item.deadline))}</strong>.</p>
 
       <div class="mo-demand-actions">
@@ -311,7 +318,8 @@ async function submitDemandForm(event) {
       department: byId("department").value.trim(),
       plannedCount: Number(byId("plannedCount").value),
       hourMin: Number(byId("hourMin").value),
-      hourMax: Number(byId("hourMax").value)
+      hourMax: Number(byId("hourMax").value),
+      requirements: byId("demandRequirements").value.trim()
     };
 
     const data = await teacherRequest(`${teacherApiBase()}/demands`, {
@@ -411,7 +419,8 @@ async function submitEditForm(form) {
       department: form.department.value.trim(),
       plannedCount: Number(form.plannedCount.value),
       hourMin: Number(form.hourMin.value),
-      hourMax: Number(form.hourMax.value)
+      hourMax: Number(form.hourMax.value),
+      requirements: form.requirements.value.trim()
     };
     await teacherRequest(`${teacherApiBase()}/jobs/edit/${encodeURIComponent(jobId)}`, {
       method: "POST",
@@ -457,6 +466,37 @@ function startNotificationPolling() {
   window.setInterval(loadNotifications, 10000);
 }
 
+function renderNotificationItemHtml(n) {
+  if (n.type === "announcement") {
+    const title = teacherSafeText(n.title || "System announcement");
+    const body = teacherSafeText(n.message || "");
+    return `
+    <div class="mo-notification-item mo-notification-item--announcement">
+      <div style="min-width:0">
+        <span class="mo-notification-badge">System announcement</span>
+        <p class="mo-notification-announcement-title">${teacherEscapeHtml(title)}</p>
+        <p class="mo-notification-announcement-body">${teacherEscapeHtml(body)}</p>
+        <div style="font-size:12px;color:#64748b;margin-top:6px;">${teacherEscapeHtml(teacherSafeText(n.applicationTime))}</div>
+      </div>
+      <div class="row">
+        ${n.read ? '<span class="notice" style="margin:0">Read</span>' : `<button class="btn btn-outline" type="button" data-mark-read="${teacherEscapeHtml(n.notificationId)}">Mark as Read</button>`}
+      </div>
+    </div>`;
+  }
+  return `
+    <div class="mo-notification-item">
+      <div style="min-width:0">
+        <div>${n.message
+          ? teacherEscapeHtml(n.message)
+          : `<strong>${teacherEscapeHtml(teacherSafeText(n.applicantName))}</strong> applied to <strong>${teacherEscapeHtml(teacherSafeText(n.jobName || n.jobId))}</strong>`}</div>
+        <div style="font-size:12px;color:#64748b">${teacherEscapeHtml(teacherSafeText(n.applicationTime))}</div>
+      </div>
+      <div class="row">
+        ${n.read ? '<span class="notice" style="margin:0">Read</span>' : `<button class="btn btn-outline" type="button" data-mark-read="${teacherEscapeHtml(n.notificationId)}">Mark as Read</button>`}
+      </div>
+    </div>`;
+}
+
 function renderNotifications() {
   const dot = byId("notificationDot");
   const panel = byId("notificationPanel");
@@ -470,19 +510,7 @@ function renderNotifications() {
     panel.innerHTML = '<p class="notice" style="margin:0">No notifications.</p>';
     return;
   }
-  panel.innerHTML = teacherState.notifications.map((n) => `
-    <div class="mo-notification-item">
-      <div style="min-width:0">
-        <div>${n.message
-          ? teacherEscapeHtml(n.message)
-          : `<strong>${teacherEscapeHtml(teacherSafeText(n.applicantName))}</strong> applied to <strong>${teacherEscapeHtml(teacherSafeText(n.jobName || n.jobId))}</strong>`}</div>
-        <div style="font-size:12px;color:#64748b">${teacherEscapeHtml(teacherSafeText(n.applicationTime))}</div>
-      </div>
-      <div class="row">
-        ${n.read ? '<span class="notice" style="margin:0">Read</span>' : `<button class="btn btn-outline" type="button" data-mark-read="${teacherEscapeHtml(n.notificationId)}">Mark as Read</button>`}
-      </div>
-    </div>
-  `).join("");
+  panel.innerHTML = teacherState.notifications.map(renderNotificationItemHtml).join("");
 }
 
 async function markNotificationRead(notificationId) {

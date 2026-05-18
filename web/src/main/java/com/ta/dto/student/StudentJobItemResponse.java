@@ -1,5 +1,8 @@
 package com.ta.dto.student;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class StudentJobItemResponse {
     private String id;
     private String moduleCode;
@@ -12,6 +15,10 @@ public class StudentJobItemResponse {
     private String requirements;
     private String schedule;
     private String location;
+    private double matchScore;
+    private List<String> matchedSkills = new ArrayList<>();
+    private List<String> missingSkills = new ArrayList<>();
+    private List<String> requiredSkills = new ArrayList<>();
 
     public String getId() {
         return id;
@@ -99,5 +106,37 @@ public class StudentJobItemResponse {
 
     public void setLocation(String location) {
         this.location = location;
+    }
+
+    public double getMatchScore() {
+        return matchScore;
+    }
+
+    public void setMatchScore(double matchScore) {
+        this.matchScore = matchScore;
+    }
+
+    public List<String> getMatchedSkills() {
+        return matchedSkills;
+    }
+
+    public void setMatchedSkills(List<String> matchedSkills) {
+        this.matchedSkills = matchedSkills != null ? matchedSkills : new ArrayList<>();
+    }
+
+    public List<String> getMissingSkills() {
+        return missingSkills;
+    }
+
+    public void setMissingSkills(List<String> missingSkills) {
+        this.missingSkills = missingSkills != null ? missingSkills : new ArrayList<>();
+    }
+
+    public List<String> getRequiredSkills() {
+        return requiredSkills;
+    }
+
+    public void setRequiredSkills(List<String> requiredSkills) {
+        this.requiredSkills = requiredSkills != null ? requiredSkills : new ArrayList<>();
     }
 }

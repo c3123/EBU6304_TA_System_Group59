@@ -548,6 +548,143 @@ The feature provides a dedicated view of accepted jobs, associated schedule info
 
 ---
 
+### 5.2 Feature: Administrator Sprint 4 Management and Oversight Extension
+
+**User Stories:**
+- **ADM_08:** As an Admin, I want to view enhanced overview statistics, so that I can quickly understand current user, job, application, vacancy, and recruitment progress across the system.
+- **ADM_09:** As an Admin, I want to monitor recruitment health by job, so that I can identify posts with too few applicants, unfilled vacancies, or approaching deadlines.
+- **ADM_10:** As an Admin, I want workload risk to be displayed with clear levels such as Low, Normal, Warning, and Overload, so that I can distinguish normal workload from potential over-assignment instead of relying on one generic threshold only.
+- **ADM_11:** As an Admin, I want to view and filter an application archive, so that I can audit recruitment decisions and preserve hiring records after recruitment is complete.
+- **ADM_12:** As an Admin, I want to export and back up recruitment data in simple file formats, so that the school can keep offline records and share summaries with management.
+- **ADM_13:** As an Admin, I want to receive system alerts for risky or incomplete recruitment situations, so that I can follow up with Module Organisers before issues affect TA allocation.
+- **ADM_14:** As an Admin, I want a demand approval workbench, so that newly submitted Module Organiser TA demands are visible and can be approved or rejected from one place.
+- **ADM_15:** As an Admin, I want to drill down from a job to its applications, so that I can audit applicant status and MO notes for a specific post without leaving the administrator portal.
+- **ADM_16:** As an Admin, I want recruitment exports to respect the current job filters, so that exported reports match what is shown on screen.
+
+**Description:**
+This Sprint 4 administrator extension builds on the Sprint 2 and Sprint 3 admin dashboard. Sprint 2 provides the baseline dashboard and account management. Sprint 3 adds workload threshold settings, department/status filtering, reports, and shared account maintenance. Sprint 4 refines the administrator role into a stronger monitoring and audit role.
+
+The scope of this feature is not to replace the Module Organiser workflow. The admin module remains an oversight layer. Administrators can inspect system-wide data, identify risk, export records, and follow up with organisers, while MO-owned actions such as applicant review, hiring decisions, and feedback editing stay in the MO workflow.
+
+**Acceptance Criteria:**
+
+1. **Enhanced administrator overview**
+   - The dashboard shows total users, students, Module Organisers, admins, jobs, active jobs, closed jobs, applications, hired records, and unfilled positions.
+   - Statistics are computed from the current JSON storage files and refresh after dashboard reload.
+   - Empty or missing data files do not break the dashboard; the UI displays zero values or empty states.
+   - Overview cards use consistent labels and do not require administrators to inspect raw JSON files.
+
+2. **Recruitment health monitoring**
+   - Each job card shows module code, title, organiser, publish date, status, number of positions, applicant count, hired count, filled/unfilled state, deadline, and weekly hours.
+   - The job list can be filtered by status, department, and Module Organiser.
+   - Jobs with zero applicants, unfilled positions, or approaching deadlines can be visually identified.
+   - Closed or withdrawn jobs remain readable for audit purposes but are clearly labelled.
+
+3. **Workload risk management**
+   - Workload rows display each hired student's total weekly hours and assigned positions.
+   - Workload is classified into four visible levels:
+     - Low: below 10 hours/week.
+     - Normal: 10 to 14 hours/week.
+     - Warning: 15 hours/week up to below the configured overload threshold.
+     - Overload: greater than or equal to the configured overload threshold.
+   - The configured overload threshold remains editable by the admin and is persisted in `system_settings.json`.
+   - Workload cards and legend use the same classification rules so that the UI and backend remain consistent.
+   - Assigned job chips show the module/job title and weekly hours used in the calculation.
+
+4. **Application archive**
+   - The admin can view application records including applicant identity, job, organiser, status, timestamps, evaluation notes, and decision feedback where available.
+   - The archive can be filtered by status, job, organiser, or student where the UI supports the filter.
+   - Archive access is read-only; administrators must not edit MO evaluation notes or decision feedback from the archive.
+   - Withdrawn, rejected, hired, shortlisted, and pending records remain distinguishable.
+
+5. **Data export and backup**
+   - The admin can export weekly recruitment reports in CSV and TXT formats.
+   - Exported reports include at least job title, organiser, status, hired count, available positions, and unfilled positions.
+   - Export actions do not modify live recruitment data.
+   - The system can be extended to export workload reports, application archives, and JSON backups using the same admin-only access model.
+
+6. **Administrator alerts**
+   - The admin dashboard can surface alerts for overload risk, unfilled jobs, jobs close to deadline, jobs with no applicants, and unusual incomplete records.
+   - Alerts include enough context for follow-up, such as job title, organiser, student name, current workload, or deadline.
+   - Alerts can be shown as dashboard cards or a dedicated alert panel.
+   - If no alerts exist, the page shows a clear "No alerts" state.
+
+7. **Demand approval workbench**
+   - The admin can view demand records by approval status, especially newly submitted `pending` demands.
+   - Demand rows show module code, title, submitting organiser, submitted time, planned count, hour range, demand notes where provided, and current approval status.
+   - The admin can approve a pending demand, after which the MO can publish it through the existing publish workflow.
+   - The admin can reject a pending demand and optionally provide a short rejection reason.
+   - Rejected demand reasons are persisted and visible to the submitting MO in the demand progress view.
+
+8. **Single-job application drilldown**
+   - Each admin job row or card provides a read-only "View Applications" action.
+   - The drilldown shows only applications for the selected job, including applicant name, student number, applied time, status, evaluation notes, and decision feedback.
+   - The drilldown can be filtered by application status without changing the global application archive.
+   - The admin can export the selected job's application rows in CSV or TXT format.
+
+9. **Filtered weekly export**
+   - Weekly recruitment report exports include the same `status` and `department` filters used by the jobs dashboard.
+   - Exporting with no filters or `all` filters still produces the full report.
+   - Export file names include the selected filter scope and export date where possible.
+   - Invalid filter or format values return a validation error instead of a misleading report.
+
+**Functional Requirement Details:**
+
+- **Servlet Implementation:**
+  - `AdminDashboardServlet` (`GET /api/admin/dashboard`) remains the main dashboard endpoint and may be extended with additional overview, recruitment health, workload, and alert fields.
+  - `AdminWorkloadSettingsServlet` (`GET/POST /api/admin/settings/workload-threshold`) remains responsible for loading and saving the overload threshold.
+  - `AdminRecruitmentReportExportServlet` (`GET /api/admin/reports/weekly?format=csv|txt`) remains responsible for downloadable weekly recruitment summaries.
+  - `AdminApplicationsServlet` (`GET /api/admin/applications`) provides read-only application archive rows for administrator audit.
+  - `AdminDemandsServlet` (`GET /api/admin/demands?status=pending|approved|rejected|all`) provides the administrator demand approval workbench data.
+  - `AdminDemandReviewServlet` (`POST /api/admin/demands/review/{jobId}?action=approve|reject`) approves or rejects pending demand records; reject accepts an optional JSON body containing `reason`.
+  - `AdminWorkloadReportExportServlet` (`GET /api/admin/reports/workload?format=csv|txt`) exports workload rows and assigned job details.
+  - `AdminApplicationArchiveExportServlet` (`GET /api/admin/reports/applications?format=csv|txt&jobId=&status=`) exports the read-only application archive or a single job's filtered application rows.
+  - `AdminBackupExportServlet` (`GET /api/admin/reports/backup`) exports a JSON backup bundle for the current file-based data.
+  - Administrator alerts are returned through `GET /api/admin/dashboard` so the overview and alert panel share one data source.
+
+- **Service Layer:**
+  - `AdminDashboardService` computes overview statistics, job health fields, workload rows, and risk labels from `jobs.json`, `applications.json`, `users.json`, and `students.json`.
+  - `AdminDemandReviewService` lists demand records and applies approval or rejection decisions while preserving MO-owned job publishing rules.
+  - `AdminReportService` prepares CSV and TXT export content using the same job and application aggregation rules as the dashboard, including current job filters for weekly reports.
+  - Application archive logic reads existing `ApplicationRecord` fields without changing MO-owned decision data.
+  - Workload calculation must reuse the shared weekly-hours rule:
+    - if `job.hours > 0`, use `hours`;
+    - otherwise, if both `hourMin` and `hourMax` exist, use `round((min + max) / 2)`;
+    - otherwise, use `0`.
+
+- **Data Management:**
+  - `jobs.json` stores job lifecycle, department, schedule, organiser, position, deadline, workload, approval review time, and optional rejection reason fields.
+  - `applications.json` stores application status, active flag, timestamps, evaluation notes, decision feedback, and hiring status.
+  - `users.json` and `students.json` provide user and student profile details needed for dashboard labels.
+  - `system_settings.json` stores administrator-configured workload settings.
+  - Sprint 4 admin features must remain compatible with old JSON records that do not contain newer optional fields such as `department`, `schedule`, or decision feedback.
+
+- **Frontend Integration:**
+  - `admin.jsp` provides separate dashboard areas for overview, workload, users, jobs, demand review, archive, and alerts where implemented.
+  - `admin.js` loads dashboard data, applies status/department/organiser filters, renders workload level cards, handles demand approval actions, opens single-job application drilldowns, and triggers CSV/TXT export downloads.
+  - Workload UI must show level labels, weekly hours, assigned positions, and a legend matching backend classification.
+  - Job cards should display business-friendly recruitment health information instead of only raw table columns.
+  - Empty states must be explicit for no jobs, no workload records, no archived applications, and no alerts.
+
+- **Validation / Business Rules:**
+  - All admin APIs require an authenticated admin session.
+  - Admin monitoring views must not expose student-only private upload files unless the existing application archive explicitly requires a downloadable attachment link.
+  - Archive and report APIs are read-only and must not change job status, application status, or MO feedback.
+  - Filters must be optional; when no filter is supplied, the dashboard returns the full admin-visible dataset.
+  - Invalid export formats must return a clear validation error instead of generating an ambiguous file.
+  - Only `pending` demand records can be approved or rejected.
+  - Rejection reason text is optional but must remain short enough for display in the MO demand progress view.
+
+- **Session / Access Control:**
+  - Non-admin users must be rejected from `/api/admin/*`.
+  - Student and teacher sessions must not be able to access admin reports, archive, workload settings, or alert data.
+  - Admin actions that modify settings, such as threshold saving, must use POST and must validate the submitted value before persistence.
+
+**Assignee:** Sihan Chen / Tianxiao Ma  
+**Completion Date:** TBD
+
+---
+
 ## 6. Module Organiser (MO) — Consolidated Specification (Sprint 1 to Sprint 4)
 
 This section is the **single end-to-end functional specification** for the Module Organiser role. Sprint-numbered subsections **2.3**, **3.1**, **4.4**, and **5.1** elsewhere in this document are short cross-references that point here.

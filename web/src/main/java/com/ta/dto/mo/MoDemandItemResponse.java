@@ -26,6 +26,8 @@ public class MoDemandItemResponse {
     private String createdAt;
     private String updatedAt;
     private String publishedAt;
+    private String reviewedAt;
+    private String rejectionReason;
 
     public String getJobId() {
         return jobId;
@@ -193,5 +195,21 @@ public class MoDemandItemResponse {
 
     public void setPublishedAt(String publishedAt) {
         this.publishedAt = publishedAt;
+    }
+
+    public String getReviewedAt() {
+        return reviewedAt;
+    }
+
+    public void setReviewedAt(String reviewedAt) {
+        this.reviewedAt = reviewedAt;
+    }
+
+    public String getRejectionReason() {
+        return rejectionReason;
+    }
+
+    public void setRejectionReason(String rejectionReason) {
+        this.rejectionReason = rejectionReason;
     }
 }

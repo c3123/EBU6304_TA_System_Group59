@@ -4,7 +4,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     loading: true,
     jobs: [],
     applications: [],
-    assignedJobs: [],
     student: null,
     search: "",
     statusFilter: "all",
@@ -13,7 +12,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       skills: "",
       experience: ""
     },
-    attachments: []
+    attachments: [],
+    notifications: [],
+    unreadCount: 0
   };
 
   const tabButtons = Array.from(document.querySelectorAll(".student-tab"));
@@ -21,7 +22,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     jobs: byId("panel-jobs"),
     applications: byId("panel-applications"),
     hired: byId("panel-hired"),
-    assigned: byId("panel-assigned"),
     profile: byId("panel-profile")
   };
 
@@ -40,12 +40,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   const hiredCountTextEl = byId("hiredCountText");
   const hiredTotalHoursEl = byId("hiredTotalHours");
   const hiredSummaryNoteEl = byId("hiredSummaryNote");
-  const assignedListEl = byId("assignedList");
-  const assignedLoadingEl = byId("assignedLoading");
-  const assignedEmptyEl = byId("assignedEmpty");
-  const assignedCountTextEl = byId("assignedCountText");
   const studentWelcomeEl = byId("studentWelcome");
   const noticeEl = byId("studentNotice");
+  const studentNotificationBtn = byId("studentNotificationBtn");
+  const studentNotificationDot = byId("studentNotificationDot");
+  const studentNotificationPanel = byId("studentNotificationPanel");
 
   const jobSearchInput = byId("jobSearchInput");
   const jobStatusFilter = byId("jobStatusFilter");
@@ -59,6 +58,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const profileExperienceEl = byId("profileExperience");
   const saveProfileBtn = byId("saveProfileBtn");
   const changePasswordBtn = byId("studentChangePasswordBtn");
+  const aiAdvisorQuestionEl = byId("aiAdvisorQuestion");
+  const aiAdvisorBtn = byId("aiAdvisorBtn");
+  const aiAdvisorAnswerEl = byId("aiAdvisorAnswer");
+  const aiAdvisorNoteEl = byId("aiAdvisorNote");
 
   const jobDetailOverlayEl = byId("jobDetailOverlay");
   const closeJobDetailBtn = byId("closeJobDetailBtn");
@@ -113,6 +116,27 @@ document.addEventListener("DOMContentLoaded", async () => {
       return '<span class="tag">Shortlisted</span>';
     }
     return '<span class="tag warn">Under Review</span>';
+  }
+
+  function normalizeSkillList(value) {
+    return Array.isArray(value) ? value.filter((item) => String(item || "").trim()) : [];
+  }
+
+  function formatSkillList(value, emptyText) {
+    const skills = normalizeSkillList(value);
+    return skills.length ? skills.map(escapeHtml).join(", ") : emptyText;
+  }
+
+  function matchPercent(job) {
+    const score = Number(job && job.matchScore);
+    if (!Number.isFinite(score) || score <= 0) return 0;
+    return Math.round(score * 100);
+  }
+
+  function matchTone(percent) {
+    if (percent >= 80) return "strong";
+    if (percent >= 50) return "moderate";
+    return "weak";
   }
 
   function getContextPath() {
@@ -231,6 +255,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     jobsListEl.innerHTML = filtered.map((job) => {
       const applied = hasApplied(job.id);
+      const percent = matchPercent(job);
+      const tone = matchTone(percent);
       const detailBtn = `<button class="btn btn-outline open-detail-btn" data-job-id="${escapeHtml(job.id)}">View Details</button>`;
       const applyBtn = applied
         ? '<button class="btn btn-outline" disabled>Already Applied</button>'
@@ -247,6 +273,14 @@ document.addEventListener("DOMContentLoaded", async () => {
           </p>
           <p class="job-meta">Schedule: ${escapeHtml(job.schedule || "-")} | Location: ${escapeHtml(job.location || "-")}</p>
           <p class="job-meta">Status: ${escapeHtml(job.status || "unknown")}</p>
+          <div class="job-match job-match-${tone}">
+            <div class="job-match-rate">
+              <span>Match Rate</span>
+              <strong>${escapeHtml(percent)}%</strong>
+            </div>
+            <p><span>Matched Skills:</span> ${formatSkillList(job.matchedSkills, "No matching skills detected.")}</p>
+            <p><span>Missing Skills:</span> ${formatSkillList(job.missingSkills, "No major missing skills.")}</p>
+          </div>
           <div class="job-actions">${detailBtn}${applyBtn}</div>
         </article>
       `;
@@ -320,7 +354,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (hiredTotalHoursEl) hiredTotalHoursEl.textContent = `${totalHours}h`;
     if (hiredCountTextEl) {
-      hiredCountTextEl.textContent = `${hiredApps.length} hired job(s), ${totalHours}h/week in total.`;
+      hiredCountTextEl.textContent = `${hiredApps.length} confirmed job(s), ${totalHours}h/week in total.`;
     }
     if (hiredSummaryNoteEl) {
       hiredSummaryNoteEl.textContent = hiredApps.length
@@ -349,42 +383,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         </article>
       `;
     }).join("");
-  }
-
-  function renderAssignedJobs() {
-    if (state.loading) {
-      assignedLoadingEl.classList.remove("hidden");
-      assignedListEl.classList.add("hidden");
-      assignedEmptyEl.classList.add("hidden");
-      assignedCountTextEl.textContent = "Loading your confirmed TA jobs...";
-      return;
-    }
-
-    assignedLoadingEl.classList.add("hidden");
-    const items = state.assignedJobs;
-    if (!items.length) {
-      assignedListEl.classList.add("hidden");
-      assignedEmptyEl.classList.remove("hidden");
-      assignedCountTextEl.textContent = "No hired TA jobs found.";
-      return;
-    }
-
-    assignedEmptyEl.classList.add("hidden");
-    assignedListEl.classList.remove("hidden");
-    assignedCountTextEl.textContent = `${items.length} hired job(s) confirmed.`;
-    assignedListEl.innerHTML = items.map((item) => `
-      <article class="app-item status-hired">
-        <h3>${escapeHtml(item.title || "Untitled Job")}</h3>
-        <p class="app-meta">${escapeHtml(item.moduleCode || "-")} | ${escapeHtml(item.teacherName || "-")}</p>
-        <div class="app-feedback">
-          Weekly Hours: ${escapeHtml(String(item.weeklyHours || 0))}<br />
-          Schedule: ${escapeHtml(item.schedule || "-")}<br />
-          Location: ${escapeHtml(item.location || "-")}<br />
-          Deadline: ${escapeHtml(item.deadline || "-")}<br />
-          Recruitment Closed: ${item.recruitmentClosed ? "Yes" : "No"}
-        </div>
-      </article>
-    `).join("");
   }
 
   function renderProfile() {
@@ -537,17 +535,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  async function fetchApplicationsAndAssigned() {
+  async function fetchApplications() {
     try {
-      const [appData, assignedData] = await Promise.all([
-        requestApi("/applications"),
-        requestApi("/my-jobs")
-      ]);
+      const appData = await requestApi("/applications");
       state.applications = Array.isArray(appData.items) ? appData.items : [];
-      state.assignedJobs = Array.isArray(assignedData.items) ? assignedData.items : [];
       renderApplications();
       renderHiredJobs();
-      renderAssignedJobs();
     } catch (err) {
       showNotice(err.message || "Failed to refresh applications.", true);
     }
@@ -560,7 +553,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       await requestApi(`/applications?applicationId=${encodeURIComponent(applicationId)}`, {
         method: "DELETE"
       });
-      await fetchApplicationsAndAssigned();
+      await fetchApplications();
       renderJobs();
       showNotice("Application withdrawn successfully.", false);
     } catch (err) {
@@ -668,7 +661,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       method: "POST",
       body: { jobId, selectedAttachmentIds }
     });
-    await fetchApplicationsAndAssigned();
+    await fetchApplications();
     renderJobs();
     renderApplications();
     renderHiredJobs();
@@ -704,6 +697,39 @@ document.addEventListener("DOMContentLoaded", async () => {
     } finally {
       changePasswordBtn.disabled = false;
       changePasswordBtn.textContent = "Change Password";
+    }
+  }
+
+  async function askAiAdvisor() {
+    if (!aiAdvisorQuestionEl || !aiAdvisorBtn || !aiAdvisorAnswerEl || !aiAdvisorNoteEl) return;
+
+    const question = aiAdvisorQuestionEl.value.trim();
+    if (!question) {
+      aiAdvisorAnswerEl.textContent = "Please enter a question for the AI Job Advisor.";
+      aiAdvisorAnswerEl.classList.remove("hidden");
+      aiAdvisorNoteEl.classList.add("hidden");
+      return;
+    }
+
+    aiAdvisorBtn.disabled = true;
+    aiAdvisorBtn.textContent = "Asking...";
+    aiAdvisorAnswerEl.textContent = "Preparing advice from your current matching results...";
+    aiAdvisorAnswerEl.classList.remove("hidden");
+    aiAdvisorNoteEl.classList.add("hidden");
+
+    try {
+      const data = await requestApi("/ai-advisor", {
+        method: "POST",
+        body: { question }
+      });
+      aiAdvisorAnswerEl.textContent = data && data.answer ? data.answer : "No advice is available yet.";
+      aiAdvisorNoteEl.classList.toggle("hidden", !(data && data.fallback));
+    } catch (err) {
+      aiAdvisorAnswerEl.textContent = err.message || "AI advisor is unavailable right now.";
+      aiAdvisorNoteEl.classList.add("hidden");
+    } finally {
+      aiAdvisorBtn.disabled = false;
+      aiAdvisorBtn.textContent = "Ask AI Advisor";
     }
   }
 
@@ -799,6 +825,27 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   changePasswordBtn.addEventListener("click", changePassword);
 
+  if (studentNotificationBtn && studentNotificationPanel) {
+    studentNotificationBtn.addEventListener("click", () => {
+      const visible = studentNotificationPanel.style.display === "block";
+      studentNotificationPanel.style.display = visible ? "none" : "block";
+      void loadStudentNotifications();
+    });
+    studentNotificationPanel.addEventListener("click", async (event) => {
+      const markBtn = event.target.closest("[data-student-mark-read]");
+      if (!markBtn) return;
+      try {
+        await markStudentNotificationRead(markBtn.getAttribute("data-student-mark-read"));
+      } catch (err) {
+        showNotice(err.message || "Failed to mark notification as read.", true);
+      }
+    });
+  }
+
+  if (aiAdvisorBtn) {
+    aiAdvisorBtn.addEventListener("click", askAiAdvisor);
+  }
+
   if (uploadAreaEl && fileInputEl) {
     syncAttachmentLabelUi();
 
@@ -847,17 +894,88 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  function safeText(value) {
+    return String(value ?? "").trim();
+  }
+
+  function renderStudentNotificationItem(n) {
+    if (n.type === "announcement") {
+      const title = safeText(n.title || "System announcement");
+      const body = safeText(n.message || "");
+      return `
+        <div class="mo-notification-item mo-notification-item--announcement">
+          <div style="min-width:0">
+            <span class="mo-notification-badge">System announcement</span>
+            <p class="mo-notification-announcement-title">${escapeHtml(title)}</p>
+            <p class="mo-notification-announcement-body">${escapeHtml(body)}</p>
+            <div style="font-size:12px;color:#64748b;margin-top:6px;">${escapeHtml(safeText(n.applicationTime))}</div>
+          </div>
+          <div class="row">
+            ${n.read ? '<span class="notice" style="margin:0">Read</span>' : `<button class="btn btn-outline" type="button" data-student-mark-read="${escapeHtml(n.notificationId)}">Mark as Read</button>`}
+          </div>
+        </div>`;
+    }
+    const message = safeText(n.message) || `Update for ${safeText(n.jobName || n.jobId || "your application")}`;
+    return `
+      <div class="mo-notification-item">
+        <div style="min-width:0">
+          <div>${escapeHtml(message)}</div>
+          <div style="font-size:12px;color:#64748b">${escapeHtml(safeText(n.applicationTime))}</div>
+        </div>
+        <div class="row">
+          ${n.read ? '<span class="notice" style="margin:0">Read</span>' : `<button class="btn btn-outline" type="button" data-student-mark-read="${escapeHtml(n.notificationId)}">Mark as Read</button>`}
+        </div>
+      </div>`;
+  }
+
+  function renderStudentNotifications() {
+    if (!studentNotificationPanel) return;
+    if (studentNotificationDot) {
+      if (state.unreadCount > 0) {
+        studentNotificationDot.style.display = "inline-flex";
+        studentNotificationDot.textContent = String(state.unreadCount);
+      } else {
+        studentNotificationDot.style.display = "none";
+      }
+    }
+    if (!state.notifications.length) {
+      studentNotificationPanel.innerHTML = '<p class="notice" style="margin:0">No notifications.</p>';
+      return;
+    }
+    studentNotificationPanel.innerHTML = state.notifications.map(renderStudentNotificationItem).join("");
+  }
+
+  async function loadStudentNotifications() {
+    try {
+      const data = await requestApi("/notifications");
+      state.notifications = data && Array.isArray(data.items) ? data.items : [];
+      state.unreadCount = data && Number.isFinite(Number(data.unreadCount)) ? Number(data.unreadCount) : 0;
+    } catch (_) {
+      state.notifications = [];
+      state.unreadCount = 0;
+    }
+    renderStudentNotifications();
+  }
+
+  async function markStudentNotificationRead(notificationId) {
+    if (!notificationId) return;
+    await requestApi(`/notifications/read/${encodeURIComponent(notificationId)}`, { method: "POST" });
+    await loadStudentNotifications();
+  }
+
+  function startStudentNotificationPolling() {
+    window.setInterval(loadStudentNotifications, 10000);
+  }
+
   async function loadFromBackend() {
-    const [jobData, appData, assignedData, profileData] = await Promise.all([
+    const [jobData, appData, profileData] = await Promise.all([
       requestApi("/jobs"),
       requestApi("/applications"),
-      requestApi("/my-jobs"),
       requestApi("/profile")
     ]);
 
     state.jobs = Array.isArray(jobData.items) ? jobData.items : [];
     state.applications = Array.isArray(appData.items) ? appData.items : [];
-    state.assignedJobs = Array.isArray(assignedData.items) ? assignedData.items : [];
     state.student = {
       id: profileData.userId,
       name: profileData.name,
@@ -877,10 +995,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderJobs();
   renderApplications();
   renderHiredJobs();
-  renderAssignedJobs();
 
   try {
     await loadFromBackend();
+    await loadStudentNotifications();
+    startStudentNotificationPolling();
     showNotice("Connected to backend API.", false);
   } catch (backendErr) {
     showNotice(backendErr.message || "Failed to load data.", true);
@@ -889,7 +1008,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderJobs();
     renderApplications();
     renderHiredJobs();
-    renderAssignedJobs();
     renderProfile();
   }
 });

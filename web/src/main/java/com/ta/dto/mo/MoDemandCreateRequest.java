@@ -9,6 +9,7 @@ public class MoDemandCreateRequest {
     private Integer plannedCount;
     private Integer hourMin;
     private Integer hourMax;
+    private String requirements;
 
     public String getCourseName() {
         return courseName;
@@ -48,5 +49,13 @@ public class MoDemandCreateRequest {
 
     public void setHourMax(Integer hourMax) {
         this.hourMax = hourMax;
+    }
+
+    public String getRequirements() {
+        return requirements;
+    }
+
+    public void setRequirements(String requirements) {
+        this.requirements = requirements;
     }
 }

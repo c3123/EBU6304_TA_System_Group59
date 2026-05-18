@@ -21,7 +21,7 @@ import java.util.List;
  *
  * Ownership: A side (publish/withdraw rules).
  * Rules:
- * 1) MO can publish a demand directly without admin approval.
+ * 1) MO can publish only admin-approved demands.
  * 2) Deadline cannot be modified after publish.
  * 3) Published jobs can be taken offline and republished later.
  */
@@ -121,9 +121,15 @@ public class MoJobService {
             job.setPositions(request.getPlannedCount());
             job.setHourMin(request.getHourMin());
             job.setHourMax(request.getHourMax());
+            if (!isBlank(request.getRequirements())) {
+                job.setRequirements(request.getRequirements().trim());
+            }
             job.setPublished(false);
             job.setWithdrawn(false);
             job.setStatus("draft");
+            job.setApprovalStatus("pending");
+            job.setReviewedAt(null);
+            job.setRejectionReason(null);
             job.setUpdatedAt(now);
             JsonUtility.saveJobs(context, jobs);
             return toDemandItem(job);
@@ -217,7 +223,7 @@ public class MoJobService {
             copied.setSchedule(source.getSchedule());
             copied.setLocation(source.getLocation());
             copied.setRequirements(source.getRequirements());
-            copied.setApprovalStatus("approved");
+            copied.setApprovalStatus("pending");
             copied.setPublished(false);
             copied.setWithdrawn(false);
             copied.setStatus("draft");
@@ -225,6 +231,8 @@ public class MoJobService {
             copied.setPublishedAt(null);
             copied.setRecruitmentClosed(false);
             copied.setClosedAt(null);
+            copied.setReviewedAt(null);
+            copied.setRejectionReason(null);
             copied.setCreatedAt(now);
             copied.setUpdatedAt(now);
 
@@ -343,6 +351,8 @@ public class MoJobService {
         item.setCreatedAt(job.getCreatedAt());
         item.setUpdatedAt(job.getUpdatedAt());
         item.setPublishedAt(job.getPublishedAt());
+        item.setReviewedAt(job.getReviewedAt());
+        item.setRejectionReason(job.getRejectionReason());
         return item;
     }
 

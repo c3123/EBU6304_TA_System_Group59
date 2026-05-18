@@ -10,7 +10,6 @@ import com.ta.model.HiringHistoryRecord;
 import com.ta.model.JobPosting;
 import com.ta.model.NotificationRecord;
 import com.ta.model.User;
-import com.ta.util.AgentDebugLog;
 import com.ta.util.JsonUtility;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletResponse;
@@ -19,12 +18,9 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Final hiring workflow: finalize, state and history.
@@ -78,21 +74,6 @@ public class MoHiringService {
                 items.add(item);
             }
             response.setItems(items);
-            // #region agent log
-            try {
-                Map<String, Object> d = new LinkedHashMap<>();
-                d.put("requestJobId", jobId);
-                d.put("moId", moId);
-                d.put("totalHistoryRecords", Integer.valueOf(all.size()));
-                d.put("matchedForJob", Integer.valueOf(items.size()));
-                d.put(
-                        "distinctJobIdsInFile",
-                        all.stream().map(HiringHistoryRecord::getJobId).collect(Collectors.toSet()));
-                AgentDebugLog.log("H3", "MoHiringService.getHistory", "filter_result", d);
-            } catch (Throwable ignored) {
-                // ignore
-            }
-            // #endregion
             return response;
         } catch (IOException e) {
             throw new RuntimeException("Failed to load hiring history.", e);

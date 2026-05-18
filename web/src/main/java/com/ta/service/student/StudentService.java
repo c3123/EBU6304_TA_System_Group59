@@ -35,19 +35,29 @@ import java.util.Map;
 import java.util.Set;
 
 public class StudentService {
+    private final JobMatchingService jobMatchingService;
+
+    public StudentService() {
+        this(new JobMatchingService());
+    }
+
+    public StudentService(JobMatchingService jobMatchingService) {
+        this.jobMatchingService = jobMatchingService != null ? jobMatchingService : new JobMatchingService();
+    }
 
     public StudentJobListResponse listJobs(ServletContext context) {
+        return listJobs(context, null);
+    }
+
+    public StudentJobListResponse listJobs(ServletContext context, String studentUserId) {
         try {
             List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            StudentProfile profile = loadStudentProfile(context, studentUserId);
+            List<JobMatchResult> matches = jobMatchingService.getRecommendedJobs(profile, jobs);
             List<StudentJobItemResponse> items = new ArrayList<>();
-            for (JobPosting job : jobs) {
-                if (!isVisibleJob(job)) {
-                    continue;
-                }
-                items.add(toJobItem(job));
+            for (JobMatchResult match : matches) {
+                items.add(toJobItem(match));
             }
-
-            items.sort(Comparator.comparing(StudentJobItemResponse::getDeadline, Comparator.nullsLast(String::compareTo)));
 
             StudentJobListResponse response = new StudentJobListResponse();
             response.setItems(items);
@@ -365,6 +375,31 @@ public class StudentService {
         item.setSchedule(displayValue(job.getSchedule()));
         item.setLocation(displayValue(job.getLocation()));
         return item;
+    }
+
+    private StudentJobItemResponse toJobItem(JobMatchResult match) {
+        StudentJobItemResponse item = toJobItem(match.getJob());
+        item.setMatchScore(roundToTwoDecimals(match.getMatchScore()));
+        item.setMatchedSkills(match.getMatchedSkills());
+        item.setMissingSkills(match.getMissingSkills());
+        item.setRequiredSkills(match.getRequiredSkills());
+        return item;
+    }
+
+    private StudentProfile loadStudentProfile(ServletContext context, String studentUserId) throws IOException {
+        if (isBlank(studentUserId)) {
+            return null;
+        }
+
+        List<StudentProfile> profiles = JsonUtility.loadStudents(context);
+        return profiles.stream()
+                .filter(p -> studentUserId.equals(p.getUserId()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private double roundToTwoDecimals(double value) {
+        return Math.round(value * 100.0) / 100.0;
     }
 
     private StudentProfileResponse toProfileResponse(User user, StudentProfile profile) {

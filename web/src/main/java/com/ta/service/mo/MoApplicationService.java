@@ -10,7 +10,6 @@ import com.ta.model.Attachment;
 import com.ta.model.HiringHistoryRecord;
 import com.ta.model.JobPosting;
 import com.ta.model.StudentProfile;
-import com.ta.util.AgentDebugLog;
 import com.ta.util.JsonUtility;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletResponse;
@@ -21,7 +20,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -260,19 +258,6 @@ public class MoApplicationService {
             }
 
             applyMoApplicationStatusTransition(record, job, normalized);
-            // #region agent log
-            try {
-                Map<String, Object> d = new LinkedHashMap<>();
-                d.put("normalized", normalized);
-                d.put("recordStatusAfter", record.getStatus());
-                d.put("applicationId", applicationId);
-                d.put("jobId", record.getJobId());
-                d.put("willAppendManualHistory", Boolean.valueOf("hired".equals(normalized)));
-                AgentDebugLog.log("H1", "MoApplicationService.updateApplicationStatus", "after_transition", d);
-            } catch (Throwable ignored) {
-                // ignore
-            }
-            // #endregion
             if ("hired".equals(normalized)) {
                 appendManualHireHistory(context, moId, record);
             }
@@ -367,19 +352,6 @@ public class MoApplicationService {
                     appendManualHireHistory(context, moId, record);
                 }
             }
-
-            // #region agent log
-            if ("hired".equals(normalized)) {
-                try {
-                    Map<String, Object> d = new LinkedHashMap<>();
-                    d.put("targetCount", Integer.valueOf(targets.size()));
-                    d.put("note", "batch path now appends manual_hire per record");
-                    AgentDebugLog.log("H5", "MoApplicationService.batchUpdateApplicationStatus", "batch_hired_complete", d);
-                } catch (Throwable ignored) {
-                    // ignore
-                }
-            }
-            // #endregion
 
             JsonUtility.saveApplications(context, applications);
             return Map.of("updated", targets.size());
@@ -575,17 +547,6 @@ public class MoApplicationService {
     }
 
     private void appendManualHireHistory(ServletContext context, String moId, ApplicationRecord hiredRecord) throws IOException {
-        // #region agent log
-        try {
-            Map<String, Object> d = new LinkedHashMap<>();
-            d.put("jobId", hiredRecord.getJobId());
-            d.put("applicationId", hiredRecord.getId());
-            d.put("moId", moId);
-            AgentDebugLog.log("H1", "MoApplicationService.appendManualHireHistory", "entry", d);
-        } catch (Throwable ignored) {
-            // ignore
-        }
-        // #endregion
         List<HiringHistoryRecord> history = JsonUtility.loadHiringHistory(context);
         HiringHistoryRecord record = new HiringHistoryRecord();
         record.setId("hist_" + UUID.randomUUID().toString().replace("-", ""));

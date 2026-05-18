@@ -169,6 +169,34 @@
     .mo-notification-item:last-child {
       border-bottom: none;
     }
+    .mo-notification-item--announcement {
+      align-items: flex-start;
+    }
+    .mo-notification-badge {
+      display: inline-block;
+      margin-bottom: 6px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+    .mo-notification-announcement-title {
+      margin: 0 0 4px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .mo-notification-announcement-body {
+      margin: 0;
+      font-size: 13px;
+      color: #334155;
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
     .mo-history-card {
       margin-top: 18px;
     }
@@ -373,6 +401,10 @@
             <label for="hourMax">Expected Hours (Max)</label>
             <input id="hourMax" type="number" min="1" placeholder="e.g. 12" required />
           </div>
+        </div>
+        <div class="field">
+          <label for="demandRequirements">Demand Notes</label>
+          <textarea id="demandRequirements" maxlength="500" placeholder="Brief workload or skill notes for admin review"></textarea>
         </div>
         <div class="row" style="margin-top:12px;">
           <button class="btn btn-primary" type="submit">Submit Demand</button>

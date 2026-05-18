@@ -21,9 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 public final class JsonUtility {
     private static final String DATA_ROOT = "/WEB-INF/data/";
@@ -144,20 +142,6 @@ public final class JsonUtility {
         if (!dataFile.exists()) {
             Files.writeString(dataFile.toPath(), defaultJsonFor(fileName), StandardCharsets.UTF_8);
         }
-
-        // #region agent log
-        if ("hiring_history.json".equals(fileName)) {
-            try {
-                Map<String, Object> d = new LinkedHashMap<>();
-                d.put("resolvedAbsolutePath", dataFile.getAbsolutePath());
-                d.put("configuredTaDataDir", configuredDataDir);
-                d.put("usesTaDataDirProp", configuredDataDir != null && !configuredDataDir.isBlank());
-                AgentDebugLog.log("H2", "JsonUtility.resolveDataFile", "hiring_history_path", d);
-            } catch (Throwable ignored) {
-                // ignore
-            }
-        }
-        // #endregion
 
         return dataFile;
     }

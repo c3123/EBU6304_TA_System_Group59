@@ -8,6 +8,20 @@ public class AdminDashboardJobItemResponse {
     private String department;
     private String status;
     private Integer positions;
+    private Integer applicantCount;
+    private Integer hiredCount;
+    private Integer unfilledCount;
+    private Integer weeklyHours;
+    private Integer daysUntilDeadline;
+    private String healthLevel;
+    private String healthLabel;
+    private String filledLabel;
+    private String deadline;
+    private String publishedAt;
+    private String createdAt;
+    private String requirements;
+    private String schedule;
+    private String location;
     private Boolean recruitmentClosed;
     private String closedAt;
 
@@ -65,6 +79,118 @@ public class AdminDashboardJobItemResponse {
 
     public void setPositions(Integer positions) {
         this.positions = positions;
+    }
+
+    public Integer getApplicantCount() {
+        return applicantCount;
+    }
+
+    public void setApplicantCount(Integer applicantCount) {
+        this.applicantCount = applicantCount;
+    }
+
+    public Integer getHiredCount() {
+        return hiredCount;
+    }
+
+    public void setHiredCount(Integer hiredCount) {
+        this.hiredCount = hiredCount;
+    }
+
+    public Integer getUnfilledCount() {
+        return unfilledCount;
+    }
+
+    public void setUnfilledCount(Integer unfilledCount) {
+        this.unfilledCount = unfilledCount;
+    }
+
+    public Integer getWeeklyHours() {
+        return weeklyHours;
+    }
+
+    public void setWeeklyHours(Integer weeklyHours) {
+        this.weeklyHours = weeklyHours;
+    }
+
+    public Integer getDaysUntilDeadline() {
+        return daysUntilDeadline;
+    }
+
+    public void setDaysUntilDeadline(Integer daysUntilDeadline) {
+        this.daysUntilDeadline = daysUntilDeadline;
+    }
+
+    public String getHealthLevel() {
+        return healthLevel;
+    }
+
+    public void setHealthLevel(String healthLevel) {
+        this.healthLevel = healthLevel;
+    }
+
+    public String getHealthLabel() {
+        return healthLabel;
+    }
+
+    public void setHealthLabel(String healthLabel) {
+        this.healthLabel = healthLabel;
+    }
+
+    public String getFilledLabel() {
+        return filledLabel;
+    }
+
+    public void setFilledLabel(String filledLabel) {
+        this.filledLabel = filledLabel;
+    }
+
+    public String getDeadline() {
+        return deadline;
+    }
+
+    public void setDeadline(String deadline) {
+        this.deadline = deadline;
+    }
+
+    public String getPublishedAt() {
+        return publishedAt;
+    }
+
+    public void setPublishedAt(String publishedAt) {
+        this.publishedAt = publishedAt;
+    }
+
+    public String getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(String createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public String getRequirements() {
+        return requirements;
+    }
+
+    public void setRequirements(String requirements) {
+        this.requirements = requirements;
+    }
+
+    public String getSchedule() {
+        return schedule;
+    }
+
+    public void setSchedule(String schedule) {
+        this.schedule = schedule;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
     }
 
     public Boolean getRecruitmentClosed() {
