@@ -25,8 +25,8 @@ public class AdminDashboardResponse {
     private List<AdminDashboardAlertResponse> alerts = new ArrayList<>();
     private List<AdminDashboardDailyCountItem> dailyJobPublications = new ArrayList<>();
     private List<AdminDashboardDailyCountItem> dailyApplications = new ArrayList<>();
-    private List<AdminDashboardCountSlice> applicationsByDepartment = new ArrayList<>();
-    private List<AdminDashboardCountSlice> applicationsByStatus = new ArrayList<>();
+    private List<AdminDashboardCountSlice> jobsByDepartment = new ArrayList<>();
+    private List<AdminDashboardCountSlice> jobsByStatus = new ArrayList<>();
 
     public int getTotalJobs() {
         return totalJobs;
@@ -196,19 +196,19 @@ public class AdminDashboardResponse {
         this.dailyApplications = dailyApplications == null ? new ArrayList<>() : dailyApplications;
     }
 
-    public List<AdminDashboardCountSlice> getApplicationsByDepartment() {
-        return applicationsByDepartment;
+    public List<AdminDashboardCountSlice> getJobsByDepartment() {
+        return jobsByDepartment;
     }
 
-    public void setApplicationsByDepartment(List<AdminDashboardCountSlice> applicationsByDepartment) {
-        this.applicationsByDepartment = applicationsByDepartment == null ? new ArrayList<>() : applicationsByDepartment;
+    public void setJobsByDepartment(List<AdminDashboardCountSlice> jobsByDepartment) {
+        this.jobsByDepartment = jobsByDepartment == null ? new ArrayList<>() : jobsByDepartment;
     }
 
-    public List<AdminDashboardCountSlice> getApplicationsByStatus() {
-        return applicationsByStatus;
+    public List<AdminDashboardCountSlice> getJobsByStatus() {
+        return jobsByStatus;
     }
 
-    public void setApplicationsByStatus(List<AdminDashboardCountSlice> applicationsByStatus) {
-        this.applicationsByStatus = applicationsByStatus == null ? new ArrayList<>() : applicationsByStatus;
+    public void setJobsByStatus(List<AdminDashboardCountSlice> jobsByStatus) {
+        this.jobsByStatus = jobsByStatus == null ? new ArrayList<>() : jobsByStatus;
     }
 }

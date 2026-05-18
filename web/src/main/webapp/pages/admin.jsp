@@ -147,6 +147,7 @@
           </div>
           <div class="row" style="margin-top:16px;">
             <button id="adminThresholdSaveBtn" type="submit" class="btn btn-primary">Save Threshold</button>
+            <button id="adminNotifyOverloadBtn" type="button" class="btn btn-outline">Notify All Overload Students</button>
             <button id="adminExportWorkloadCsvBtn" type="button" class="btn btn-outline">Export Workload CSV</button>
             <button id="adminExportWorkloadTxtBtn" type="button" class="btn btn-outline">Export Workload TXT</button>
           </div>
@@ -312,19 +313,19 @@
         </div>
       </div>
       <div class="admin-jobs-charts card" style="margin-bottom:16px;">
-        <h3 class="admin-subtitle">Application analytics</h3>
-        <p class="desc">Counts reflect the current job filters above.</p>
+        <h3 class="admin-subtitle">Job analysis</h3>
+        <p class="desc">Job counts for the current filters: by department and by lifecycle status (pending, reject, open, overdue).</p>
         <div class="admin-jobs-charts-row">
           <div class="admin-chart-card admin-chart-card--compact">
             <h4 class="admin-chart-mini-title">By department</h4>
             <div class="admin-chart-canvas-wrap">
-              <canvas id="adminJobsDeptPie" aria-label="Applications by department"></canvas>
+              <canvas id="adminJobsDeptPie" aria-label="Jobs by department"></canvas>
             </div>
           </div>
           <div class="admin-chart-card admin-chart-card--compact">
             <h4 class="admin-chart-mini-title">By status</h4>
             <div class="admin-chart-canvas-wrap">
-              <canvas id="adminJobsStatusPie" aria-label="Applications by status"></canvas>
+              <canvas id="adminJobsStatusPie" aria-label="Jobs by status"></canvas>
             </div>
           </div>
         </div>
@@ -388,11 +389,11 @@
         <div class="admin-outcome-toolbar-dates">
           <div class="field">
             <label for="adminOutcomeJobSince">Job reference from</label>
-            <input id="adminOutcomeJobSince" type="date" lang="en-US" />
+            <input id="adminOutcomeJobSince" type="text" class="admin-date-input" placeholder="yyyy/mm/dd" inputmode="numeric" lang="en" autocomplete="off" />
           </div>
           <div class="field">
             <label for="adminOutcomeJobUntil">Job reference to</label>
-            <input id="adminOutcomeJobUntil" type="date" lang="en-US" />
+            <input id="adminOutcomeJobUntil" type="text" class="admin-date-input" placeholder="yyyy/mm/dd" inputmode="numeric" lang="en" autocomplete="off" />
           </div>
         </div>
         <div class="admin-outcome-toolbar-actions">

@@ -50,19 +50,6 @@ public class AdminDashboardService {
             String normalizedDepartment = normalizeDepartmentFilter(jobs, departmentFilter);
             List<JobPosting> filteredJobs = filterJobs(jobs, normalizedStatus, normalizedDepartment);
             List<AdminDashboardWorkloadItemResponse> workload = toWorkload(applications, jobs, settings.getWorkloadThresholdHours(), hiringHistory);
-            Map<String, JobPosting> jobsById = new HashMap<>();
-            for (JobPosting job : jobs) {
-                if (job.getId() != null) {
-                    jobsById.put(job.getId(), job);
-                }
-            }
-            Set<String> filteredJobIds = new LinkedHashSet<>();
-            for (JobPosting job : filteredJobs) {
-                if (job.getId() != null) {
-                    filteredJobIds.add(job.getId());
-                }
-            }
-
             AdminDashboardResponse data = new AdminDashboardResponse();
             data.setTotalUsers(users.size());
             data.setTotalJobs(jobs.size());
@@ -74,8 +61,8 @@ public class AdminDashboardService {
             data.setAlerts(buildAlerts(jobs, applications, workload, settings.getWorkloadThresholdHours()));
             data.setDailyJobPublications(buildDailyJobPublicationTrend(jobs));
             data.setDailyApplications(buildDailyApplicationTrend(applications));
-            data.setApplicationsByDepartment(buildApplicationDepartmentSlices(applications, jobsById, filteredJobIds));
-            data.setApplicationsByStatus(buildApplicationStatusSlices(applications, filteredJobIds));
+            data.setJobsByDepartment(buildJobDepartmentSlices(filteredJobs));
+            data.setJobsByStatus(buildJobStatusSlices(filteredJobs));
             return data;
         } catch (IOException e) {
             throw new RuntimeException("Failed to load admin dashboard.", e);
@@ -706,44 +693,63 @@ public class AdminDashboardService {
         return toDailyItems(counts);
     }
 
-    private List<AdminDashboardCountSlice> buildApplicationDepartmentSlices(List<ApplicationRecord> applications,
-                                                                            Map<String, JobPosting> jobsById,
-                                                                            Set<String> filteredJobIds) {
+    private List<AdminDashboardCountSlice> buildJobDepartmentSlices(List<JobPosting> filteredJobs) {
         Map<String, Integer> counts = new LinkedHashMap<>();
-        for (ApplicationRecord application : applications) {
-            if (!application.isActive()) {
+        for (JobPosting job : filteredJobs) {
+            if (Boolean.TRUE.equals(job.getWithdrawn())) {
                 continue;
             }
-            String jobId = trimToEmpty(application.getJobId());
-            if (jobId.isBlank() || !filteredJobIds.contains(jobId)) {
-                continue;
-            }
-            JobPosting job = jobsById.get(jobId);
-            String department = job == null ? DEPARTMENT_UNKNOWN : departmentLabel(job.getDepartment());
+            String department = departmentLabel(job.getDepartment());
             counts.merge(department, 1, Integer::sum);
         }
         return toSortedSlices(counts);
     }
 
-    private List<AdminDashboardCountSlice> buildApplicationStatusSlices(List<ApplicationRecord> applications,
-                                                                        Set<String> filteredJobIds) {
+    private List<AdminDashboardCountSlice> buildJobStatusSlices(List<JobPosting> filteredJobs) {
         Map<String, Integer> counts = new LinkedHashMap<>();
-        for (ApplicationRecord application : applications) {
-            if (!application.isActive()) {
+        counts.put("Pending", 0);
+        counts.put("Reject", 0);
+        counts.put("Open", 0);
+        counts.put("Overdue", 0);
+        for (JobPosting job : filteredJobs) {
+            String bucket = resolveJobAnalysisStatus(job);
+            if (bucket == null) {
                 continue;
             }
-            String jobId = trimToEmpty(application.getJobId());
-            if (jobId.isBlank() || !filteredJobIds.contains(jobId)) {
-                continue;
-            }
-            String status = trimToEmpty(application.getStatus());
-            if (status.isBlank()) {
-                status = "pending";
-            }
-            String label = status.substring(0, 1).toUpperCase(Locale.ROOT) + status.substring(1).toLowerCase(Locale.ROOT);
-            counts.merge(label, 1, Integer::sum);
+            counts.merge(bucket, 1, Integer::sum);
         }
-        return toSortedSlices(counts);
+        List<AdminDashboardCountSlice> slices = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : counts.entrySet()) {
+            if (entry.getValue() <= 0) {
+                continue;
+            }
+            slices.add(new AdminDashboardCountSlice(entry.getKey(), entry.getValue()));
+        }
+        return slices;
+    }
+
+    private String resolveJobAnalysisStatus(JobPosting job) {
+        if (Boolean.TRUE.equals(job.getWithdrawn())) {
+            return null;
+        }
+        String approval = trimToEmpty(job.getApprovalStatus()).toLowerCase(Locale.ROOT);
+        if ("rejected".equals(approval)) {
+            return "Reject";
+        }
+        if ("pending".equals(approval) || !Boolean.TRUE.equals(job.getPublished())) {
+            return "Pending";
+        }
+        if (isClosed(job)) {
+            return null;
+        }
+        if ("open".equalsIgnoreCase(trimToEmpty(job.getStatus()))) {
+            Integer days = resolveDaysUntilDeadline(job.getDeadline());
+            if (days != null && days < 0) {
+                return "Overdue";
+            }
+            return "Open";
+        }
+        return "Pending";
     }
 
     private void seedDailyBuckets(Map<String, Integer> counts) {
