@@ -394,6 +394,15 @@ public class StudentService {
         item.setMatchedSkills(match.getMatchedSkills());
         item.setMissingSkills(match.getMissingSkills());
         item.setRequiredSkills(match.getRequiredSkills());
+        List<String> relatedLabels = new ArrayList<>();
+        if (match.getRelatedMatches() != null) {
+            for (SkillRelationHint hint : match.getRelatedMatches()) {
+                if (hint != null) {
+                    relatedLabels.add(hint.toDisplayLabel());
+                }
+            }
+        }
+        item.setRelatedMatches(relatedLabels);
         return item;
     }
 

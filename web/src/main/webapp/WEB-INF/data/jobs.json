@@ -17,7 +17,7 @@
     "published": true,
     "withdrawn": false,
     "location": "offline",
-    "requirements": "C++",
+    "requirements": "Java, Python, C",
     "createdAt": "2026-04-07T10:00:00.000Z",
     "updatedAt": "2026-04-08T10:00:00.000Z",
     "rejectionReason": "",
