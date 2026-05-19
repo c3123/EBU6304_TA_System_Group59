@@ -2,6 +2,7 @@ package com.ta.dto.student;
 
 public class StudentProfileUpdateRequest {
     private String name;
+    private String phone;
     private String skills;
     private String experience;
 
@@ -11,6 +12,14 @@ public class StudentProfileUpdateRequest {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
 
     public String getSkills() {

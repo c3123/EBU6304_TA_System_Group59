@@ -537,6 +537,45 @@ th { background: #f8fbff; }
   }
 }
 
+/* AI advisor card on the right column */
+.ai-advisor-card {
+  position: relative;
+}
+
+.ai-advisor-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ai-advisor-form textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.ai-advisor-answer {
+  margin-top: 12px;
+  background: #f8faf8;
+  border: 1px solid #e6f2e8;
+  padding: 12px;
+  border-radius: 10px;
+  color: #0f5132;
+}
+
+.ai-advisor-note {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+@media (min-width: 900px) {
+  .ai-advisor-card {
+    position: sticky;
+    top: 24px;
+    align-self: start;
+  }
+}
+
 /* --- MO applicants (card feed, Figma-style) --- */
 .mo-applicants-head {
   display: flex;
