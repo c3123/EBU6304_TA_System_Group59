@@ -335,7 +335,17 @@ public class StudentService {
                             HttpServletResponse.SC_UNAUTHORIZED
                     ));
 
+            String phone = trimToEmpty(request.getPhone());
+            if (!phone.isBlank() && !phone.matches("\\d{11}")) {
+                throw new StudentBusinessException(
+                        ErrorCodes.VALIDATION_ERROR,
+                        "phone must be 11 digits.",
+                        HttpServletResponse.SC_BAD_REQUEST
+                );
+            }
+
             student.setName(request.getName().trim());
+            student.setPhone(phone);
             JsonUtility.saveUsers(context, users);
 
             List<StudentProfile> profiles = JsonUtility.loadStudents(context);
@@ -350,6 +360,7 @@ public class StudentService {
 
             profile.setName(student.getName());
             profile.setEmail(student.getEmail());
+            profile.setPhone(student.getPhone());
             profile.setStudentId(student.getStudentId());
             profile.setSkills(trimToEmpty(request.getSkills()));
             profile.setExperience(trimToEmpty(request.getExperience()));
@@ -407,6 +418,7 @@ public class StudentService {
         response.setUserId(user.getId());
         response.setName(profile != null && !isBlank(profile.getName()) ? profile.getName() : user.getName());
         response.setEmail(profile != null && !isBlank(profile.getEmail()) ? profile.getEmail() : user.getEmail());
+        response.setPhone(trimToEmpty(user.getPhone()));
         response.setStudentId(profile != null && !isBlank(profile.getStudentId()) ? profile.getStudentId() : user.getStudentId());
         response.setProgramme(profile != null ? profile.getProgramme() : user.getProgramme());
         response.setSkills(profile != null ? trimToEmpty(profile.getSkills()) : "");
@@ -420,6 +432,7 @@ public class StudentService {
         profile.setUserId(user.getId());
         profile.setName(user.getName());
         profile.setEmail(user.getEmail());
+        profile.setPhone(user.getPhone());
         profile.setStudentId(user.getStudentId());
         profile.setProgramme(user.getProgramme());
         profile.setSkills("");

@@ -9,6 +9,7 @@ public class StudentProfileResponse {
     private String userId;
     private String name;
     private String email;
+    private String phone;
     private String studentId;
     private String programme;
     private String skills;
@@ -37,6 +38,14 @@ public class StudentProfileResponse {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
 
     public String getStudentId() {

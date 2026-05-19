@@ -8,6 +8,7 @@ public class StudentProfile {
     private String studentId;
     private String name;
     private String email;
+    private String phone;
     private String programme;
     private String skills;
     private String experience;
@@ -22,6 +23,7 @@ public class StudentProfile {
         this.studentId = studentId;
         this.name = name;
         this.email = email;
+        this.phone = "";
         this.programme = programme;
         this.skills = "";
         this.experience = "";
@@ -33,6 +35,7 @@ public class StudentProfile {
         this.studentId = studentId;
         this.name = name;
         this.email = email;
+        this.phone = "";
         this.programme = programme;
         this.skills = skills;
         this.experience = experience;
@@ -69,6 +72,14 @@ public class StudentProfile {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
 
     public String getProgramme() {
