@@ -43,6 +43,26 @@ Deploy `web/target/web.war` to Tomcat 10.1+ and open:
 http://localhost:8080/web/
 ```
 
+## Running unit tests
+
+MO applicant management and notification logic are covered by JUnit 5 service-layer tests. Tests use a temporary JSON data directory (`ta.data.dir`) and do not require Tomcat.
+
+```powershell
+mvn -f web/pom.xml test
+```
+
+Expected result: **61 tests**, all passing (`BUILD SUCCESS`).
+
+| Test class | Coverage |
+| --- | --- |
+| `MoApplicationStatusTransitionTest` | Application status state machine (normal, boundary, error transitions) |
+| `MoApplicationStatusFilterTest` | MO list status filter parsing (`pending` includes `viewed`, `__none__`, etc.) |
+| `MoApplicationServiceTest` | List/detail, status update (single & batch), evaluation notes, decision feedback |
+| `MoApplicationExportServiceTest` | Applicant export CSV/JSON, scope filter, validation |
+| `MoNotificationServiceTest` | Notification list, backfill, announcements, mark-read |
+
+**Testing strategy (report):** automated unit tests assert business rules in `MoApplicationService`, `MoApplicationExportService`, and `MoNotificationService`; manual acceptance is documented in [docs/Acceptance_Test_Checklist.md](docs/Acceptance_Test_Checklist.md). **Techniques:** equivalence classes, boundary values, state-transition testing; data isolation via `System.setProperty("ta.data.dir", …)`.
+
 ## Demo Accounts
 
 Use the following accounts for demonstration:

@@ -45,6 +45,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   const studentNotificationBtn = byId("studentNotificationBtn");
   const studentNotificationDot = byId("studentNotificationDot");
   const studentNotificationPanel = byId("studentNotificationPanel");
+  const studentTopNameEl = byId("studentTopName");
+  const studentAvatarEl = byId("studentAvatar");
+  const globalStudentSearchEl = byId("globalStudentSearch");
 
   const jobSearchInput = byId("jobSearchInput");
   const jobStatusFilter = byId("jobStatusFilter");
@@ -52,10 +55,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const profileNameEl = byId("profileName");
   const profileEmailEl = byId("profileEmail");
+  const profilePhoneEl = byId("profilePhone");
   const profileStudentIdEl = byId("profileStudentId");
   const profileProgrammeEl = byId("profileProgramme");
   const profileSkillsEl = byId("profileSkills");
   const profileExperienceEl = byId("profileExperience");
+  const profileSkillChipsEl = byId("profileSkillChips");
+  const profileAvatarLargeEl = byId("profileAvatarLarge");
+  const profileCardNameEl = byId("profileCardName");
+  const profileCardProgrammeEl = byId("profileCardProgramme");
+  const profileApplicationsStatEl = byId("profileApplicationsStat");
+  const profileOffersStatEl = byId("profileOffersStat");
   const saveProfileBtn = byId("saveProfileBtn");
   const changePasswordBtn = byId("studentChangePasswordBtn");
   const aiAdvisorQuestionEl = byId("aiAdvisorQuestion");
@@ -202,6 +212,45 @@ document.addEventListener("DOMContentLoaded", async () => {
     return `${now.getFullYear()}-${m}-${d}`;
   }
 
+  function initialsForName(name) {
+    const parts = String(name || "Student").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "S";
+    if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+    return `${parts[0].slice(0, 1)}${parts[parts.length - 1].slice(0, 1)}`.toUpperCase();
+  }
+
+  function syncStudentChrome() {
+    const student = state.student || {};
+    const name = student.name || "Student";
+    const initials = initialsForName(name);
+    if (studentTopNameEl) studentTopNameEl.textContent = name;
+    if (studentAvatarEl) studentAvatarEl.textContent = initials;
+    if (profileAvatarLargeEl) profileAvatarLargeEl.textContent = initials;
+    if (profileCardNameEl) profileCardNameEl.textContent = name;
+    if (profileCardProgrammeEl) profileCardProgrammeEl.textContent = student.programme || "Programme";
+
+    const applications = Array.isArray(state.applications) ? state.applications : [];
+    const offers = applications.filter((app) => normalizeStatus(app.status) === "hired").length;
+    if (profileApplicationsStatEl) profileApplicationsStatEl.textContent = String(applications.length);
+    if (profileOffersStatEl) profileOffersStatEl.textContent = String(offers);
+  }
+
+  function renderSkillChips() {
+    if (!profileSkillChipsEl) return;
+    const skills = String(state.profile.skills || "")
+      .split(",")
+      .map((skill) => skill.trim())
+      .filter(Boolean)
+      .slice(0, 8);
+    if (!skills.length) {
+      profileSkillChipsEl.innerHTML = '<span class="profile-skill-chip">Add skills</span>';
+      return;
+    }
+    profileSkillChipsEl.innerHTML = skills
+      .map((skill) => `<span class="profile-skill-chip">${escapeHtml(skill)} <span aria-hidden="true">x</span></span>`)
+      .join("");
+  }
+
   function switchTab(tabKey) {
     state.activeTab = tabKey;
     tabButtons.forEach((btn) => {
@@ -288,6 +337,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function renderApplications() {
+    syncStudentChrome();
     if (state.loading) {
       appsLoadingEl.classList.remove("hidden");
       appsListEl.classList.add("hidden");
@@ -389,10 +439,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const student = state.student || {};
     profileNameEl.value = student.name || "";
     profileEmailEl.value = student.email || "";
+    if (profilePhoneEl) profilePhoneEl.value = student.phone || "";
     profileStudentIdEl.value = student.studentId || "";
     profileProgrammeEl.value = student.programme || "";
     profileSkillsEl.value = state.profile.skills;
     profileExperienceEl.value = state.profile.experience;
+    syncStudentChrome();
+    renderSkillChips();
     renderAttachmentsList();
   }
 
@@ -406,14 +459,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const html = attachments.map((att) => `
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #f3f4f6;">
+      <div class="student-attachment-row">
         <div>
           <p style="margin: 0; font-size: 13px; font-weight: 500;">${escapeHtml(att.fileName)}</p>
           <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">
-            ${escapeHtml(att.label || "Unlabeled")} • ${formatFileSize(att.fileSize)} • ${extractDate(att.uploadedAt)}
+            ${escapeHtml(att.label || "Unlabeled")} - ${formatFileSize(att.fileSize)} - ${extractDate(att.uploadedAt)}
           </p>
         </div>
-        <button class="delete-attachment-btn" data-attachment-id="${escapeHtml(att.id)}" style="padding: 6px 10px; background-color: #fee2e2; color: #991b1b; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">Delete</button>
+        <button class="delete-attachment-btn" data-attachment-id="${escapeHtml(att.id)}">Delete</button>
       </div>
     `).join("");
 
@@ -712,7 +765,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     aiAdvisorBtn.disabled = true;
-    aiAdvisorBtn.textContent = "Asking...";
+    aiAdvisorBtn.textContent = "Thinking...";
     aiAdvisorAnswerEl.textContent = "Preparing advice from your current matching results...";
     aiAdvisorAnswerEl.classList.remove("hidden");
     aiAdvisorNoteEl.classList.add("hidden");
@@ -729,7 +782,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       aiAdvisorNoteEl.classList.add("hidden");
     } finally {
       aiAdvisorBtn.disabled = false;
-      aiAdvisorBtn.textContent = "Ask AI Advisor";
+      aiAdvisorBtn.textContent = "Send to AI Advisor";
     }
   }
 
@@ -739,10 +792,31 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
+  document.querySelectorAll("[data-tab-jump]").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      switchTab(link.getAttribute("data-tab-jump"));
+    });
+  });
+
   jobSearchInput.addEventListener("input", (event) => {
     state.search = event.target.value || "";
+    if (globalStudentSearchEl && globalStudentSearchEl.value !== state.search) {
+      globalStudentSearchEl.value = state.search;
+    }
     renderJobs();
   });
+
+  if (globalStudentSearchEl) {
+    globalStudentSearchEl.addEventListener("input", (event) => {
+      state.search = event.target.value || "";
+      if (jobSearchInput && jobSearchInput.value !== state.search) {
+        jobSearchInput.value = state.search;
+      }
+      renderJobs();
+    });
+    globalStudentSearchEl.addEventListener("focus", () => switchTab("jobs"));
+  }
 
   jobStatusFilter.addEventListener("change", (event) => {
     state.statusFilter = event.target.value || "all";
@@ -791,8 +865,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   saveProfileBtn.addEventListener("click", async () => {
     const name = profileNameEl.value.trim();
+    const phone = profilePhoneEl ? profilePhoneEl.value.trim() : "";
     if (!name) {
       showNotice("Full name cannot be empty.", true);
+      switchTab("profile");
+      return;
+    }
+    if (phone && !/^\d{11}$/.test(phone)) {
+      showNotice("Phone must be 11 digits.", true);
       switchTab("profile");
       return;
     }
@@ -802,6 +882,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         method: "PUT",
         body: {
           name,
+          phone,
           skills: profileSkillsEl.value.trim(),
           experience: profileExperienceEl.value.trim()
         }
@@ -810,12 +891,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         id: updated.userId,
         name: updated.name,
         email: updated.email,
+        phone: updated.phone,
         studentId: updated.studentId,
         programme: updated.programme
       };
       state.profile.skills = updated.skills || "";
       state.profile.experience = updated.experience || "";
       studentWelcomeEl.textContent = `Welcome, ${name}.`;
+      syncStudentChrome();
       renderProfile();
       showNotice("Profile saved successfully.", false);
     } catch (err) {
@@ -980,6 +1063,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       id: profileData.userId,
       name: profileData.name,
       email: profileData.email,
+      phone: profileData.phone,
       studentId: profileData.studentId,
       programme: profileData.programme
     };
@@ -990,6 +1074,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     studentWelcomeEl.textContent = state.student.name
       ? `Welcome, ${state.student.name}.`
       : "Welcome, student.";
+    syncStudentChrome();
   }
 
   renderJobs();
@@ -1011,3 +1096,4 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderProfile();
   }
 });
+

@@ -59,6 +59,7 @@ public class AdminUserService {
             user.setRole(role);
             user.setStudentId("student".equals(role) ? studentId : "");
             user.setProgramme("student".equals(role) ? programme : "");
+            user.setPhone("");
             users.add(user);
             JsonUtility.saveUsers(context, users);
 
@@ -69,6 +70,7 @@ public class AdminUserService {
                 profile.setStudentId(studentId);
                 profile.setName(name);
                 profile.setEmail(email);
+                profile.setPhone("");
                 profile.setProgramme(programme);
                 profile.setSkills("");
                 profile.setExperience("");

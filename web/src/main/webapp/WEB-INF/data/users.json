@@ -6,7 +6,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "201234567",
-    "programme": "MSc Computer Science"
+    "programme": "MSc Computer Science",
+    "phone": "07700904567"
   },
   {
     "id": "mo001",
@@ -204,7 +205,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100002",
-    "programme": "MSc Computer Science"
+    "programme": "MSc Computer Science",
+    "phone": "07700900002"
   },
   {
     "id": "stu003",
@@ -213,7 +215,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100003",
-    "programme": "MSc Data Science"
+    "programme": "MSc Data Science",
+    "phone": "07700900003"
   },
   {
     "id": "stu004",
@@ -222,7 +225,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100004",
-    "programme": "BSc Psychology"
+    "programme": "BSc Psychology",
+    "phone": "07700900004"
   },
   {
     "id": "stu005",
@@ -231,7 +235,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100005",
-    "programme": "MSc Computer Science"
+    "programme": "MSc Computer Science",
+    "phone": "07700900005"
   },
   {
     "id": "stu006",
@@ -240,7 +245,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100006",
-    "programme": "MSc Data Science"
+    "programme": "MSc Data Science",
+    "phone": "07700900006"
   },
   {
     "id": "stu007",
@@ -249,7 +255,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100007",
-    "programme": "MSc Computer Science"
+    "programme": "MSc Computer Science",
+    "phone": "07700900007"
   },
   {
     "id": "stu008",
@@ -258,7 +265,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100008",
-    "programme": "MSc Computer Science"
+    "programme": "MSc Computer Science",
+    "phone": "07700900008"
   },
   {
     "id": "stu009",
@@ -267,7 +275,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100009",
-    "programme": "BSc Electronic Engineering"
+    "programme": "BSc Electronic Engineering",
+    "phone": "07700900009"
   },
   {
     "id": "stu010",
@@ -276,7 +285,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100010",
-    "programme": "BSc Psychology"
+    "programme": "BSc Psychology",
+    "phone": "07700900010"
   },
   {
     "id": "stu011",
@@ -285,7 +295,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100011",
-    "programme": "MSc Business Analytics"
+    "programme": "MSc Business Analytics",
+    "phone": "07700900011"
   },
   {
     "id": "stu012",
@@ -294,7 +305,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100012",
-    "programme": "MSc Data Science"
+    "programme": "MSc Data Science",
+    "phone": "07700900012"
   },
   {
     "id": "stu013",
@@ -303,7 +315,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100013",
-    "programme": "MSc Computer Science"
+    "programme": "MSc Computer Science",
+    "phone": "07700900013"
   },
   {
     "id": "stu014",
@@ -312,7 +325,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100014",
-    "programme": "BSc Mathematics"
+    "programme": "BSc Mathematics",
+    "phone": "07700900014"
   },
   {
     "id": "stu015",
@@ -321,7 +335,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100015",
-    "programme": "BSc Psychology"
+    "programme": "BSc Psychology",
+    "phone": "07700900015"
   },
   {
     "id": "stu016",
@@ -330,7 +345,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100016",
-    "programme": "BSc Mathematics"
+    "programme": "BSc Mathematics",
+    "phone": "07700900016"
   },
   {
     "id": "stu017",
@@ -339,7 +355,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100017",
-    "programme": "BSc Electronic Engineering"
+    "programme": "BSc Electronic Engineering",
+    "phone": "07700900017"
   },
   {
     "id": "stu018",
@@ -348,7 +365,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100018",
-    "programme": "BSc Mathematics"
+    "programme": "BSc Mathematics",
+    "phone": "07700900018"
   },
   {
     "id": "stu019",
@@ -357,7 +375,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100019",
-    "programme": "BSc Electronic Engineering"
+    "programme": "BSc Electronic Engineering",
+    "phone": "07700900019"
   },
   {
     "id": "stu020",
@@ -366,7 +385,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100020",
-    "programme": "MSc Computer Science"
+    "programme": "MSc Computer Science",
+    "phone": "07700900020"
   },
   {
     "id": "stu021",
@@ -375,7 +395,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100021",
-    "programme": "MSc Business Analytics"
+    "programme": "MSc Business Analytics",
+    "phone": "07700900021"
   },
   {
     "id": "stu022",
@@ -384,7 +405,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100022",
-    "programme": "BSc Mathematics"
+    "programme": "BSc Mathematics",
+    "phone": "07700900022"
   },
   {
     "id": "stu023",
@@ -393,7 +415,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100023",
-    "programme": "BSc Psychology"
+    "programme": "BSc Psychology",
+    "phone": "07700900023"
   },
   {
     "id": "stu024",
@@ -402,7 +425,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100024",
-    "programme": "MSc Data Science"
+    "programme": "MSc Data Science",
+    "phone": "07700900024"
   },
   {
     "id": "stu025",
@@ -411,7 +435,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100025",
-    "programme": "BSc Electronic Engineering"
+    "programme": "BSc Electronic Engineering",
+    "phone": "07700900025"
   },
   {
     "id": "stu026",
@@ -420,7 +445,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100026",
-    "programme": "MSc Business Analytics"
+    "programme": "MSc Business Analytics",
+    "phone": "07700900026"
   },
   {
     "id": "stu027",
@@ -429,7 +455,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100027",
-    "programme": "BSc Psychology"
+    "programme": "BSc Psychology",
+    "phone": "07700900027"
   },
   {
     "id": "stu028",
@@ -438,7 +465,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100028",
-    "programme": "BSc Electronic Engineering"
+    "programme": "BSc Electronic Engineering",
+    "phone": "07700900028"
   },
   {
     "id": "stu029",
@@ -447,7 +475,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100029",
-    "programme": "MSc Business Analytics"
+    "programme": "MSc Business Analytics",
+    "phone": "07700900029"
   },
   {
     "id": "stu030",
@@ -456,7 +485,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100030",
-    "programme": "BSc Mathematics"
+    "programme": "BSc Mathematics",
+    "phone": "07700900030"
   },
   {
     "id": "stu031",
@@ -465,7 +495,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100031",
-    "programme": "MSc Data Science"
+    "programme": "MSc Data Science",
+    "phone": "07700900031"
   },
   {
     "id": "stu032",
@@ -474,7 +505,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100032",
-    "programme": "MSc Computer Science"
+    "programme": "MSc Computer Science",
+    "phone": "07700900032"
   },
   {
     "id": "stu033",
@@ -483,7 +515,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100033",
-    "programme": "MSc Business Analytics"
+    "programme": "MSc Business Analytics",
+    "phone": "07700900033"
   },
   {
     "id": "stu034",
@@ -492,7 +525,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100034",
-    "programme": "MSc Business Analytics"
+    "programme": "MSc Business Analytics",
+    "phone": "07700900034"
   },
   {
     "id": "stu035",
@@ -501,7 +535,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100035",
-    "programme": "BSc Mathematics"
+    "programme": "BSc Mathematics",
+    "phone": "07700900035"
   },
   {
     "id": "stu036",
@@ -510,7 +545,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100036",
-    "programme": "BSc Psychology"
+    "programme": "BSc Psychology",
+    "phone": "07700900036"
   },
   {
     "id": "stu037",
@@ -519,7 +555,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100037",
-    "programme": "BSc Mathematics"
+    "programme": "BSc Mathematics",
+    "phone": "07700900037"
   },
   {
     "id": "stu038",
@@ -528,7 +565,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100038",
-    "programme": "BSc Electronic Engineering"
+    "programme": "BSc Electronic Engineering",
+    "phone": "07700900038"
   },
   {
     "id": "stu039",
@@ -537,7 +575,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100039",
-    "programme": "MSc Business Analytics"
+    "programme": "MSc Business Analytics",
+    "phone": "07700900039"
   },
   {
     "id": "stu040",
@@ -546,7 +585,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100040",
-    "programme": "MSc Computer Science"
+    "programme": "MSc Computer Science",
+    "phone": "07700900040"
   },
   {
     "id": "stu041",
@@ -555,7 +595,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100041",
-    "programme": "MSc Data Science"
+    "programme": "MSc Data Science",
+    "phone": "07700900041"
   },
   {
     "id": "stu042",
@@ -564,7 +605,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100042",
-    "programme": "BSc Psychology"
+    "programme": "BSc Psychology",
+    "phone": "07700900042"
   },
   {
     "id": "stu043",
@@ -573,7 +615,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100043",
-    "programme": "BSc Psychology"
+    "programme": "BSc Psychology",
+    "phone": "07700900043"
   },
   {
     "id": "stu044",
@@ -582,7 +625,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100044",
-    "programme": "BSc Mathematics"
+    "programme": "BSc Mathematics",
+    "phone": "07700900044"
   },
   {
     "id": "stu045",
@@ -591,7 +635,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100045",
-    "programme": "BSc Psychology"
+    "programme": "BSc Psychology",
+    "phone": "07700900045"
   },
   {
     "id": "stu046",
@@ -600,7 +645,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100046",
-    "programme": "BSc Mathematics"
+    "programme": "BSc Mathematics",
+    "phone": "07700900046"
   },
   {
     "id": "stu047",
@@ -609,7 +655,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100047",
-    "programme": "MSc Computer Science"
+    "programme": "MSc Computer Science",
+    "phone": "07700900047"
   },
   {
     "id": "stu048",
@@ -618,7 +665,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100048",
-    "programme": "BSc Electronic Engineering"
+    "programme": "BSc Electronic Engineering",
+    "phone": "07700900048"
   },
   {
     "id": "stu049",
@@ -627,7 +675,8 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100049",
-    "programme": "BSc Electronic Engineering"
+    "programme": "BSc Electronic Engineering",
+    "phone": "07700900049"
   },
   {
     "id": "stu050",
@@ -636,6 +685,7 @@
     "password": "demo123",
     "role": "student",
     "studentId": "20100050",
-    "programme": "BSc Electronic Engineering"
+    "programme": "BSc Electronic Engineering",
+    "phone": "07700900050"
   }
 ]
