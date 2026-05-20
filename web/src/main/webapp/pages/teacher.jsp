@@ -4,18 +4,307 @@
 <head>
   <meta charset="UTF-8" />
   <title>My Jobs - Module Organiser Portal</title>
-  <link rel="stylesheet" href="../assets/css/main.css" />
+  <link rel="stylesheet" href="../assets/css/main.css?v=teacher-student-style" />
   <style>
+    body.teacher-portal-page {
+      min-height: 100vh;
+      margin: 0;
+      background: #f5f8ff;
+      color: #111827;
+    }
+
+    .teacher-shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 248px minmax(0, 1fr);
+      background:
+        linear-gradient(90deg, #eef5ff 0, #f8fbff 248px, #ffffff 248px, #f7faff 100%);
+    }
+
+    .mo-portal-header {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      background: rgba(245, 250, 255, 0.82);
+      color: #111827;
+      padding: 28px 20px;
+      border-right: 1px solid rgba(219, 226, 238, 0.7);
+      box-shadow: none;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      z-index: 10;
+    }
+
+    .mo-portal-header-inner {
+      min-height: calc(100vh - 56px);
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: flex-start;
+      gap: 28px;
+      max-width: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .mo-portal-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 8px;
+      border-bottom: 0;
+    }
+
+    .mo-portal-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #2563eb;
+      background: #eaf2ff;
+      box-shadow: 0 10px 26px rgba(37, 99, 235, 0.12);
+      flex: 0 0 auto;
+    }
+
+    .mo-portal-icon svg {
+      width: 23px;
+      height: 23px;
+    }
+
+    .mo-portal-brand h1 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .mo-portal-brand p {
+      margin: 5px 0 0;
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    .teacher-main {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .teacher-topbar {
+      min-height: 82px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 20px;
+      padding: 18px 44px;
+      background: rgba(255, 255, 255, 0.88);
+      border-bottom: 1px solid #e7edf7;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .teacher-topbar h1 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.2;
+      color: #0f172a;
+    }
+
+    .teacher-topbar p {
+      margin: 5px 0 0;
+      color: #64748b;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .teacher-top-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .mo-portal-main {
+      width: 100%;
+      max-width: none;
+      margin: 0;
+      padding: 28px 44px 36px;
+    }
+
+    .mo-tabs {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin: 6px 0 0;
+      padding: 0;
+    }
+
     .mo-tab svg {
       width: 16px;
       height: 16px;
       flex-shrink: 0;
     }
+    .mo-tab {
+      width: 100%;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: flex-start;
+      padding: 0 16px;
+      color: #475569;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: transparent;
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .mo-tab:hover,
+    .mo-tab.active {
+      color: #2563eb;
+      background: #dfeaff;
+      border-color: rgba(37, 99, 235, 0.06);
+      box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.06);
+    }
+    .mo-tab svg {
+      color: #475569;
+    }
+    .mo-tab:hover svg,
+    .mo-tab.active svg {
+      color: #2563eb;
+    }
+    .mo-btn-logout {
+      margin-top: auto;
+      width: 100%;
+      justify-content: center;
+      border-radius: 8px;
+      background: #dfeaff;
+      color: #1d4ed8;
+      box-shadow: none;
+    }
+    .teacher-dashboard-intro {
+      margin-bottom: 18px;
+    }
+    .teacher-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(140px, 1fr));
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .teacher-summary-card {
+      min-height: 112px;
+      padding: 16px;
+      border: 1px solid #e4eaf4;
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: 0 12px 34px rgba(24, 45, 84, 0.06);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .teacher-summary-card span {
+      font-size: 12px;
+      font-weight: 800;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+    .teacher-summary-card strong {
+      font-size: 30px;
+      line-height: 1;
+      color: #0f172a;
+    }
+    .teacher-summary-card p {
+      margin: 0;
+      font-size: 12px;
+      color: #64748b;
+    }
+    .teacher-summary-card.summary-blue {
+      border-top: 3px solid #2563eb;
+    }
+    .teacher-summary-card.summary-green {
+      border-top: 3px solid #16a34a;
+    }
+    .teacher-summary-card.summary-yellow {
+      border-top: 3px solid #f59e0b;
+    }
+    .teacher-summary-card.summary-gray {
+      border-top: 3px solid #94a3b8;
+    }
     .mo-job-layout {
       display: grid;
-      grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
-      gap: 18px;
+      grid-template-columns: minmax(300px, 0.32fr) minmax(0, 0.68fr);
+      gap: 22px;
       align-items: start;
+      --workflow-panel-height: 760px;
+    }
+    .card,
+    .mo-form-card,
+    .mo-feed-card,
+    .mo-history-card {
+      border: 1px solid #e4eaf4;
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: 0 12px 34px rgba(24, 45, 84, 0.06);
+    }
+    .mo-form-card,
+    .mo-feed-card,
+    .mo-history-card {
+      padding: 22px;
+    }
+    .mo-form-card {
+      position: sticky;
+      top: 110px;
+      align-self: start;
+      min-height: var(--workflow-panel-height);
+    }
+    .mo-feed-card {
+      height: var(--workflow-panel-height);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .mo-feed-card #jobsNotice {
+      flex: 0 0 auto;
+    }
+    .mo-feed-card #jobsEmpty,
+    .mo-feed-card #jobsFeed {
+      min-height: 0;
+    }
+    .mo-feed-card #jobsFeed {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      padding-right: 8px;
+      margin-right: -8px;
+      scrollbar-gutter: stable;
+    }
+    .mo-feed-card #jobsFeed::-webkit-scrollbar {
+      width: 8px;
+    }
+    .mo-feed-card #jobsFeed::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 999px;
+    }
+    .teacher-section-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .teacher-section-head h3 {
+      margin: 0 0 4px;
+      color: #0f172a;
+    }
+    .teacher-section-head p {
+      margin: 0;
+      color: #64748b;
+      font-size: 13px;
+      line-height: 1.45;
     }
     .mo-form-card h3,
     .mo-feed-card h3 {
@@ -54,9 +343,9 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 96px;
+      min-width: auto;
       border-radius: 999px;
-      padding: 4px 10px;
+      padding: 4px 9px;
       font-size: 12px;
       font-weight: 700;
       text-transform: capitalize;
@@ -79,12 +368,12 @@
       border: 1px solid #fca5a5;
     }
     .mo-job-card {
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
+      border: 1px solid #e4eaf4;
+      border-radius: 8px;
       background: #fff;
-      padding: 18px;
+      padding: 16px;
       margin-bottom: 14px;
-      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+      box-shadow: 0 10px 24px rgba(24, 45, 84, 0.05);
     }
     .mo-job-card:last-child {
       margin-bottom: 0;
@@ -94,6 +383,7 @@
       justify-content: space-between;
       align-items: flex-start;
       gap: 12px;
+      margin-bottom: 12px;
     }
     .mo-job-card-head h4 {
       margin: 0 0 6px;
@@ -104,8 +394,86 @@
       color: #64748b;
       font-size: 13px;
     }
+    .mo-job-badges {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 6px;
+      max-width: 360px;
+    }
+    .mo-job-main-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #f8fbff;
+      border: 1px solid #edf2f7;
+      margin-bottom: 12px;
+    }
+    .mo-job-main-grid span,
+    .mo-job-detail-grid span {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+    .mo-job-main-grid strong,
+    .mo-job-detail-grid strong {
+      display: block;
+      color: #0f172a;
+      font-size: 13px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+    .mo-job-detail-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      padding: 0 2px 4px;
+      margin-bottom: 8px;
+    }
+    .mo-rejection-note {
+      margin: 8px 0 0;
+      padding: 9px 10px;
+      border-radius: 8px;
+      background: #fef2f2;
+      color: #b91c1c;
+      font-size: 13px;
+    }
     .mo-job-card .notice {
       margin-bottom: 0;
+    }
+    .mo-more-actions {
+      position: relative;
+    }
+    .mo-more-actions summary {
+      list-style: none;
+      cursor: pointer;
+    }
+    .mo-more-actions summary::-webkit-details-marker {
+      display: none;
+    }
+    .mo-more-actions-menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 6px);
+      z-index: 20;
+      width: 180px;
+      padding: 8px;
+      border: 1px solid #dbe2ee;
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: 0 18px 34px rgba(15, 23, 42, 0.14);
+      display: grid;
+      gap: 6px;
+    }
+    .mo-more-actions-menu .btn {
+      width: 100%;
+      justify-content: flex-start;
     }
     .mo-inline-form {
       margin-top: 16px;
@@ -122,9 +490,9 @@
     .mo-empty-tip {
       text-align: center;
       padding: 42px 24px;
-      border: 2px dashed #dbe2ee;
-      border-radius: 14px;
-      background: #fff;
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      background: #f8fbff;
       color: #64748b;
     }
     .mo-notification-row {
@@ -149,10 +517,10 @@
       margin-left: 6px;
     }
     .mo-notification-panel {
-      border: 1px solid #e5e7eb;
+      border: 1px solid #e4eaf4;
       background: #fff;
-      border-radius: 10px;
-      padding: 10px;
+      border-radius: 8px;
+      padding: 12px;
       margin-bottom: 14px;
       display: none;
       max-height: 260px;
@@ -198,7 +566,8 @@
       white-space: pre-wrap;
     }
     .mo-history-card {
-      margin-top: 18px;
+      margin-top: 24px;
+      box-shadow: 0 8px 22px rgba(24, 45, 84, 0.045);
     }
     .mo-history-head {
       display: flex;
@@ -210,8 +579,8 @@
     }
     .mo-history-table-wrap {
       overflow-x: auto;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
+      border: 1px solid #e4eaf4;
+      border-radius: 8px;
       background: #fff;
     }
     .mo-history-table {
@@ -221,14 +590,14 @@
     }
     .mo-history-table th,
     .mo-history-table td {
-      padding: 12px 14px;
+      padding: 14px 16px;
       border-bottom: 1px solid #e5e7eb;
       text-align: left;
       vertical-align: top;
       font-size: 14px;
     }
     .mo-history-table th {
-      background: #f8fafc;
+      background: #fbfdff;
       color: #334155;
       font-size: 12px;
       text-transform: uppercase;
@@ -276,7 +645,7 @@
       width: min(980px, 96vw);
       max-height: 88vh;
       overflow: auto;
-      border-radius: 14px;
+      border-radius: 8px;
       background: #fff;
       border: 1px solid #dbe2ee;
       box-shadow: 0 24px 48px rgba(15, 23, 42, 0.25);
@@ -311,17 +680,72 @@
     }
     .mo-table-scroll {
       overflow-x: auto;
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
+      border: 1px solid #e4eaf4;
+      border-radius: 8px;
     }
     @media (max-width: 960px) {
+      .teacher-shell {
+        grid-template-columns: 1fr;
+      }
+      .mo-portal-header {
+        position: static;
+        min-height: 0;
+      }
+      .mo-portal-header-inner {
+        min-height: 0;
+      }
+      .teacher-topbar,
+      .mo-portal-main {
+        padding-left: 20px;
+        padding-right: 20px;
+      }
       .mo-job-layout {
         grid-template-columns: 1fr;
+      }
+      .mo-form-card {
+        position: static;
+        min-height: 0;
+      }
+      .mo-feed-card {
+        height: auto;
+      }
+      .mo-feed-card #jobsFeed {
+        overflow: visible;
+        padding-right: 0;
+        margin-right: 0;
+      }
+      .teacher-summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .mo-job-main-grid,
+      .mo-job-detail-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 640px) {
+      .teacher-topbar {
+        grid-template-columns: 1fr;
+      }
+      .teacher-top-actions {
+        justify-content: flex-start;
+      }
+      .teacher-summary-grid,
+      .mo-job-main-grid,
+      .mo-job-detail-grid {
+        grid-template-columns: 1fr;
+      }
+      .mo-job-card-head {
+        display: block;
+      }
+      .mo-job-badges {
+        justify-content: flex-start;
+        margin-top: 10px;
       }
     }
   </style>
 </head>
-<body class="mo-portal">
+<body class="mo-portal teacher-portal-page">
+<div class="teacher-shell">
 <header class="mo-portal-header">
   <div class="mo-portal-header-inner">
     <div class="mo-portal-brand">
@@ -336,48 +760,88 @@
         <p>Demand submission, publishing and withdrawal</p>
       </div>
     </div>
+    <nav class="mo-tabs" aria-label="MO portal sections">
+      <span class="mo-tab active" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+        </svg>
+        My Jobs
+      </span>
+      <a class="mo-tab" href="mo-applications.jsp">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+        Applicants
+      </a>
+      <a class="mo-tab" href="teacher-profile.jsp">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M20 21a8 8 0 0 0-16 0"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        Profile
+      </a>
+    </nav>
     <a class="mo-btn-logout" href="<%= request.getContextPath() %>/logout">Logout</a>
   </div>
 </header>
 
-<main class="mo-portal-main">
-  <nav class="mo-tabs" aria-label="MO portal sections">
-    <span class="mo-tab active" aria-current="page">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-      </svg>
-      My Jobs
-    </span>
-    <a class="mo-tab" href="mo-applications.jsp">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-        <circle cx="9" cy="7" r="4"></circle>
-        <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-      </svg>
-      Applicants
-    </a>
-  </nav>
-
-  <div class="mo-applicants-head">
-    <div>
-      <h2 class="mo-section-title">My Job Workflow</h2>
-      <p class="mo-section-desc">Use the A-side backend workflow here: submit a demand, wait for approval, then complete publishing details or withdraw when there are no active applications.</p>
-    </div>
-    <div class="row">
-      <button id="notificationBtn" class="btn btn-outline" type="button">Notifications <span id="notificationDot" class="mo-notification-dot" style="display:none">0</span></button>
-      <button id="reloadBtn" class="btn btn-outline" type="button">Refresh</button>
-    </div>
+<div class="teacher-main">
+<header class="teacher-topbar">
+  <div>
+    <h1>My Job Workflow</h1>
+    <p>Submit demands, publish approved jobs, and manage your recruitment workflow.</p>
   </div>
+  <div class="teacher-top-actions">
+    <button id="notificationBtn" class="btn btn-outline" type="button">Notifications <span id="notificationDot" class="mo-notification-dot" style="display:none">0</span></button>
+    <button id="reloadBtn" class="btn btn-outline" type="button">Refresh</button>
+  </div>
+</header>
+
+<main class="mo-portal-main">
   <div id="notificationPanel" class="mo-notification-panel"></div>
 
   <div id="globalNotice" class="notice" style="margin-bottom:16px"></div>
 
+  <section class="teacher-summary-grid" aria-label="Workflow summary">
+    <article class="teacher-summary-card summary-blue">
+      <span>Total Jobs</span>
+      <strong id="summaryTotalJobs">0</strong>
+      <p>Current workflow records</p>
+    </article>
+    <article class="teacher-summary-card summary-green">
+      <span>Published Jobs</span>
+      <strong id="summaryPublishedJobs">0</strong>
+      <p>Visible to students</p>
+    </article>
+    <article class="teacher-summary-card summary-yellow">
+      <span>Pending Demands</span>
+      <strong id="summaryPendingDemands">0</strong>
+      <p>Awaiting approval</p>
+    </article>
+    <article class="teacher-summary-card summary-blue">
+      <span>Total Applicants</span>
+      <strong id="summaryTotalApplicants">0</strong>
+      <p>From job history</p>
+    </article>
+    <article class="teacher-summary-card summary-green">
+      <span>Hired</span>
+      <strong id="summaryHired">0</strong>
+      <p>Confirmed hires</p>
+    </article>
+  </section>
+
   <section class="mo-job-layout">
     <div class="card mo-form-card">
-      <h3>Submit New Demand</h3>
-      <p class="desc">Create a new teaching assistant demand. Repeated pending requests for the same course are blocked by the backend.</p>
+      <div class="teacher-section-head">
+        <div>
+          <h3>Submit New Demand</h3>
+          <p>Quick action panel for creating a teaching assistant demand.</p>
+        </div>
+      </div>
 
       <form id="demandForm">
         <div class="field">
@@ -412,32 +876,15 @@
         </div>
       </form>
 
-      <div style="margin-top:24px;padding-top:24px;border-top:1px solid #e5e7eb;">
-        <h3>Change Password</h3>
-        <p class="desc">Update your own account password.</p>
-        <form id="teacherChangePasswordForm">
-          <div class="field">
-            <label for="teacherOldPassword">Current Password</label>
-            <input id="teacherOldPassword" type="password" required />
-          </div>
-          <div class="field">
-            <label for="teacherNewPassword">New Password</label>
-            <input id="teacherNewPassword" type="password" required />
-          </div>
-          <div class="field">
-            <label for="teacherConfirmPassword">Confirm New Password</label>
-            <input id="teacherConfirmPassword" type="password" required />
-          </div>
-          <div class="row" style="margin-top:12px;">
-            <button id="teacherChangePasswordBtn" class="btn btn-outline" type="submit">Change Password</button>
-          </div>
-        </form>
-      </div>
     </div>
 
     <div class="card mo-feed-card">
-      <h3>My Demand Progress</h3>
-      <p class="desc">Approved jobs can be published here. Withdraw is only allowed when there are no active applications.</p>
+      <div class="teacher-section-head">
+        <div>
+          <h3>My Demand Progress</h3>
+          <p>Approved jobs can be published here. Offline actions remain locked when active applications exist.</p>
+        </div>
+      </div>
       <div id="jobsNotice" class="notice"></div>
       <div id="jobsEmpty" class="mo-empty-tip" style="display:none;">No MO jobs found yet. Submit your first demand from the panel on the left.</div>
       <div id="jobsFeed"></div>
@@ -447,7 +894,7 @@
     <div class="mo-history-head">
       <div>
         <h3>Job History</h3>
-        <p class="desc">Review released jobs, applicant statistics, reuse previous job settings, and export applicant data.</p>
+        <p class="desc">Secondary archive for released jobs, applicant statistics, reuse, and exports.</p>
       </div>
       <button id="historyReloadBtn" class="btn btn-outline" type="button">Refresh History</button>
     </div>
@@ -505,7 +952,9 @@
     </div>
   </div>
 </main>
-<script src="../assets/js/common.js?v=mo4"></script>
-<script src="../assets/js/teacher.js?v=mo4"></script>
+</div>
+</div>
+<script src="../assets/js/common.js?v=teacher-student-style"></script>
+<script src="../assets/js/teacher.js?v=teacher-student-style"></script>
 </body>
 </html>

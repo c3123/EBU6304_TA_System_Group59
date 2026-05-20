@@ -679,7 +679,7 @@
     "studentNo": "20100030",
     "courseGrade": "B",
     "appliedAt": "2026-04-25T15:00:00.000Z",
-    "status": "pending",
+    "status": "viewed",
     "active": true,
     "selectedAttachmentIds": []
   },
@@ -1234,5 +1234,19 @@
     "status": "viewed",
     "active": true,
     "selectedAttachmentIds": []
+  },
+  {
+    "id": "app_1779244201085",
+    "jobId": "108",
+    "studentId": "stu001",
+    "studentName": "Alex Chen",
+    "studentNo": "201234567",
+    "courseGrade": "",
+    "appliedAt": "2026-05-20T02:30:01.085195800Z",
+    "status": "viewed",
+    "active": true,
+    "selectedAttachmentIds": [
+      "062b7a3c-5e7a-4039-8d07-3db3855965a8.pdf"
+    ]
   }
 ]
