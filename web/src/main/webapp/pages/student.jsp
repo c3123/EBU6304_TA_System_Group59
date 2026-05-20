@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Student Portal</title>
-  <link rel="stylesheet" href="<%= request.getContextPath() %>/assets/css/main.css?v=student3" />
+  <link rel="stylesheet" href="<%= request.getContextPath() %>/assets/css/main.css?v=student4" />
   <style>
     body.student-portal-page {
       background: #f9fafb;
@@ -169,14 +169,10 @@
       border-left-color: #94a3b8;
     }
 
-    .ai-advisor-card {
-      margin-bottom: 16px;
-    }
-
     .jobs-layout {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
-      gap: 18px;
+      grid-template-columns: minmax(0, 1fr) minmax(360px, 430px);
+      gap: 22px;
       align-items: start;
     }
 
@@ -194,40 +190,113 @@
       margin-bottom: 0;
     }
 
+    .ai-advisor-card {
+      margin-bottom: 16px;
+      padding: 0;
+      overflow: hidden;
+      background: #ffffff;
+    }
+
     .ai-advisor-card h3 {
-      margin: 0 0 8px;
-      font-size: 16px;
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.25;
+      color: #0f172a;
+    }
+
+    .ai-advisor-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 18px 14px;
+      border-bottom: 1px solid #e8eef7;
+      background: #f8fbff;
+    }
+
+    .ai-advisor-avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+      color: #1d4ed8;
+      background: #dbeafe;
+      border: 1px solid #bfdbfe;
+    }
+
+    .ai-advisor-avatar svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .ai-advisor-subtitle {
+      margin: 4px 0 0;
+      color: #64748b;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .ai-advisor-body {
+      padding: 16px 18px 18px;
+    }
+
+    .ai-advisor-prompts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .ai-advisor-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #eef6ff;
+      color: #1e40af;
+      border: 1px solid #dbeafe;
+      font-size: 12px;
+      font-weight: 700;
     }
 
     .ai-advisor-form {
       display: grid;
       grid-template-columns: minmax(0, 1fr);
-      gap: 12px;
+      gap: 10px;
       align-items: start;
     }
 
     .ai-advisor-form textarea {
-      min-height: 150px;
+      min-height: 190px;
       border-width: 1px;
       border-radius: 8px;
       resize: vertical;
+      background: #fbfdff;
+      border-color: #dbe6f3;
+      box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.03);
+      line-height: 1.5;
     }
 
     .ai-advisor-form .btn {
       width: 100%;
-      min-height: 42px;
+      min-height: 44px;
       font-weight: 700;
     }
 
     .ai-advisor-answer {
-      margin-top: 12px;
-      padding: 10px 12px;
+      margin-top: 14px;
+      padding: 13px 14px;
       border-radius: 8px;
-      background: #f8fafc;
-      color: #334155;
+      background: #f1f7ff;
+      border: 1px solid #d8e8ff;
+      color: #1f3a5f;
       font-size: 13px;
-      line-height: 1.55;
+      line-height: 1.6;
       white-space: pre-wrap;
+      box-shadow: 0 8px 22px rgba(30, 94, 255, 0.08);
     }
 
     .ai-advisor-note {
@@ -1415,22 +1484,44 @@
         </div>
       </div>
 
-      <div class="mo-two-col">
-        <div>
+      <div class="jobs-layout">
+        <div class="jobs-main-column">
           <div id="jobsLoading" class="loading-state">Loading job data...</div>
           <div id="jobsEmpty" class="empty-state hidden">No matching positions at the moment.</div>
           <div id="jobsList" class="jobs-grid hidden"></div>
         </div>
 
-        <aside>
+        <aside class="jobs-ai-column">
           <div class="card ai-advisor-card">
-            <h3>AI Job Advisor</h3>
-            <div class="ai-advisor-form">
-              <textarea id="aiAdvisorQuestion" placeholder="Ask: Which TA job is most suitable for me?"></textarea>
-              <button id="aiAdvisorBtn" class="btn btn-primary" type="button">Ask AI Advisor</button>
+            <div class="ai-advisor-head">
+              <span class="ai-advisor-avatar" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 3v3"></path>
+                  <path d="M5 8h14"></path>
+                  <rect x="5" y="6" width="14" height="12" rx="4"></rect>
+                  <path d="M9 12h.01"></path>
+                  <path d="M15 12h.01"></path>
+                  <path d="M10 15h4"></path>
+                </svg>
+              </span>
+              <div>
+                <h3>AI Job Advisor</h3>
+                <p class="ai-advisor-subtitle">Ask about job fit, missing skills, or how to improve your application.</p>
+              </div>
             </div>
-            <div id="aiAdvisorAnswer" class="ai-advisor-answer hidden"></div>
-            <div id="aiAdvisorNote" class="ai-advisor-note hidden">AI service unavailable. Showing system-generated advice.</div>
+            <div class="ai-advisor-body">
+              <div class="ai-advisor-prompts" aria-hidden="true">
+                <span class="ai-advisor-chip">Job fit</span>
+                <span class="ai-advisor-chip">Skill gaps</span>
+                <span class="ai-advisor-chip">Application tips</span>
+              </div>
+              <div class="ai-advisor-form">
+                <textarea id="aiAdvisorQuestion" placeholder="Ask: Which TA job is most suitable for me, and what should I improve before applying?"></textarea>
+                <button id="aiAdvisorBtn" class="btn btn-primary" type="button">Send to AI Advisor</button>
+              </div>
+              <div id="aiAdvisorAnswer" class="ai-advisor-answer hidden"></div>
+              <div id="aiAdvisorNote" class="ai-advisor-note hidden">AI service unavailable. Showing system-generated advice.</div>
+            </div>
           </div>
         </aside>
       </div>
@@ -1712,8 +1803,8 @@
     </div>
   </div>
 </div>
-<script src="<%= request.getContextPath() %>/assets/js/common.js?v=student3"></script>
-<script src="<%= request.getContextPath() %>/assets/js/student.js?v=student3"></script>
+  <script src="<%= request.getContextPath() %>/assets/js/common.js?v=student4"></script>
+  <script src="<%= request.getContextPath() %>/assets/js/student.js?v=student4"></script>
 </body>
 </html>
 

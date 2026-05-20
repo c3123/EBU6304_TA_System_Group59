@@ -765,7 +765,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     aiAdvisorBtn.disabled = true;
-    aiAdvisorBtn.textContent = "Asking...";
+    aiAdvisorBtn.textContent = "Thinking...";
     aiAdvisorAnswerEl.textContent = "Preparing advice from your current matching results...";
     aiAdvisorAnswerEl.classList.remove("hidden");
     aiAdvisorNoteEl.classList.add("hidden");
@@ -782,7 +782,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       aiAdvisorNoteEl.classList.add("hidden");
     } finally {
       aiAdvisorBtn.disabled = false;
-      aiAdvisorBtn.textContent = "Ask AI Advisor";
+      aiAdvisorBtn.textContent = "Send to AI Advisor";
     }
   }
 

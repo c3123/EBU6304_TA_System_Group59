@@ -68,7 +68,10 @@ public class AuthFilter extends HttpFilter implements Filter {
     private boolean hasAccess(String role, String path) {
         String normalizedRole = role == null ? "" : role.trim().toLowerCase();
 
-        if (path.startsWith("/api/mo/") || "/pages/teacher.jsp".equals(path) || "/pages/mo-applications.jsp".equals(path)) {
+        if (path.startsWith("/api/mo/")
+                || "/pages/teacher.jsp".equals(path)
+                || "/pages/mo-applications.jsp".equals(path)
+                || "/pages/teacher-profile.jsp".equals(path)) {
             return "teacher".equals(normalizedRole);
         }
 

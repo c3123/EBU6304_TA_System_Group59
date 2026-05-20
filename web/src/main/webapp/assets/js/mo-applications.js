@@ -53,7 +53,8 @@ const state = {
   finalModalJobId: null,
   selectedIds: new Set(),
   sortMode: "applied",
-  highMatchOnly: false
+  highMatchOnly: false,
+  selectedJobId: null
 };
 
 function normalizeSkillList(value) {
@@ -76,6 +77,31 @@ function renderSkillTags(skills, cssClass) {
   const list = normalizeSkillList(skills);
   if (!list.length) return `<span style="color:#94a3b8;">—</span>`;
   return list.map(s => `<span class="mo-skill-tag ${cssClass}">${escapeHtml(s)}</span>`).join("");
+}
+
+function renderSummaryCards(items) {
+  const list = Array.isArray(items) ? items : [];
+  const counts = { total: list.length, pending: 0, shortlisted: 0, hired: 0, highMatch: 0, overloaded: 0 };
+  for (const item of list) {
+    const st = String(item.status || "").toLowerCase();
+    if (st === "pending" || st === "viewed") counts.pending += 1;
+    if (st === "shortlisted") counts.shortlisted += 1;
+    if (st === "hired") counts.hired += 1;
+    if (normalizeSkillList(item.requiredSkills).length && matchPercent(item) >= 60) counts.highMatch += 1;
+    if (ifHiredTotalForItem(item, list) >= 20) counts.overloaded += 1;
+  }
+  const targets = {
+    summaryTotalApplications: counts.total,
+    summaryPendingApplications: counts.pending,
+    summaryShortlistedApplications: counts.shortlisted,
+    summaryHiredApplications: counts.hired,
+    summaryHighMatchApplications: counts.highMatch,
+    summaryOverloadedApplications: counts.overloaded
+  };
+  Object.keys(targets).forEach(id => {
+    const el = byId(id);
+    if (el) el.textContent = String(targets[id]);
+  });
 }
 
 function jobRequirementsRaw(jobId) {
@@ -183,6 +209,35 @@ function renderSkillFitBlock(item) {
       ${relatedBlock}
       <div><span class="mo-app-lbl">✗ Still missing</span><div class="mo-skill-tags">${renderSkillTags(missing, "missing")}</div></div>
       <p class="mo-skill-fit-hint">${escapeHtml(resultHint)}</p>
+    </div>`;
+}
+
+function renderSkillFitCompact(item) {
+  const matched = normalizeSkillList(item.matchedSkills);
+  const missing = normalizeSkillList(item.missingSkills);
+  const related = normalizeSkillList(item.relatedMatches);
+  const required = normalizeSkillList(item.requiredSkills);
+  const pct = matchPercent(item);
+  const tone = matchBadgeClass(pct);
+  const rawReq = jobRequirementsRaw(item.jobId);
+  const summary = required.length
+    ? `${matched.length} exact match${matched.length === 1 ? "" : "es"} / ${required.length} required`
+    : (rawReq ? "Requirements need manual review" : "No requirements text");
+  return `
+    <div class="skill-compact">
+      <div class="skill-compact-head">
+        <span>Skill match</span>
+        <strong class="mo-match-score-big ${tone}">${required.length ? `${pct}%` : "N/A"}</strong>
+      </div>
+      <div class="mo-match-bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
+        <div class="mo-match-bar-fill ${tone}" style="width:${required.length ? pct : 0}%"></div>
+      </div>
+      <p class="mo-skill-fit-summary">${escapeHtml(summary)}</p>
+      <div class="skill-chip-row">
+        ${matched.length ? renderSkillTags(matched, "matched") : '<span class="mo-skill-tag missing">No exact matches</span>'}
+        ${missing.slice(0, 4).map(s => `<span class="mo-skill-tag missing">${escapeHtml(s)}</span>`).join("")}
+        ${related.slice(0, 3).map(s => `<span class="mo-skill-tag related">${escapeHtml(s)}</span>`).join("")}
+      </div>
     </div>`;
 }
 
@@ -419,6 +474,7 @@ async function loadList() {
   const data = await getJson(url);
   state.items = data && Array.isArray(data.items) ? data.items : [];
   pruneSelectionToItems();
+  renderSummaryCards(state.items);
   renderApplicantFeed(state.items);
   updateBatchBar();
 }
@@ -476,6 +532,10 @@ function renderNotesAndFeedback(item, closed) {
         ${cnt}
       </div>
     </div>`;
+}
+
+function renderWorkloadBadge(tier, total) {
+  return `<span class="workload-badge ${tier.key}">${escapeHtml(tier.label)} · ${escapeHtml(String(total))}h/week</span>`;
 }
 
 function renderApplicantCard(item, closed) {
@@ -556,7 +616,174 @@ function renderApplicantCard(item, closed) {
     </article>`;
 }
 
+function renderApplicantCardDashboard(item, closed) {
+  const st = String(item.status || "").toLowerCase();
+  const id = escapeHtml(item.applicationId);
+  const rawId = item.applicationId;
+  const jobLabel = escapeHtml(safeText(state.jobTitles[item.jobId] || item.jobId || "-"));
+  const positionHrs = jobWeeklyHours(item.jobId);
+  const currentOther = currentHiredHoursElsewhere(state.items, item.studentId, item.applicationId);
+  const ifHiredTotal = currentOther + positionHrs;
+  const tier = workloadTier(ifHiredTotal);
+  const showWorkloadPanel = st !== "hired";
+  const borderClass = (showWorkloadPanel ? wlCardClass(tier.key) : "mo-wl-neutral") + (state.selectedIds.has(rawId) ? " mo-app-card-selected" : "");
+  const hireLabel = ifHiredTotal >= 20 ? "Hire (Override Warning)" : "Hire";
+  const warnNote = tier.key === "over"
+    ? `<p style="margin:8px 0 0;font-size:12px;color:#b91c1c;font-weight:600;">Warning: Hiring this student will exceed 20h/week workload limit!</p>`
+    : `<p style="margin:8px 0 0;font-size:12px;color:#854d0e;">If hired, total workload would be <strong>${ifHiredTotal}h/week</strong> (${tier.label} level).</p>`;
+  const workloadBlock = showWorkloadPanel ? `
+    <div class="mo-wl-panel ${wlPanelClass(tier.key)}">
+      <div style="font-weight:700;margin-bottom:8px;color:#0f172a;">Current Workload Status</div>
+      <div class="mo-wl-grid">
+        <div><span class="mo-app-lbl">Current Hours/Week</span><div class="mo-wl-big" style="color:#2563eb">${currentOther}h</div></div>
+        <div><span class="mo-app-lbl">If Hired (Total)</span><div class="mo-wl-big" style="color:${tier.key === "over" ? "#dc2626" : "#ca8a04"}">${ifHiredTotal}h</div></div>
+        <div><span class="mo-app-lbl">Status</span><div><span class="status-pill ${tier.key === "over" ? "status-rejected" : tier.key === "warn" ? "status-pending" : "status-hired"}">${tier.label}</span></div></div>
+      </div>
+      ${warnNote}
+    </div>` : "";
+  let actionsBlock = "";
+  if (closed) {
+    actionsBlock = `<div class="mo-wl-actions"><span class="mo-closed-flag">Recruitment Closed</span><button type="button" class="btn btn-primary mo-app-detail-btn">View details</button></div>`;
+  } else if (st === "rejected") {
+    actionsBlock = `<div class="mo-wl-actions"><button type="button" class="btn btn-outline" data-mo-action="viewed" data-app-id="${id}">Undo reject</button><button type="button" class="btn btn-primary mo-app-detail-btn">View details</button></div>`;
+  } else if (st === "hired") {
+    actionsBlock = `<div class="mo-wl-actions"><button type="button" class="btn btn-success" disabled>Hire</button><button type="button" class="btn btn-outline" disabled>Shortlist</button><button type="button" class="btn btn-outline" style="color:#b91c1c;border-color:#fecaca" disabled>Reject</button><button type="button" class="btn btn-primary mo-app-detail-btn">View details</button></div>`;
+  } else {
+    actionsBlock = `<div class="mo-wl-actions"><button type="button" class="btn btn-success" data-mo-action="hired" data-app-id="${id}">${hireLabel}</button><button type="button" class="btn btn-outline" data-mo-action="shortlisted" data-app-id="${id}">Shortlist</button><button type="button" class="btn btn-outline" style="color:#b91c1c;border-color:#fecaca" data-mo-action="rejected" data-app-id="${id}">Reject</button><button type="button" class="btn btn-primary mo-app-detail-btn">View details</button></div>`;
+  }
+  const chk = closed
+    ? ""
+    : `<label style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><input type="checkbox" data-app-select="${id}" ${state.selectedIds.has(rawId) ? "checked" : ""} /></label>`;
+  return `
+    <article class="mo-app-card-proto ${borderClass}" data-application-id="${id}">
+      <div class="applicant-card-top">
+        ${chk || "<span></span>"}
+        <div style="min-width:0;"><h4>${escapeHtml(safeText(item.studentName))} ${renderMatchBadge(item)}</h4></div>
+        <div class="mo-app-status-slot">${renderStatusSelect(item, closed)}</div>
+      </div>
+      <div class="applicant-card-subrow">
+        <span>${jobLabel}</span>
+        <span>Applied: ${escapeHtml(safeText(item.appliedAt))}</span>
+        ${renderWorkloadBadge(tier, ifHiredTotal)}
+      </div>
+      ${renderSkillFitCompact(item)}
+      ${actionsBlock}
+      <details class="applicant-detail-drawer">
+        <summary>Details, workload and feedback</summary>
+        <div class="applicant-detail-body">
+          ${renderSkillFitBlock(item)}
+          ${workloadBlock}
+          ${renderNotesAndFeedback(item, closed)}
+          <div class="mo-app-grid">
+            <div><span class="mo-app-lbl">Student No</span><div>${escapeHtml(safeText(item.studentNo))}</div></div>
+            <div><span class="mo-app-lbl">Programme</span><div>${escapeHtml(safeText(item.programme))}</div></div>
+          </div>
+          <div style="margin-bottom:12px;"><span class="mo-app-lbl">Skills</span><div>${escapeHtml(safeText(item.skills))}</div></div>
+          <div style="margin-bottom:12px;"><span class="mo-app-lbl">Experience / Statement</span><div style="font-size:14px;color:#334155;">${escapeHtml(safeText(item.experience))}</div></div>
+        </div>
+      </details>
+      <div class="mo-app-expand">
+        <p class="mo-app-meta" style="margin-bottom:10px">Attachments and full record (opening details marks <strong>pending</strong> as <strong>viewed</strong> on the server).</p>
+        <div class="mo-app-expand-grid">
+          <div><span class="mo-app-lbl">Application ID</span><div data-field="applicationId"></div></div>
+          <div><span class="mo-app-lbl">Job ID</span><div data-field="jobId"></div></div>
+          <div><span class="mo-app-lbl">Course grade</span><div data-field="courseGrade"></div></div>
+          <div><span class="mo-app-lbl">Applied at</span><div data-field="appliedAt"></div></div>
+          <div><span class="mo-app-lbl">Status</span><div data-field="status"></div></div>
+          <div><span class="mo-app-lbl">Evaluation notes</span><div data-field="evaluationNotes"></div></div>
+          <div><span class="mo-app-lbl">Decision feedback</span><div data-field="decisionFeedback"></div></div>
+          <div><span class="mo-app-lbl">Updated at</span><div data-field="updatedAt"></div></div>
+          <div style="grid-column:1/-1;"><span class="mo-app-lbl">Attachments</span><div data-field="attachments"></div></div>
+        </div>
+      </div>
+    </article>`;
+}
+
+function renderJobReviewItem(jobId, groupItems, allItems, isActive) {
+  const label = state.jobTitles[jobId] || (jobId ? `Job ${jobId}` : "Unknown job");
+  const c = jobStatusCounts(groupItems);
+  const posHrs = jobWeeklyHours(jobId);
+  const totalWorkload = groupItems.reduce((sum, item) => sum + ifHiredTotalForItem(item, allItems), 0);
+  return `
+    <button class="job-review-item ${isActive ? "active" : ""}" type="button" data-review-job="${escapeHtml(jobId)}">
+      <h3>${escapeHtml(label)}</h3>
+      <div class="job-review-meta">
+        <span>${groupItems.length} applicant${groupItems.length === 1 ? "" : "s"}</span>
+        <span>${posHrs || "-"}h/week</span>
+        <span>${totalWorkload}h total risk</span>
+      </div>
+      <div class="job-review-counts">
+        <span>P ${c.pending}</span>
+        <span>S ${c.shortlisted}</span>
+        <span>H ${c.hired}</span>
+      </div>
+    </button>`;
+}
+
+function renderApplicantDashboardFeed(items) {
+  const feed = byId("applicationsFeed");
+  const emptyEl = byId("applicationsEmpty");
+  const displayItems = filterItemsForDisplay(items || []);
+  if (!displayItems.length) {
+    emptyEl.style.display = "block";
+    feed.style.display = "none";
+    feed.innerHTML = "";
+    return;
+  }
+  emptyEl.style.display = "none";
+  feed.style.display = "grid";
+  const groups = new Map();
+  for (const item of displayItems) {
+    const j = item.jobId != null ? String(item.jobId) : "";
+    if (!groups.has(j)) groups.set(j, []);
+    groups.get(j).push(item);
+  }
+  const keys = Array.from(groups.keys()).sort();
+  if (!state.selectedJobId || !groups.has(state.selectedJobId)) {
+    state.selectedJobId = keys[0];
+  }
+  const selectedJobId = state.selectedJobId;
+  const selectedItems = sortGroupItems(groups.get(selectedJobId) || [], items, state.sortMode);
+  const label = state.jobTitles[selectedJobId] || (selectedJobId ? `Job ${selectedJobId}` : "Unknown job");
+  const posHrs = jobWeeklyHours(selectedJobId);
+  const closed = jobClosed(selectedJobId);
+  const closedAt = state.hiringState[selectedJobId] ? state.hiringState[selectedJobId].closedAt : "";
+  const shortlistedCount = selectedItems.filter(x => String(x.status || "").toLowerCase() === "shortlisted").length;
+  const jEsc = escapeHtml(selectedJobId);
+  const jobList = keys.map(jobId => renderJobReviewItem(jobId, groups.get(jobId), items || [], jobId === selectedJobId)).join("");
+  const cards = selectedItems.map(item => renderApplicantCardDashboard(item, closed)).join("");
+  feed.innerHTML = `
+    <div class="review-workspace">
+      <aside class="job-review-list" aria-label="Job position list">
+        <div class="job-review-title">Positions</div>
+        ${jobList}
+      </aside>
+      <section class="applicant-review-panel">
+        <div class="mo-job-group" data-job-group="${jEsc}">
+          <div class="review-panel-head">
+            <div>
+              <h3>${escapeHtml(label)}</h3>
+              <p>${selectedItems.length} applicant${selectedItems.length === 1 ? "" : "s"} · This position: <strong>${posHrs || "-"}</strong> hours/week</p>
+            </div>
+            <div class="review-panel-actions">
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#475569;"><input type="checkbox" data-select-all-job="${jEsc}" ${closed ? "disabled" : ""}/> Select all</label>
+              ${closed ? `<span class="mo-closed-flag">Recruitment Closed${closedAt ? ` (${escapeHtml(closedAt)})` : ""}</span>` : ""}
+              <button class="btn btn-outline" type="button" data-open-history="${jEsc}">View history</button>
+              <button class="btn btn-primary" type="button" data-open-final="${jEsc}" ${closed ? "disabled" : ""}>Confirm Final Hiring</button>
+            </div>
+          </div>
+          ${renderJobStatsBar((items || []).filter(it => String(it.jobId ?? "") === selectedJobId))}
+          ${!closed && shortlistedCount === 0 ? `<p class="notice">No shortlisted applicant yet for final confirmation.</p>` : ""}
+          <div class="applicant-card-list">${cards}</div>
+        </div>
+      </section>
+    </div>`;
+  syncSelectAllMasters();
+}
+
 function renderApplicantFeed(items) {
+  renderApplicantDashboardFeed(items);
+  return;
   const feed = byId("applicationsFeed");
   const emptyEl = byId("applicationsEmpty");
   const displayItems = filterItemsForDisplay(items || []);
@@ -938,6 +1165,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   feed.addEventListener("click", async e => {
+    const jobReviewBtn = e.target.closest("[data-review-job]");
+    if (jobReviewBtn) {
+      state.selectedJobId = jobReviewBtn.getAttribute("data-review-job");
+      renderApplicantFeed(state.items);
+      return;
+    }
+
     const finalBtn = e.target.closest("[data-open-final]");
     if (finalBtn && !finalBtn.disabled) {
       await openFinalHiringModal(finalBtn.getAttribute("data-open-final"));
