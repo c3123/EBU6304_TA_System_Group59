@@ -9,34 +9,91 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin Dashboard - TA Recruitment Platform</title>
-  <link rel="stylesheet" href="../assets/css/main.css" />
+  <link rel="stylesheet" href="<%= request.getContextPath() %>/assets/css/main.css?v=admin-student-style" />
 </head>
-<body>
-<div class="admin-portal" data-current-user-id="<%= currentUserId %>" data-current-user-name="<%= currentUserName %>">
-  <header class="admin-portal-header">
-    <div class="admin-portal-header-inner">
-      <div class="admin-portal-brand">
-        <div class="admin-portal-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none">
-            <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"></rect>
-            <path d="M8 14L10.5 11.5L13 13.5L16.5 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
-          </svg>
-        </div>
-        <div>
-          <h1>Administrator Portal</h1>
-          <p id="adminSubTitle">Welcome, <%= currentUserName %></p>
-        </div>
+<body class="admin-portal-page">
+<div class="admin-portal admin-shell" data-current-user-id="<%= currentUserId %>" data-current-user-name="<%= currentUserName %>">
+  <aside class="admin-sidebar" aria-label="Administrator navigation">
+    <div class="admin-portal-brand">
+      <div class="admin-portal-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M4 7.5L12 3L20 7.5L12 12L4 7.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+          <path d="M6.5 10V15.5C6.5 17.2 9 18.6 12 18.6C15 18.6 17.5 17.2 17.5 15.5V10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+        </svg>
       </div>
-      <div class="admin-header-actions">
-        <button id="adminAlertsButton" class="admin-alert-trigger" type="button" aria-haspopup="dialog" aria-controls="adminAlertsModal" aria-label="Open administrator alerts">
-          <span aria-hidden="true">!</span>
-          <strong id="adminAlertsBadge">0</strong>
-        </button>
-        <a class="admin-btn-logout" href="<%= request.getContextPath() %>/logout">Logout</a>
+      <div>
+        <h1>Administrator Portal</h1>
+        <p id="adminSubTitle">Welcome, <%= currentUserName %></p>
       </div>
     </div>
-  </header>
+
+    <nav class="admin-tabs" role="tablist" aria-label="Admin sections">
+      <button class="admin-tab active" data-admin-tab="overview" role="tab" aria-selected="true">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 13H10V20H4V13Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path><path d="M14 4H20V20H14V4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path><path d="M4 4H10V9H4V4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path></svg>
+        System Overview
+      </button>
+      <button class="admin-tab" data-admin-tab="workload" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 19V5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M8 17V11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M12 17V7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M16 17V9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M20 17V13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+        Workload
+      </button>
+      <button class="admin-tab" data-admin-tab="users" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8.5 11.2C10.2 11.2 11.5 9.9 11.5 8.2C11.5 6.5 10.2 5.2 8.5 5.2C6.8 5.2 5.5 6.5 5.5 8.2C5.5 9.9 6.8 11.2 8.5 11.2Z" stroke="currentColor" stroke-width="1.8"></path><path d="M3.8 19C4.5 16.4 6.2 15.1 8.5 15.1C10.8 15.1 12.5 16.4 13.2 19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M15 10.5C16.4 10.5 17.5 9.4 17.5 8C17.5 6.6 16.4 5.5 15 5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M15.5 15.2C17.8 15.5 19.3 16.8 20 19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+        Users
+      </button>
+      <button class="admin-tab" data-admin-tab="demands" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 3.8H18C18.7 3.8 19.2 4.3 19.2 5V19C19.2 19.7 18.7 20.2 18 20.2H6C5.3 20.2 4.8 19.7 4.8 19V5C4.8 4.3 5.3 3.8 6 3.8Z" stroke="currentColor" stroke-width="1.8"></path><path d="M8 9H16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M8 13H14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M8 17H12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+        Demand Review
+      </button>
+      <button class="admin-tab" data-admin-tab="jobs" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 7V5.5C9 4.7 9.7 4 10.5 4H13.5C14.3 4 15 4.7 15 5.5V7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M5 7H19C19.7 7 20.2 7.5 20.2 8.2V18.8C20.2 19.5 19.7 20 19 20H5C4.3 20 3.8 19.5 3.8 18.8V8.2C3.8 7.5 4.3 7 5 7Z" stroke="currentColor" stroke-width="1.8"></path><path d="M9.5 12H14.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+        Jobs
+      </button>
+      <button class="admin-tab" data-admin-tab="announcements" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 14V10L16 5V19L5 14Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path><path d="M5 14L7 20H10L8 15" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path><path d="M18 10.2C19.1 10.8 19.7 11.4 19.7 12C19.7 12.6 19.1 13.2 18 13.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+        Announcements
+      </button>
+      <button class="admin-tab" data-admin-tab="account" role="tab" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 12C14.2 12 16 10.2 16 8C16 5.8 14.2 4 12 4C9.8 4 8 5.8 8 8C8 10.2 9.8 12 12 12Z" stroke="currentColor" stroke-width="1.8"></path><path d="M5.5 20C6.4 16.8 8.6 15.2 12 15.2C15.4 15.2 17.6 16.8 18.5 20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+        My Account
+      </button>
+    </nav>
+
+    <div class="admin-profile-card">
+      <div class="admin-profile-card-visual" aria-hidden="true"></div>
+      <h2>Admin Control Center</h2>
+      <p>Monitor workload, demand approvals, users, and recruitment health.</p>
+      <div class="admin-profile-progress"><span></span></div>
+      <button id="adminSidebarOutcomeBtn" type="button">View Results -></button>
+    </div>
+  </aside>
+
+  <div class="admin-main">
+    <header class="admin-topbar">
+      <div class="admin-top-search">
+        <input type="search" placeholder="Search users, jobs, demands, or reports..." aria-label="Search admin portal" />
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M10.8 18.1C14.8 18.1 18.1 14.8 18.1 10.8C18.1 6.8 14.8 3.5 10.8 3.5C6.8 3.5 3.5 6.8 3.5 10.8C3.5 14.8 6.8 18.1 10.8 18.1Z" stroke="currentColor" stroke-width="1.8"></path>
+          <path d="M16.2 16.2L20.5 20.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+        </svg>
+      </div>
+      <div></div>
+      <div class="admin-header-actions">
+        <button id="adminAlertsButton" class="admin-alert-trigger" type="button" aria-haspopup="dialog" aria-controls="adminAlertsModal" aria-label="Open administrator alerts">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M18 9.5C18 6.2 15.3 3.5 12 3.5C8.7 3.5 6 6.2 6 9.5V13.7L4.6 16.2C4.3 16.8 4.7 17.5 5.4 17.5H18.6C19.3 17.5 19.7 16.8 19.4 16.2L18 13.7V9.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+            <path d="M10 20C10.5 20.6 11.2 20.9 12 20.9C12.8 20.9 13.5 20.6 14 20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+          </svg>
+          <strong id="adminAlertsBadge">0</strong>
+        </button>
+        <div class="admin-user-menu">
+          <span class="admin-avatar">AD</span>
+          <strong><%= currentUserName %></strong>
+        </div>
+        <a class="admin-btn-logout" href="<%= request.getContextPath() %>/logout">Logout</a>
+      </div>
+    </header>
 
   <div id="adminAlertsModal" class="admin-modal admin-hidden" role="dialog" aria-modal="true" aria-labelledby="adminAlertsModalTitle">
     <div class="admin-modal-backdrop" data-alerts-close></div>
@@ -52,16 +109,7 @@
     </div>
   </div>
 
-  <main class="admin-portal-main">
-    <nav class="admin-tabs" role="tablist" aria-label="Admin sections">
-      <button class="admin-tab active" data-admin-tab="overview" role="tab" aria-selected="true">System Overview</button>
-      <button class="admin-tab" data-admin-tab="workload" role="tab" aria-selected="false">Workload</button>
-      <button class="admin-tab" data-admin-tab="users" role="tab" aria-selected="false">Users</button>
-      <button class="admin-tab" data-admin-tab="demands" role="tab" aria-selected="false">Demand Review</button>
-      <button class="admin-tab" data-admin-tab="jobs" role="tab" aria-selected="false">Jobs</button>
-      <button class="admin-tab" data-admin-tab="announcements" role="tab" aria-selected="false">Announcements</button>
-      <button class="admin-tab" data-admin-tab="account" role="tab" aria-selected="false">My Account</button>
-    </nav>
+  <main class="admin-portal-main admin-content">
 
     <section class="admin-panel" data-admin-panel="overview">
       <div class="admin-headline">
@@ -184,6 +232,20 @@
           <h2 class="admin-section-title">User Management</h2>
           <p class="admin-section-desc">Review account roles and perform admin actions.</p>
         </div>
+      </div>
+      <div class="card admin-user-search-card" style="margin-bottom:16px;">
+        <h3 class="admin-subtitle">Find Users</h3>
+        <div class="admin-user-search-row">
+          <div class="field">
+            <label for="adminUserSearchInput">Search</label>
+            <input id="adminUserSearchInput" type="search" placeholder="Search by name, email, role, or ID" autocomplete="off" />
+          </div>
+          <div class="row admin-user-search-actions">
+            <button id="adminUserSearchBtn" type="button" class="btn btn-primary">Search</button>
+            <button id="adminUserSearchClearBtn" type="button" class="btn btn-outline">Clear</button>
+          </div>
+        </div>
+        <p id="adminUserSearchMeta" class="admin-list-meta">Showing all users.</p>
       </div>
       <div class="card" style="margin-bottom:16px;">
         <h3 class="admin-subtitle">Create User</h3>
@@ -558,6 +620,7 @@
 
     <p id="adminNotice" class="notice"></p>
   </main>
+  </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="../assets/js/common.js"></script>
