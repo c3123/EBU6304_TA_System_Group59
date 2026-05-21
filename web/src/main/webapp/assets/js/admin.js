@@ -17,6 +17,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const alertsCloseBtn = byId("adminAlertsCloseBtn");
   const alertsList = byId("adminAlertsList");
   const overviewOutcomeBtn = byId("adminOverviewOutcomeBtn");
+  const sidebarOutcomeBtn = byId("adminSidebarOutcomeBtn");
   const demandStatusFilterEl = byId("adminDemandStatusFilter");
   const demandRefreshBtn = byId("adminDemandRefreshBtn");
   const demandCards = byId("adminDemandCards");
@@ -51,6 +52,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const createButton = byId("adminCreateUserBtn");
   const studentIdField = byId("adminStudentIdField");
   const programmeField = byId("adminProgrammeField");
+  const userSearchInput = byId("adminUserSearchInput");
+  const userSearchBtn = byId("adminUserSearchBtn");
+  const userSearchClearBtn = byId("adminUserSearchClearBtn");
+  const userSearchMeta = byId("adminUserSearchMeta");
 
   const thresholdForm = byId("adminThresholdForm");
   const thresholdHoursEl = byId("adminThresholdHours");
@@ -99,6 +104,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
   const demandFilters = {
     status: "all"
+  };
+  const userFilters = {
+    search: ""
   };
   const RECRUITMENT_VACANCY_TOP = 10;
   const outcomeJobDateRange = { since: "", until: "" };
@@ -573,7 +581,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderOverview(latestData);
     renderOverviewCharts(latestData);
     renderJobCharts(latestData);
-    renderUsers(latestData.users || []);
+    renderUsers(filteredUsersForDisplay(latestData.users || []), latestData.users || []);
     renderJobs(filteredJobsForDisplay(latestData.jobs || []));
     renderWorkload(latestData.workload || []);
     renderAlerts(latestData.alerts || []);
@@ -584,6 +592,20 @@ document.addEventListener("DOMContentLoaded", async () => {
       return jobs;
     }
     return jobs.filter((job) => String(job.teacherName || "").trim() === filters.teacher);
+  }
+
+  function filteredUsersForDisplay(users) {
+    const query = String(userFilters.search || "").trim().toLowerCase();
+    if (!query) {
+      return users;
+    }
+    return users.filter((user) => [
+      user.name,
+      user.email,
+      user.role,
+      user.id,
+      formatRole(user.role)
+    ].some((value) => String(value || "").toLowerCase().includes(query)));
   }
 
   async function loadDemands() {
@@ -628,8 +650,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     `;
   }
 
-  function renderUsers(users) {
-    const adminCount = users.filter((user) => user.role === "admin").length;
+  function renderUsers(users, allUsers) {
+    const sourceUsers = Array.isArray(allUsers) ? allUsers : users;
+    const adminCount = sourceUsers.filter((user) => user.role === "admin").length;
+    if (userSearchMeta) {
+      const query = String(userFilters.search || "").trim();
+      userSearchMeta.textContent = query
+        ? `Showing ${users.length} of ${sourceUsers.length} users for "${query}".`
+        : `Showing all ${sourceUsers.length} users.`;
+    }
     const roleGroups = {
       student: { title: "Students", items: [] },
       teacher: { title: "Teachers", items: [] },
@@ -665,7 +694,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         <td>${escapeHtml(user.id)}</td>
         <td>${buildUserActions(user, adminCount)}</td>
       </tr>
-    `).join("");
+    `).join("") || `<tr><td colspan="5">No users match the current search.</td></tr>`;
   }
 
   function renderDemands(items) {
@@ -1531,6 +1560,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  function applyUserSearch() {
+    userFilters.search = userSearchInput ? userSearchInput.value.trim() : "";
+    renderUsers(filteredUsersForDisplay((latestData && latestData.users) || []), (latestData && latestData.users) || []);
+    setNotice(userFilters.search ? "User search applied." : "Showing all users.", false);
+    activateTab("users");
+  }
+
+  function clearUserSearch() {
+    userFilters.search = "";
+    if (userSearchInput) {
+      userSearchInput.value = "";
+    }
+    renderUsers(filteredUsersForDisplay((latestData && latestData.users) || []), (latestData && latestData.users) || []);
+    setNotice("User search cleared.", false);
+    activateTab("users");
+  }
+
   async function downloadReport(format) {
     const button = format === "csv" ? exportCsvBtn : exportTxtBtn;
     const defaultText = format === "csv" ? "Export CSV" : "Export TXT";
@@ -1886,6 +1932,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     tab.addEventListener("click", () => activateTab(tab.getAttribute("data-admin-tab")));
   });
   if (overviewOutcomeBtn) overviewOutcomeBtn.addEventListener("click", openRecruitmentOutcome);
+  if (sidebarOutcomeBtn) sidebarOutcomeBtn.addEventListener("click", openRecruitmentOutcome);
   if (adminOutcomeBackBtn) adminOutcomeBackBtn.addEventListener("click", () => activateTab("overview"));
   if (alertsButton) alertsButton.addEventListener("click", openAlertsModal);
   if (alertsModal) {
@@ -1897,6 +1944,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   createRoleEl.addEventListener("change", syncCreateRoleFields);
   createUserForm.addEventListener("submit", createUser);
+  if (userSearchBtn) userSearchBtn.addEventListener("click", applyUserSearch);
+  if (userSearchClearBtn) userSearchClearBtn.addEventListener("click", clearUserSearch);
+  if (userSearchInput) {
+    userSearchInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        applyUserSearch();
+      }
+    });
+  }
   thresholdForm.addEventListener("submit", saveThreshold);
   if (demandRefreshBtn) demandRefreshBtn.addEventListener("click", refreshDemandFilters);
   applyFiltersBtn.addEventListener("click", applyFilters);
