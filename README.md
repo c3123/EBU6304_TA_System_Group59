@@ -14,6 +14,12 @@
 ## Quick Start
 This project uses a standard Maven Servlet/JSP web module under `web/`.
 
+Recommended local environment:
+
+- JDK 11 for build, unit tests, and JavaDocs.
+- Maven 3.8+.
+- Tomcat 10.1+ for deployment.
+
 Project structure:
 
 ```text
@@ -45,13 +51,13 @@ http://localhost:8080/web/
 
 ## Running unit tests
 
-MO applicant management and notification logic are covered by JUnit 5 service-layer tests. Tests use a temporary JSON data directory (`ta.data.dir`) and do not require Tomcat.
+MO applicant management, Student self-service workflows, shared password change, and servlet access control are covered by JUnit 5 tests. Tests use a temporary JSON data directory (`ta.data.dir`) and do not require Tomcat.
 
 ```powershell
-mvn -f web/pom.xml test
+mvn -f web/pom.xml "-Dmaven.repo.local=.m2repo" test
 ```
 
-Expected result: **61 tests**, all passing (`BUILD SUCCESS`).
+Expected result: **80 tests**, all passing (`BUILD SUCCESS`).
 
 | Test class | Coverage |
 | --- | --- |
@@ -60,8 +66,34 @@ Expected result: **61 tests**, all passing (`BUILD SUCCESS`).
 | `MoApplicationServiceTest` | List/detail, status update (single & batch), evaluation notes, decision feedback |
 | `MoApplicationExportServiceTest` | Applicant export CSV/JSON, scope filter, validation |
 | `MoNotificationServiceTest` | Notification list, backfill, announcements, mark-read |
+| `StudentServiceTest` | Profile persistence, attachment upload/delete, apply/withdraw, assigned jobs, AI advisor fallback |
+| `AccountServiceTest` | Password change success for student/MO/admin and validation failures |
+| `AuthFilterTest` | Unauthenticated API access and wrong-role access for admin/MO/student routes |
 
-**Testing strategy (report):** automated unit tests assert business rules in `MoApplicationService`, `MoApplicationExportService`, and `MoNotificationService`; manual acceptance is documented in [docs/Acceptance_Test_Checklist.md](docs/Acceptance_Test_Checklist.md). **Techniques:** equivalence classes, boundary values, state-transition testing; data isolation via `System.setProperty("ta.data.dir", …)`.
+## JavaDocs
+
+Generate JavaDocs from the repository root:
+
+```powershell
+mvn -f web/pom.xml "-Dmaven.repo.local=.m2repo" javadoc:javadoc
+```
+
+The generated entry point is:
+
+```text
+web/target/site/apidocs/index.html
+```
+
+Code documentation notes are maintained in [docs/JavaDocs.md](docs/JavaDocs.md).
+
+**Testing strategy (report):** automated unit tests assert business rules in MO, Student, shared account, and servlet access-control layers; manual acceptance is documented in [docs/Acceptance_Test_Checklist.md](docs/Acceptance_Test_Checklist.md). **Techniques:** equivalence classes, boundary values, state-transition testing, role-access testing; data isolation via `System.setProperty("ta.data.dir", ...)`.
+
+Manual testing still required before final submission:
+
+- Browser-level Student flow: profile, attachments, job browsing, apply/withdraw, assigned jobs, notifications, and AI advisor UI fallback.
+- Browser-level Admin flow: demand review, workload levels, job drilldown, filtered exports, announcements, alerts, and account management.
+- Browser-level Shared account flow: password change success and validation failures from each role page.
+- Tomcat deployment smoke test using the generated WAR.
 
 ## Demo Accounts
 
@@ -76,9 +108,12 @@ Use the following accounts for demonstration:
 ## Current Version Notes
 
 - Sprint 1 release tag: `v1.0-sprint1`
-- Current repository state is `Sprint 3 development in progress`
-- Sprint 1 and Sprint 2 core workflows are already implemented and remain the current functional baseline
-- Sprint 3 work now focuses on workflow optimization, JSON data design, reporting, and final acceptance preparation
+- Sprint 2 release tag: `v2.0-sprint2`
+- Sprint 3 release tag: `v3.0-Sprint3`
+- Final documentation update: `2026-05-21`
+- Final assessment date from the project handout: `2026-05-24`
+- Current repository state is final delivery preparation with Sprint 1-4 features integrated on the active development branches.
+- Sprint 1 and Sprint 2 core workflows remain the functional baseline; Sprint 3 and Sprint 4 add reporting, account maintenance, workload visibility, demand review, AI-assisted matching/advice, announcements, and final acceptance readiness.
 
 ## Current Features
 
@@ -88,13 +123,14 @@ Use the following accounts for demonstration:
 - MO workflow for demand creation, approval tracking, job publishing, applicant review, hiring actions, and recruitment lifecycle control
 - Admin workflow for dashboard overview, workload monitoring, demand review, recruitment reopen, and user management
 
-## Sprint 3 Focus
+## Final Delivery Focus
 
 - Admin: workload threshold setting, weekly report export, and job filtering
 - Shared: self-service password change
 - MO: applicant review notes, posted-job history, and applicant export
 - TA: assigned jobs and schedule visibility
-- Non-functional: performance, loading-state polish, and acceptance-test preparation
+- Sprint 4: demand approval workbench, job-level application drilldown, recruitment outcome views, announcements, alerts, and AI-assisted student guidance
+- Non-functional: performance, loading-state polish, JavaDocs, automated tests, and acceptance-test preparation
 
 ## Runtime Data Storage
 
@@ -131,6 +167,7 @@ Initialization rules:
 
 - Sprint 3 minimal interface and data design: [docs/Sprint3_Minimal_Design.md](docs/Sprint3_Minimal_Design.md)
 - Acceptance checklist for hand test and demo rehearsal: [docs/Acceptance_Test_Checklist.md](docs/Acceptance_Test_Checklist.md)
+- JavaDocs and code documentation notes: [docs/JavaDocs.md](docs/JavaDocs.md)
 
 ## 1. Project Introduction 
 ### Project Overview
@@ -154,14 +191,14 @@ The current intermediate version includes:
 - expanded MO workflow for applicant review, hiring decisions, and job lifecycle control
 - expanded student workflow for profile persistence, attachments, and application management
 
-### Sprint 3 Development Status
-Sprint 3 extends the current baseline toward final delivery readiness.
+### Final Delivery Status
+The current version integrates the Sprint 1 to Sprint 4 workflows for final delivery preparation.
 
-The current Sprint 3 development scope includes:
-- documentation synchronization for runtime storage and interface planning
+The final delivery scope includes:
+- synchronized documentation for setup, runtime storage, API contracts, JavaDocs, and testing
 - single-location JSON persistence under `WEB-INF/data`
-- minimal interface and data design for the remaining Sprint 3 stories
-- acceptance test checklist preparation for final demo rehearsal and regression checking
+- automated MO service tests and manual acceptance checklist preparation
+- final UI and workflow polish for student, MO, and administrator portals
 
 ---
 

@@ -4,6 +4,7 @@ import com.ta.model.ApplicationRecord;
 import com.ta.model.JobPosting;
 import com.ta.model.NotificationRecord;
 import com.ta.model.StudentProfile;
+import com.ta.model.User;
 import com.ta.service.mo.MoBusinessException;
 import com.ta.util.JsonUtility;
 import jakarta.servlet.ServletContext;
@@ -32,7 +33,7 @@ public abstract class MoTestSupport {
     public static final String STUDENT_USER_ID = "student_test_1";
 
     @TempDir
-    Path tempDataDir;
+    protected Path tempDataDir;
 
     protected ServletContext servletContext;
 
@@ -63,12 +64,24 @@ public abstract class MoTestSupport {
         JsonUtility.saveStudents(servletContext, students);
     }
 
+    protected void writeUsers(List<User> users) throws IOException {
+        JsonUtility.saveUsers(servletContext, users);
+    }
+
     protected List<ApplicationRecord> readApplications() throws IOException {
         return JsonUtility.loadApplications(servletContext);
     }
 
     protected List<NotificationRecord> readNotifications() throws IOException {
         return JsonUtility.loadNotifications(servletContext);
+    }
+
+    protected List<StudentProfile> readStudents() throws IOException {
+        return JsonUtility.loadStudents(servletContext);
+    }
+
+    protected List<User> readUsers() throws IOException {
+        return JsonUtility.loadUsers(servletContext);
     }
 
     protected static void assertMoBusinessException(Runnable action, String expectedCode, int expectedHttpStatus) {

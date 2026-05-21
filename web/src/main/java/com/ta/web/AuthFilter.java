@@ -79,7 +79,7 @@ public class AuthFilter extends HttpFilter implements Filter {
             return "admin".equals(normalizedRole);
         }
 
-        if ("/pages/student.jsp".equals(path)) {
+        if (path.startsWith("/api/student/") || "/pages/student.jsp".equals(path)) {
             return "student".equals(normalizedRole);
         }
 
