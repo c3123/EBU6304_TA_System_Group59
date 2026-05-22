@@ -831,10 +831,20 @@ public class MoApplicationService {
             r.setLabel(att.getLabel());
             r.setFileSize(att.getFileSize());
             r.setUploadedAt(att.getUploadedAt());
-            r.setDownloadUrl("/api/attachments/" + safe(record.getStudentNo()) + "/" + safe(att.getId()) + "/download");
+            r.setDownloadUrl("/api/attachments/" + safe(preferredStudentKey(profile, record)) + "/" + safe(att.getId()) + "/download");
             items.add(r);
         }
         return items;
+    }
+
+    private String preferredStudentKey(StudentProfile profile, ApplicationRecord record) {
+        if (profile != null && profile.getStudentId() != null && !profile.getStudentId().isBlank()) {
+            return profile.getStudentId();
+        }
+        if (record.getStudentNo() != null && !record.getStudentNo().isBlank()) {
+            return record.getStudentNo();
+        }
+        return record.getStudentId();
     }
 
     private String safe(String value) {

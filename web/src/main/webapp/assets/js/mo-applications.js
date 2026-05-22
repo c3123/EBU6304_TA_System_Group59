@@ -842,6 +842,12 @@ function syncSelectAllMasters() {
   });
 }
 
+function encodeAttachmentUrl(url) {
+  if (!url) return "";
+  const parts = String(url).split("/");
+  return parts.map((part, index) => index === 0 ? part : encodeURIComponent(part)).join("/");
+}
+
 function fillDetailFields(expandEl, detail) {
   expandEl.querySelectorAll("[data-field]").forEach(el => {
     const k = el.getAttribute("data-field");
@@ -853,7 +859,7 @@ function fillDetailFields(expandEl, detail) {
       }
       const contextPath = getContextPath();
       el.innerHTML = list.map(att => {
-        const href = `${window.location.origin}${contextPath}${att.downloadUrl}`;
+        const href = `${window.location.origin}${contextPath}${encodeAttachmentUrl(att.downloadUrl)}`;
         const sizeText = Number(att.fileSize || 0) > 0 ? ` (${Math.round((att.fileSize / 1024) * 10) / 10} KB)` : "";
         return `<div style="margin:6px 0;display:flex;justify-content:space-between;gap:12px;align-items:center;"><span>${escapeHtml(safeText(att.label || "Attachment"))}: ${escapeHtml(safeText(att.fileName || "file"))}${escapeHtml(sizeText)}</span><a class="btn btn-outline" style="padding:4px 10px;font-size:12px;" href="${encodeURI(href)}" target="_blank" rel="noopener">Download</a></div>`;
       }).join("");
