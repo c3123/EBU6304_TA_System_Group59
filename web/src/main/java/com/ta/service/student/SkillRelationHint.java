@@ -41,9 +41,9 @@ public class SkillRelationHint {
         this.credit = credit;
     }
 
-    /** Display form e.g. "MATLAB → Statistics (80%)" */
+    /** Display form e.g. "MATLAB -> Statistics (80%)". */
     public String toDisplayLabel() {
         int pct = (int) Math.round(credit * 100);
-        return studentSkill + " → " + requiredSkill + " (" + pct + "%)";
+        return studentSkill + " -> " + requiredSkill + " (" + pct + "%)";
     }
 }
