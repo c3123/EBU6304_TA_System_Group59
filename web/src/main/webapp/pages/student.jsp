@@ -155,6 +155,10 @@
       color: #334155;
     }
 
+    .job-match .job-partial-match {
+      color: #92400e;
+    }
+
     .job-match-strong {
       border-left-color: #16a34a;
       background: #f0fdf4;
@@ -1563,8 +1567,26 @@
             Confirmed TA jobs are counted from applications with Hired status.
           </div>
         </div>
-        <div id="hiredEmpty" class="empty-state hidden">You do not have any jobs yet.</div>
-        <div id="hiredList" class="hired-list hidden"></div>
+        <div class="hired-columns">
+          <div class="hired-jobs-column">
+            <div id="hiredEmpty" class="empty-state hidden">You do not have any jobs yet.</div>
+            <div id="hiredList" class="hired-list hidden"></div>
+          </div>
+          <div class="hired-calendar-column">
+            <div class="hired-schedule-panel">
+              <div class="calendar-toolbar">
+                <button id="calendarPrevBtn" class="btn btn-outline" type="button">Prev</button>
+                <div class="calendar-title">
+                  <strong id="calendarMonthLabel">Loading…</strong>
+                  <span id="calendarSelectedDateLabel">Select a date to view scheduled TA work.</span>
+                </div>
+                <button id="calendarNextBtn" class="btn btn-outline" type="button">Next</button>
+              </div>
+              <div id="jobCalendarGrid" class="calendar-grid"></div>
+              <div id="calendarEventList" class="calendar-event-list"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -1787,6 +1809,11 @@
     </div>
 
     <div class="job-detail-block" style="margin-top:10px;">
+      <span class="job-detail-label">Skill Match Breakdown</span>
+      <div class="job-detail-value" id="detailMatchBreakdown"></div>
+    </div>
+
+    <div class="job-detail-block" style="margin-top:10px;">
       <span class="job-detail-label">Submitted Profile Snapshot</span>
       <div class="job-detail-value" id="detailProfileSnapshot"></div>
     </div>
@@ -1804,7 +1831,7 @@
   </div>
 </div>
   <script src="<%= request.getContextPath() %>/assets/js/common.js?v=student4"></script>
-  <script src="<%= request.getContextPath() %>/assets/js/student.js?v=student4"></script>
+  <script src="<%= request.getContextPath() %>/assets/js/student.js?v=student5"></script>
 </body>
 </html>
 

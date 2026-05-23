@@ -52,9 +52,12 @@ const state = {
   pollingTimer: null,
   finalModalJobId: null,
   selectedIds: new Set(),
+  aiRecommendations: {},
   sortMode: "applied",
   highMatchOnly: false,
-  selectedJobId: null
+  selectedJobId: null,
+  expandedDetailIds: new Set(),
+  detailCache: {}
 };
 
 function normalizeSkillList(value) {
@@ -242,6 +245,8 @@ function renderSkillFitCompact(item) {
 }
 
 function ifHiredTotalForItem(item, items) {
+  const projected = Number(item && item.projectedIfHiredHours);
+  if (Number.isFinite(projected) && projected >= 0) return projected;
   const positionHrs = jobWeeklyHours(item.jobId);
   const currentOther = currentHiredHoursElsewhere(items, item.studentId, item.applicationId);
   return currentOther + positionHrs;
@@ -408,6 +413,11 @@ function jobWeeklyHours(jobId) {
 }
 
 function currentHiredHoursElsewhere(items, studentId, excludeApplicationId) {
+  const item = (items || []).find(
+    it => it.studentId === studentId && it.applicationId === excludeApplicationId
+  );
+  const fromApi = Number(item && item.currentHiredHours);
+  if (Number.isFinite(fromApi) && fromApi >= 0) return fromApi;
   let sum = 0;
   for (const it of items) {
     if (it.studentId !== studentId || it.applicationId === excludeApplicationId) continue;
@@ -474,6 +484,7 @@ async function loadList() {
   const data = await getJson(url);
   state.items = data && Array.isArray(data.items) ? data.items : [];
   pruneSelectionToItems();
+  pruneExpandedDetails();
   renderSummaryCards(state.items);
   renderApplicantFeed(state.items);
   updateBatchBar();
@@ -538,6 +549,69 @@ function renderWorkloadBadge(tier, total) {
   return `<span class="workload-badge ${tier.key}">${escapeHtml(tier.label)} · ${escapeHtml(String(total))}h/week</span>`;
 }
 
+function recommendationBadgeClass(level) {
+  const normalized = String(level || "").toLowerCase();
+  if (normalized === "highly recommended" || normalized === "recommended") return "status-hired";
+  if (normalized === "use with caution") return "status-pending";
+  return "status-rejected";
+}
+
+function workloadStatusBadgeClass(status) {
+  const normalized = String(status || "").toLowerCase();
+  if (normalized === "balanced") return "status-hired";
+  if (normalized === "near limit") return "status-pending";
+  return "status-rejected";
+}
+
+function renderAiRecommendationBlock(item) {
+  const appId = String(item.applicationId || "");
+  const escapedAppId = escapeHtml(appId);
+  const rec = state.aiRecommendations[appId];
+  if (!rec) {
+    return `
+      <div class="mo-ai-rec" data-ai-rec-panel="${escapedAppId}" style="border:1px solid #dbeafe;background:#eff6ff;border-radius:8px;padding:12px;margin:12px 0;">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+          <div>
+            <strong style="color:#1e3a8a;">AI-assisted recommendation</strong>
+            <p class="notice" style="margin:4px 0 0;">Rule-based skill and workload summary with an AI-generated explanation.</p>
+          </div>
+          <button type="button" class="btn btn-outline" data-ai-rec-load="${escapedAppId}" data-job-id="${escapeHtml(item.jobId || "")}">View AI Suggestion</button>
+        </div>
+      </div>`;
+  }
+  if (rec.loading) {
+    return `<div class="mo-ai-rec" data-ai-rec-panel="${escapedAppId}" style="border:1px solid #dbeafe;background:#eff6ff;border-radius:8px;padding:12px;margin:12px 0;">Loading AI-assisted recommendation...</div>`;
+  }
+  if (rec.error) {
+    return `
+      <div class="mo-ai-rec" data-ai-rec-panel="${escapedAppId}" style="border:1px solid #fecaca;background:#fef2f2;border-radius:8px;padding:12px;margin:12px 0;">
+        <strong style="color:#991b1b;">AI recommendation unavailable</strong>
+        <p style="margin:4px 0 0;color:#7f1d1d;">${escapeHtml(rec.error)}</p>
+        <button type="button" class="btn btn-outline" data-ai-rec-load="${escapedAppId}" data-job-id="${escapeHtml(item.jobId || "")}" style="margin-top:8px;">Retry</button>
+      </div>`;
+  }
+  const pct = Math.round(Number(rec.skillMatchScore || 0) * 100);
+  return `
+    <div class="mo-ai-rec" data-ai-rec-panel="${escapedAppId}" style="border:1px solid #c7d2fe;background:#f8fafc;border-radius:8px;padding:12px;margin:12px 0;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
+        <div>
+          <strong style="color:#0f172a;">AI-assisted recommendation</strong>
+          <p class="notice" style="margin:4px 0 0;">AI explains deterministic skill match and workload balance. It does not decide hiring.</p>
+        </div>
+        <span class="status-pill ${recommendationBadgeClass(rec.recommendationLevel)}">${escapeHtml(rec.recommendationLevel || "Not Recommended")}</span>
+      </div>
+      <div class="mo-wl-grid" style="margin-bottom:10px;">
+        <div><span class="mo-app-lbl">Skill Match</span><div class="mo-wl-big" style="color:#2563eb">${pct}%</div></div>
+        <div><span class="mo-app-lbl">Current Workload</span><div class="mo-wl-big">${escapeHtml(rec.currentWorkloadHours || 0)}h/week</div></div>
+        <div><span class="mo-app-lbl">Projected Workload</span><div class="mo-wl-big">${escapeHtml(rec.projectedWorkloadHours || 0)}h/week</div></div>
+        <div><span class="mo-app-lbl">Workload Status</span><div><span class="status-pill ${workloadStatusBadgeClass(rec.workloadStatus)}">${escapeHtml(rec.workloadStatus || "-")}</span></div></div>
+      </div>
+      <div style="margin-bottom:8px;"><span class="mo-app-lbl">Matched Skills</span><div class="mo-skill-tags">${renderSkillTags(rec.matchedSkills, "matched")}</div></div>
+      <div style="margin-bottom:8px;"><span class="mo-app-lbl">Missing Skills</span><div class="mo-skill-tags">${renderSkillTags(rec.missingSkills, "missing")}</div></div>
+      <p style="margin:0;color:#334155;line-height:1.5;">${escapeHtml(rec.aiExplanation || "")}</p>
+    </div>`;
+}
+
 function renderApplicantCard(item, closed) {
   const st = String(item.status || "").toLowerCase();
   const id = escapeHtml(item.applicationId);
@@ -590,6 +664,7 @@ function renderApplicantCard(item, closed) {
         <div class="mo-app-status-slot" style="flex-shrink:0;">${renderStatusSelect(item, closed)}</div>
       </div>
       ${renderSkillFitBlock(item)}
+      ${renderAiRecommendationBlock(item)}
       ${workloadBlock}
       ${actionsBlock}
       ${renderNotesAndFeedback(item, closed)}
@@ -654,6 +729,9 @@ function renderApplicantCardDashboard(item, closed) {
   const chk = closed
     ? ""
     : `<label style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><input type="checkbox" data-app-select="${id}" ${state.selectedIds.has(rawId) ? "checked" : ""} /></label>`;
+  const isExpanded = state.expandedDetailIds.has(String(rawId));
+  const detailBtnLabel = isExpanded ? "Hide details" : "View details";
+  const expandClass = isExpanded ? "mo-app-expand mo-open" : "mo-app-expand";
   return `
     <article class="mo-app-card-proto ${borderClass}" data-application-id="${id}">
       <div class="applicant-card-top">
@@ -666,32 +744,25 @@ function renderApplicantCardDashboard(item, closed) {
         <span>Applied: ${escapeHtml(safeText(item.appliedAt))}</span>
         ${renderWorkloadBadge(tier, ifHiredTotal)}
       </div>
+      ${workloadBlock}
       ${renderSkillFitCompact(item)}
-      ${actionsBlock}
-      <details class="applicant-detail-drawer">
-        <summary>Details, workload and feedback</summary>
-        <div class="applicant-detail-body">
-          ${renderSkillFitBlock(item)}
-          ${workloadBlock}
-          ${renderNotesAndFeedback(item, closed)}
-          <div class="mo-app-grid">
-            <div><span class="mo-app-lbl">Student No</span><div>${escapeHtml(safeText(item.studentNo))}</div></div>
-            <div><span class="mo-app-lbl">Programme</span><div>${escapeHtml(safeText(item.programme))}</div></div>
-          </div>
-          <div style="margin-bottom:12px;"><span class="mo-app-lbl">Skills</span><div>${escapeHtml(safeText(item.skills))}</div></div>
-          <div style="margin-bottom:12px;"><span class="mo-app-lbl">Experience / Statement</span><div style="font-size:14px;color:#334155;">${escapeHtml(safeText(item.experience))}</div></div>
-        </div>
-      </details>
-      <div class="mo-app-expand">
+      ${renderAiRecommendationBlock(item)}
+      ${actionsBlock.replace(/View details/g, detailBtnLabel)}
+      <div class="${expandClass}">
         <p class="mo-app-meta" style="margin-bottom:10px">Attachments and full record (opening details marks <strong>pending</strong> as <strong>viewed</strong> on the server).</p>
+        ${renderNotesAndFeedback(item, closed)}
+        <div class="mo-app-grid">
+          <div><span class="mo-app-lbl">Student No</span><div>${escapeHtml(safeText(item.studentNo))}</div></div>
+          <div><span class="mo-app-lbl">Programme</span><div>${escapeHtml(safeText(item.programme))}</div></div>
+        </div>
+        <div style="margin-bottom:12px;"><span class="mo-app-lbl">Skills</span><div>${escapeHtml(safeText(item.skills))}</div></div>
+        <div style="margin-bottom:12px;"><span class="mo-app-lbl">Experience / Statement</span><div style="font-size:14px;color:#334155;">${escapeHtml(safeText(item.experience))}</div></div>
         <div class="mo-app-expand-grid">
           <div><span class="mo-app-lbl">Application ID</span><div data-field="applicationId"></div></div>
           <div><span class="mo-app-lbl">Job ID</span><div data-field="jobId"></div></div>
           <div><span class="mo-app-lbl">Course grade</span><div data-field="courseGrade"></div></div>
           <div><span class="mo-app-lbl">Applied at</span><div data-field="appliedAt"></div></div>
           <div><span class="mo-app-lbl">Status</span><div data-field="status"></div></div>
-          <div><span class="mo-app-lbl">Evaluation notes</span><div data-field="evaluationNotes"></div></div>
-          <div><span class="mo-app-lbl">Decision feedback</span><div data-field="decisionFeedback"></div></div>
           <div><span class="mo-app-lbl">Updated at</span><div data-field="updatedAt"></div></div>
           <div style="grid-column:1/-1;"><span class="mo-app-lbl">Attachments</span><div data-field="attachments"></div></div>
         </div>
@@ -779,6 +850,7 @@ function renderApplicantDashboardFeed(items) {
       </section>
     </div>`;
   syncSelectAllMasters();
+  restoreExpandedDetails();
 }
 
 function renderApplicantFeed(items) {
@@ -842,6 +914,38 @@ function syncSelectAllMasters() {
   });
 }
 
+function encodeAttachmentUrl(url) {
+  if (!url) return "";
+  const parts = String(url).split("/");
+  return parts.map((part, index) => index === 0 ? part : encodeURIComponent(part)).join("/");
+}
+
+function pruneExpandedDetails() {
+  const ids = new Set(state.items.map(i => String(i.applicationId)));
+  for (const id of state.expandedDetailIds) {
+    if (!ids.has(id)) {
+      state.expandedDetailIds.delete(id);
+      delete state.detailCache[id];
+    }
+  }
+}
+
+function restoreExpandedDetails() {
+  const feed = byId("applicationsFeed");
+  if (!feed) return;
+  for (const appId of state.expandedDetailIds) {
+    const card = feed.querySelector(`[data-application-id="${CSS.escape(appId)}"]`);
+    if (!card) continue;
+    const expand = card.querySelector(".mo-app-expand");
+    const btn = card.querySelector(".mo-app-detail-btn");
+    if (!expand) continue;
+    expand.classList.add("mo-open");
+    if (btn) btn.textContent = "Hide details";
+    const cached = state.detailCache[appId];
+    if (cached) fillDetailFields(expand, cached);
+  }
+}
+
 function fillDetailFields(expandEl, detail) {
   expandEl.querySelectorAll("[data-field]").forEach(el => {
     const k = el.getAttribute("data-field");
@@ -853,7 +957,7 @@ function fillDetailFields(expandEl, detail) {
       }
       const contextPath = getContextPath();
       el.innerHTML = list.map(att => {
-        const href = `${window.location.origin}${contextPath}${att.downloadUrl}`;
+        const href = `${window.location.origin}${contextPath}${encodeAttachmentUrl(att.downloadUrl)}`;
         const sizeText = Number(att.fileSize || 0) > 0 ? ` (${Math.round((att.fileSize / 1024) * 10) / 10} KB)` : "";
         return `<div style="margin:6px 0;display:flex;justify-content:space-between;gap:12px;align-items:center;"><span>${escapeHtml(safeText(att.label || "Attachment"))}: ${escapeHtml(safeText(att.fileName || "file"))}${escapeHtml(sizeText)}</span><a class="btn btn-outline" style="padding:4px 10px;font-size:12px;" href="${encodeURI(href)}" target="_blank" rel="noopener">Download</a></div>`;
       }).join("");
@@ -871,9 +975,14 @@ async function openCardDetail(card, btn) {
   if (!rawId || !expand || !btn) return;
   btn.disabled = true;
   try {
-    const detail = await getJson(`${apiBase()}/applications/detail/${encodeURIComponent(rawId)}`);
+    let detail = state.detailCache[rawId];
+    if (!detail) {
+      detail = await getJson(`${apiBase()}/applications/detail/${encodeURIComponent(rawId)}`);
+      state.detailCache[rawId] = detail;
+    }
     fillDetailFields(expand, detail);
     expand.classList.add("mo-open");
+    state.expandedDetailIds.add(String(rawId));
     const it = state.items.find(i => i.applicationId === rawId);
     if (it) {
       it.status = detail.status;
@@ -970,6 +1079,21 @@ async function saveFeedback(applicationId, text) {
   await postJson(`${apiBase()}/applications/feedback`, { applicationId, decisionFeedback: text });
   const it = state.items.find(i => i.applicationId === applicationId);
   if (it) it.decisionFeedback = text;
+}
+
+async function loadAiRecommendation(applicationId, jobId) {
+  if (!applicationId || !jobId) return;
+  state.aiRecommendations[applicationId] = { loading: true };
+  renderApplicantFeed(state.items);
+  try {
+    const data = await postJson(`${apiBase()}/applicant-ai-recommendation`, { applicationId, jobId });
+    state.aiRecommendations[applicationId] = data || { error: "No recommendation data returned." };
+  } catch (err) {
+    state.aiRecommendations[applicationId] = {
+      error: `${err.code || "ERROR"}: ${err.message || "Failed to load recommendation."}`
+    };
+  }
+  renderApplicantFeed(state.items);
 }
 
 async function persistFeedbackFromInput(feed, fbEl) {
@@ -1182,6 +1306,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       await openHistoryModal(historyBtn.getAttribute("data-open-history"));
       return;
     }
+    const aiBtn = e.target.closest("[data-ai-rec-load]");
+    if (aiBtn) {
+      await loadAiRecommendation(aiBtn.getAttribute("data-ai-rec-load"), aiBtn.getAttribute("data-job-id"));
+      return;
+    }
     const actionBtn = e.target.closest("[data-mo-action]");
     if (actionBtn && !actionBtn.disabled) {
       const appId = actionBtn.getAttribute("data-app-id");
@@ -1214,8 +1343,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!btn) return;
     const card = btn.closest(".mo-app-card-proto");
     const expand = card.querySelector(".mo-app-expand");
+    const rawId = card.getAttribute("data-application-id");
     if (expand.classList.contains("mo-open")) {
       expand.classList.remove("mo-open");
+      state.expandedDetailIds.delete(String(rawId));
       btn.textContent = "View details";
       return;
     }

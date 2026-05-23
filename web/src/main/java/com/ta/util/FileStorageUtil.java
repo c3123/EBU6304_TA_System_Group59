@@ -11,48 +11,47 @@ import java.util.Set;
 import java.util.UUID;
 
 public class FileStorageUtil {
-    private static final long MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB
+    private static final long MAX_TOTAL_SIZE = 50 * 1024 * 1024;
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("pdf", "docx", "xlsx", "jpg", "png");
     private static final String UPLOADS_BASE_DIR = "uploads/students";
 
-    /**
-     * 获取学生的上传目录
-     */
     public static String getStudentUploadDir(ServletContext context, String studentId) {
         String baseDir = getBaseUploadDir(context);
         return baseDir + File.separator + studentId + File.separator + "profile-attachments";
     }
 
-    /**
-     * 获取上传基础目录（考虑 realPath 和 fallback）
-     */
     private static String getBaseUploadDir(ServletContext context) {
+        String webinfPath = getLegacyBaseUploadDir(context);
+        if (webinfPath != null && !webinfPath.isBlank()) {
+            new File(webinfPath).mkdirs();
+            return webinfPath;
+        }
+
         String userHome = System.getProperty("user.home");
         String fallbackDir = userHome + File.separator + ".ta-recruitment-data" + File.separator + UPLOADS_BASE_DIR;
+        new File(fallbackDir).mkdirs();
+        return fallbackDir;
+    }
 
-        // 优先写入 web 应用路径下的 WEB-INF/uploads/students
+    private static String getLegacyBaseUploadDir(ServletContext context) {
         try {
             String webinfPath = context != null
                     ? context.getRealPath("/WEB-INF/" + UPLOADS_BASE_DIR)
                     : null;
             if (webinfPath == null || webinfPath.isBlank()) {
-                throw new IOException("Real path not available");
+                return null;
             }
-            File webinfDir = new File(webinfPath);
-            if (webinfDir.mkdirs() || webinfDir.exists()) {
-                return webinfPath;
-            }
+            return webinfPath;
         } catch (Exception e) {
-            // fallback to user-home storage
+            return null;
         }
-
-        new File(fallbackDir).mkdirs();
-        return fallbackDir;
     }
 
-    /**
-     * 校验文件大小和类型
-     */
+    private static String getLegacyStudentUploadDir(ServletContext context, String studentId) {
+        String legacyBase = getLegacyBaseUploadDir(context);
+        return legacyBase == null ? null : legacyBase + File.separator + studentId + File.separator + "profile-attachments";
+    }
+
     public static void validateFile(String fileName, long fileSize) throws IllegalArgumentException {
         if (fileName == null || fileName.isEmpty()) {
             throw new IllegalArgumentException("File name cannot be empty");
@@ -72,15 +71,12 @@ public class FileStorageUtil {
         }
     }
 
-    /**
-     * 校验总大小（学生所有文件总和）
-     */
     public static void validateTotalSize(ServletContext context, String studentId, long additionalFileSize) throws IllegalArgumentException {
         String uploadDir = getStudentUploadDir(context, studentId);
         File dirFile = new File(uploadDir);
-        
+
         if (!dirFile.exists()) {
-            return; // 目录不存在，总大小为 0
+            return;
         }
 
         long totalSize = 0;
@@ -95,21 +91,17 @@ public class FileStorageUtil {
         }
     }
 
-    /**
-     * 保存文件
-     */
     public static String saveFile(ServletContext context, String studentId, InputStream inputStream, String originalFileName) throws IOException {
         String uploadDir = getStudentUploadDir(context, studentId);
         File dirFile = new File(uploadDir);
         dirFile.mkdirs();
 
-        // 生成唯一的文件 ID，保留原始扩展名
         String extension = getFileExtension(originalFileName);
         String storageFileName = UUID.randomUUID().toString() + "." + extension;
         File targetFile = new File(uploadDir, storageFileName);
 
         try (FileOutputStream fos = new FileOutputStream(targetFile)) {
-            byte[] buffer = new byte[1024];
+            byte[] buffer = new byte[8192];
             int bytesRead;
             while ((bytesRead = inputStream.read(buffer)) != -1) {
                 fos.write(buffer, 0, bytesRead);
@@ -119,53 +111,59 @@ public class FileStorageUtil {
         return storageFileName;
     }
 
-    /**
-     * 删除文件
-     */
     public static void deleteFile(ServletContext context, String studentId, String storageFileName) throws IOException {
         String uploadDir = getStudentUploadDir(context, studentId);
         File file = new File(uploadDir, storageFileName);
-        
-        // 安全检查：确保文件在允许的目录内
-        if (!file.getCanonicalPath().startsWith(new File(uploadDir).getCanonicalPath())) {
+        if (!isSafeFile(file, uploadDir)) {
             throw new IOException("Invalid file path");
         }
 
-        if (!file.delete()) {
-            throw new IOException("Failed to delete file: " + storageFileName);
+        if (file.exists() && file.isFile()) {
+            if (!file.delete()) {
+                throw new IOException("Failed to delete file: " + storageFileName);
+            }
+            return;
+        }
+
+        String legacyUploadDir = getLegacyStudentUploadDir(context, studentId);
+        if (legacyUploadDir != null) {
+            File legacyFile = new File(legacyUploadDir, storageFileName);
+            if (!isSafeFile(legacyFile, legacyUploadDir)) {
+                throw new IOException("Invalid file path");
+            }
+            if (legacyFile.exists() && legacyFile.isFile() && !legacyFile.delete()) {
+                throw new IOException("Failed to delete file: " + storageFileName);
+            }
         }
     }
 
-    /**
-     * 读取文件（用于下载）
-     */
     public static File getFile(ServletContext context, String studentId, String storageFileName) throws IOException {
         String uploadDir = getStudentUploadDir(context, studentId);
         File file = new File(uploadDir, storageFileName);
-        
-        // 安全检查
-        if (!file.getCanonicalPath().startsWith(new File(uploadDir).getCanonicalPath())) {
-            throw new IOException("Invalid file path");
+        if (isSafeFile(file, uploadDir) && file.exists() && file.isFile()) {
+            return file;
         }
 
-        if (!file.exists() || !file.isFile()) {
-            throw new IOException("File not found: " + storageFileName);
+        String legacyUploadDir = getLegacyStudentUploadDir(context, studentId);
+        if (legacyUploadDir != null) {
+            File legacyFile = new File(legacyUploadDir, storageFileName);
+            if (isSafeFile(legacyFile, legacyUploadDir) && legacyFile.exists() && legacyFile.isFile()) {
+                return legacyFile;
+            }
         }
 
-        return file;
+        throw new IOException("File not found: " + storageFileName);
     }
 
-    /**
-     * 从完整文件名中提取扩展名
-     */
+    private static boolean isSafeFile(File file, String uploadDir) throws IOException {
+        return file.getCanonicalPath().startsWith(new File(uploadDir).getCanonicalPath());
+    }
+
     private static String getFileExtension(String fileName) {
         int lastDot = fileName.lastIndexOf('.');
         return lastDot > 0 ? fileName.substring(lastDot + 1) : "";
     }
 
-    /**
-     * 获取文件的 MIME 类型
-     */
     public static String getMimeType(String extension) {
         String ext = extension.toLowerCase();
         if ("pdf".equals(ext)) {
@@ -183,9 +181,6 @@ public class FileStorageUtil {
         }
     }
 
-    /**
-     * 获取当前 ISO-8601 时间戳
-     */
     public static String getCurrentTimestamp() {
         return Instant.now().toString();
     }

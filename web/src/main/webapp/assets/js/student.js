@@ -14,7 +14,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     },
     attachments: [],
     notifications: [],
-    unreadCount: 0
+    unreadCount: 0,
+    calendarDate: new Date(),
+    calendarSelectedDate: null
   };
 
   const tabButtons = Array.from(document.querySelectorAll(".student-tab"));
@@ -73,6 +75,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   const aiAdvisorAnswerEl = byId("aiAdvisorAnswer");
   const aiAdvisorNoteEl = byId("aiAdvisorNote");
 
+  const calendarPrevBtn = byId("calendarPrevBtn");
+  const calendarNextBtn = byId("calendarNextBtn");
+  const calendarMonthLabel = byId("calendarMonthLabel");
+  const calendarSelectedDateLabel = byId("calendarSelectedDateLabel");
+  const jobCalendarGrid = byId("jobCalendarGrid");
+  const calendarEventList = byId("calendarEventList");
+
   const jobDetailOverlayEl = byId("jobDetailOverlay");
   const closeJobDetailBtn = byId("closeJobDetailBtn");
   const detailCancelBtn = byId("detailCancelBtn");
@@ -85,6 +94,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const detailDeadlineEl = byId("detailDeadline");
   const detailStatusEl = byId("detailStatus");
   const detailRequirementsEl = byId("detailRequirements");
+  const detailMatchBreakdownEl = byId("detailMatchBreakdown");
   const detailProfileSnapshotEl = byId("detailProfileSnapshot");
   const detailAttachmentsListEl = byId("detailAttachmentsList");
   const detailAttachmentHintEl = byId("detailAttachmentHint");
@@ -135,6 +145,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   function formatSkillList(value, emptyText) {
     const skills = normalizeSkillList(value);
     return skills.length ? skills.map(escapeHtml).join(", ") : emptyText;
+  }
+
+  function formatPartialMatches(value) {
+    const matches = normalizeSkillList(value);
+    if (!matches.length) return "";
+    return matches.map(escapeHtml).join(", ");
   }
 
   function matchPercent(job) {
@@ -210,6 +226,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     const m = `${now.getMonth() + 1}`.padStart(2, "0");
     const d = `${now.getDate()}`.padStart(2, "0");
     return `${now.getFullYear()}-${m}-${d}`;
+  }
+
+  function localDateKey(date) {
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, "0");
+    const day = `${date.getDate()}`.padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function parseLocalDateKey(dateKey) {
+    const [year, month, day] = String(dateKey || "").split("-");
+    return new Date(Number(year), Number(month) - 1, Number(day));
   }
 
   function initialsForName(name) {
@@ -306,6 +334,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const applied = hasApplied(job.id);
       const percent = matchPercent(job);
       const tone = matchTone(percent);
+      const partialMatches = formatPartialMatches(job.relatedMatches);
       const detailBtn = `<button class="btn btn-outline open-detail-btn" data-job-id="${escapeHtml(job.id)}">View Details</button>`;
       const applyBtn = applied
         ? '<button class="btn btn-outline" disabled>Already Applied</button>'
@@ -328,6 +357,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               <strong>${escapeHtml(percent)}%</strong>
             </div>
             <p><span>Matched Skills:</span> ${formatSkillList(job.matchedSkills, "No matching skills detected.")}</p>
+            ${partialMatches ? `<p class="job-partial-match"><span>Partial Matches:</span> ${partialMatches}</p>` : ""}
             <p><span>Missing Skills:</span> ${formatSkillList(job.missingSkills, "No major missing skills.")}</p>
           </div>
           <div class="job-actions">${detailBtn}${applyBtn}</div>
@@ -412,6 +442,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         : "Confirmed TA jobs will appear here after a teacher finalizes hiring.";
     }
 
+    state.calendarEventsByDay = buildHiredCalendarEvents(hiredApps, state.calendarDate);
+    if (!state.calendarSelectedDate || !state.calendarEventsByDay[state.calendarSelectedDate]) {
+      state.calendarSelectedDate = Object.keys(state.calendarEventsByDay)[0] || new Date().toISOString().slice(0, 10);
+    }
+    renderCalendarGrid(state.calendarDate, state.calendarEventsByDay);
+    renderCalendarEventList(state.calendarSelectedDate, state.calendarEventsByDay);
+
     if (!hiredApps.length) {
       hiredListEl.classList.add("hidden");
       hiredEmptyEl.classList.remove("hidden");
@@ -433,6 +470,145 @@ document.addEventListener("DOMContentLoaded", async () => {
         </article>
       `;
     }).join("");
+  }
+
+  function buildHiredCalendarEvents(hiredApps, referenceDate) {
+    const year = referenceDate.getFullYear();
+    const month = referenceDate.getMonth();
+    const eventsByDay = {};
+    const weekdayMap = {
+      Sun: 0,
+      Mon: 1,
+      Tue: 2,
+      Wed: 3,
+      Thu: 4,
+      Fri: 5,
+      Sat: 6
+    };
+
+    hiredApps.forEach((app) => {
+      const job = state.jobs.find((item) => item.id === app.jobId) || {};
+      const schedule = String(app.schedule || app.jobSchedule || job.schedule || "").trim();
+      const match = schedule.match(/^\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})/i);
+      if (!match) return;
+
+      const dayLabel = match[1];
+      const startTime = match[2];
+      const endTime = match[3];
+      const weekday = weekdayMap[dayLabel.slice(0, 3)];
+      if (weekday === undefined) return;
+
+      const eventTemplate = {
+        dateLabel: dayLabel,
+        startTime,
+        endTime,
+        jobTitle: app.jobTitle || job.title || app.moduleCode || job.moduleCode || "TA work",
+        moduleCode: app.moduleCode || job.moduleCode || "",
+        teacherName: app.teacherName || job.teacherName || "Teacher",
+        schedule: schedule
+      };
+
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      for (let day = 1; day <= daysInMonth; day += 1) {
+        const current = new Date(year, month, day);
+        if (current.getDay() !== weekday) continue;
+
+        const key = localDateKey(current);
+        if (!eventsByDay[key]) {
+          eventsByDay[key] = [];
+        }
+        eventsByDay[key].push(eventTemplate);
+      }
+    });
+
+    return eventsByDay;
+  }
+
+  function formatCalendarMonth(date) {
+    return date.toLocaleDateString(undefined, {
+      month: "long",
+      year: "numeric"
+    });
+  }
+
+  function renderCalendarGrid(currentDate, eventsByDay) {
+    if (!jobCalendarGrid) return;
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const todayKey = localDateKey(new Date());
+    const selectedDateKey = state.calendarSelectedDate || todayKey;
+
+    calendarMonthLabel && (calendarMonthLabel.textContent = formatCalendarMonth(currentDate));
+
+    let html = "";
+    ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].forEach((weekday) => {
+      html += `<div class="calendar-weekday">${weekday}</div>`;
+    });
+
+    for (let i = 0; i < firstDay; i += 1) {
+      html += `<div class="calendar-day-cell empty"></div>`;
+    }
+
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const current = new Date(year, month, day);
+      const key = localDateKey(current);
+      const events = eventsByDay[key] || [];
+      const classes = ["calendar-day-cell"];
+      if (events.length) classes.push("has-event");
+      if (key === todayKey) classes.push("today");
+      if (key === selectedDateKey) classes.push("selected");
+
+      html += `
+        <div class="${classes.join(" ")}" data-date="${key}">
+          <div class="calendar-day-number">${day}</div>
+          ${events.length ? `<div class="calendar-events-indicator">${events.length} scheduled</div>` : ""}
+        </div>
+      `;
+    }
+
+    jobCalendarGrid.innerHTML = html;
+  }
+
+  function renderCalendarEventList(dateKey, eventsByDay) {
+    if (!calendarEventList || !calendarSelectedDateLabel) return;
+    const events = eventsByDay[dateKey] || [];
+    const formattedDate = parseLocalDateKey(dateKey).toLocaleDateString(undefined, {
+      weekday: "long",
+      month: "short",
+      day: "numeric",
+      year: "numeric"
+    });
+
+    calendarSelectedDateLabel.textContent = events.length
+      ? `Scheduled TA work on ${formattedDate}`
+      : `No confirmed TA work on ${formattedDate}.`;
+
+    if (!events.length) {
+      calendarEventList.innerHTML = `<div class="calendar-empty-note">You have no scheduled TA hours on this date.</div>`;
+      return;
+    }
+
+    calendarEventList.innerHTML = events.map((event) => `
+      <div class="calendar-event-item">
+        <h4>${escapeHtml(event.jobTitle)}</h4>
+        <p>${escapeHtml(event.moduleCode)} | ${escapeHtml(event.teacherName)}</p>
+        <p>${escapeHtml(event.startTime)} - ${escapeHtml(event.endTime)}</p>
+        <p>${escapeHtml(event.schedule)}</p>
+      </div>
+    `).join("");
+  }
+
+  function changeCalendarMonth(offset) {
+    const currentDate = state.calendarDate || new Date();
+    state.calendarDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1);
+    state.calendarEventsByDay = buildHiredCalendarEvents(state.applications.filter((app) => normalizeStatus(app.status) === "hired"), state.calendarDate);
+    if (!state.calendarSelectedDate || !state.calendarEventsByDay[state.calendarSelectedDate]) {
+      state.calendarSelectedDate = Object.keys(state.calendarEventsByDay)[0] || localDateKey(new Date(state.calendarDate.getFullYear(), state.calendarDate.getMonth(), 1));
+    }
+    renderCalendarGrid(state.calendarDate, state.calendarEventsByDay);
+    renderCalendarEventList(state.calendarSelectedDate, state.calendarEventsByDay);
   }
 
   function renderProfile() {
@@ -643,6 +819,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (detailRequirementsEl) {
       detailRequirementsEl.textContent = job.requirements || "No detailed requirements provided yet.";
     }
+    if (detailMatchBreakdownEl) {
+      const percent = matchPercent(job);
+      const partialMatches = formatPartialMatches(job.relatedMatches);
+      detailMatchBreakdownEl.innerHTML = `
+        <div><strong>${escapeHtml(percent)}%</strong> overall match</div>
+        <div>Required skills: ${formatSkillList(job.requiredSkills, "No skill requirements detected.")}</div>
+        <div>Matched skills: ${formatSkillList(job.matchedSkills, "No exact matches detected.")}</div>
+        ${partialMatches ? `<div>Partial matches: ${partialMatches}</div>` : ""}
+        <div>Missing skills: ${formatSkillList(job.missingSkills, "No major missing skills.")}</div>
+      `;
+    }
     if (detailProfileSnapshotEl) {
       const snapshot = [
         `Name: ${profileNameEl.value || (state.student && state.student.name) || "-"}`,
@@ -826,6 +1013,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   jobHoursFilter.addEventListener("change", (event) => {
     state.hoursFilter = event.target.value || "all";
     renderJobs();
+  });
+
+  calendarPrevBtn?.addEventListener("click", () => {
+    changeCalendarMonth(-1);
+  });
+
+  calendarNextBtn?.addEventListener("click", () => {
+    changeCalendarMonth(1);
+  });
+
+  jobCalendarGrid?.addEventListener("click", (event) => {
+    const cell = event.target.closest(".calendar-day-cell");
+    if (!cell || !cell.dataset.date) return;
+    state.calendarSelectedDate = cell.dataset.date;
+    renderCalendarEventList(state.calendarSelectedDate, state.calendarEventsByDay || {});
+    renderCalendarGrid(state.calendarDate, state.calendarEventsByDay || {});
   });
 
   jobsListEl.addEventListener("click", (event) => {

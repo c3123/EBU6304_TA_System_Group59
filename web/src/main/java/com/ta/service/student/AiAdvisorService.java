@@ -20,6 +20,7 @@ public class AiAdvisorService {
             "You are an AI advisor for a university TA recruitment platform.\n"
                     + "Your job is to help students understand TA job recommendations and skill gaps.\n"
                     + "Use only the provided structured matching results.\n"
+                    + "When answering questions about hours, consider both hours and hourMin/hourMax.\n"
                     + "Do not invent skills, jobs, scores, or experiences.\n"
                     + "Keep responses concise, practical, and professional.\n"
                     + "Use plain natural language.\n"
@@ -52,10 +53,7 @@ public class AiAdvisorService {
         try {
             StudentProfile profile = loadStudentProfile(context, studentUserId);
             List<JobPosting> jobs = JsonUtility.loadJobs(context);
-            List<JobMatchResult> recommendations = topRecommendations(
-                    jobMatchingService.getRecommendedJobs(profile, jobs),
-                    3
-            );
+            List<JobMatchResult> recommendations = jobMatchingService.getRecommendedJobs(profile, jobs);
             List<String> studentSkills = skillExtractionService.extractSkillsFromStudent(profile);
             String userPayload = buildUserPayload(question, studentSkills, recommendations);
 
@@ -78,20 +76,6 @@ public class AiAdvisorService {
                 .filter(profile -> studentUserId.equals(profile.getUserId()))
                 .findFirst()
                 .orElse(null);
-    }
-
-    private List<JobMatchResult> topRecommendations(List<JobMatchResult> recommendations, int limit) {
-        List<JobMatchResult> top = new ArrayList<>();
-        if (recommendations == null || recommendations.isEmpty()) {
-            return top;
-        }
-        for (JobMatchResult result : recommendations) {
-            if (top.size() >= limit) {
-                break;
-            }
-            top.add(result);
-        }
-        return top;
     }
 
     private String buildUserPayload(String question, List<String> studentSkills, List<JobMatchResult> recommendations) {
@@ -122,7 +106,7 @@ public class AiAdvisorService {
             jobJson.add("missingSkills", toJsonArray(recommendation.getMissingSkills()));
             jobs.add(jobJson);
         }
-        payload.add("topRecommendedJobs", jobs);
+        payload.add("availableRecommendedJobs", jobs);
         return gson.toJson(payload);
     }
 
