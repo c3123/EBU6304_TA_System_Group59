@@ -52,6 +52,7 @@ const state = {
   pollingTimer: null,
   finalModalJobId: null,
   selectedIds: new Set(),
+  aiRecommendations: {},
   sortMode: "applied",
   highMatchOnly: false,
   selectedJobId: null
@@ -538,6 +539,69 @@ function renderWorkloadBadge(tier, total) {
   return `<span class="workload-badge ${tier.key}">${escapeHtml(tier.label)} · ${escapeHtml(String(total))}h/week</span>`;
 }
 
+function recommendationBadgeClass(level) {
+  const normalized = String(level || "").toLowerCase();
+  if (normalized === "highly recommended" || normalized === "recommended") return "status-hired";
+  if (normalized === "use with caution") return "status-pending";
+  return "status-rejected";
+}
+
+function workloadStatusBadgeClass(status) {
+  const normalized = String(status || "").toLowerCase();
+  if (normalized === "balanced") return "status-hired";
+  if (normalized === "near limit") return "status-pending";
+  return "status-rejected";
+}
+
+function renderAiRecommendationBlock(item) {
+  const appId = String(item.applicationId || "");
+  const escapedAppId = escapeHtml(appId);
+  const rec = state.aiRecommendations[appId];
+  if (!rec) {
+    return `
+      <div class="mo-ai-rec" data-ai-rec-panel="${escapedAppId}" style="border:1px solid #dbeafe;background:#eff6ff;border-radius:8px;padding:12px;margin:12px 0;">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+          <div>
+            <strong style="color:#1e3a8a;">AI-assisted recommendation</strong>
+            <p class="notice" style="margin:4px 0 0;">Rule-based skill and workload summary with an AI-generated explanation.</p>
+          </div>
+          <button type="button" class="btn btn-outline" data-ai-rec-load="${escapedAppId}" data-job-id="${escapeHtml(item.jobId || "")}">View AI Suggestion</button>
+        </div>
+      </div>`;
+  }
+  if (rec.loading) {
+    return `<div class="mo-ai-rec" data-ai-rec-panel="${escapedAppId}" style="border:1px solid #dbeafe;background:#eff6ff;border-radius:8px;padding:12px;margin:12px 0;">Loading AI-assisted recommendation...</div>`;
+  }
+  if (rec.error) {
+    return `
+      <div class="mo-ai-rec" data-ai-rec-panel="${escapedAppId}" style="border:1px solid #fecaca;background:#fef2f2;border-radius:8px;padding:12px;margin:12px 0;">
+        <strong style="color:#991b1b;">AI recommendation unavailable</strong>
+        <p style="margin:4px 0 0;color:#7f1d1d;">${escapeHtml(rec.error)}</p>
+        <button type="button" class="btn btn-outline" data-ai-rec-load="${escapedAppId}" data-job-id="${escapeHtml(item.jobId || "")}" style="margin-top:8px;">Retry</button>
+      </div>`;
+  }
+  const pct = Math.round(Number(rec.skillMatchScore || 0) * 100);
+  return `
+    <div class="mo-ai-rec" data-ai-rec-panel="${escapedAppId}" style="border:1px solid #c7d2fe;background:#f8fafc;border-radius:8px;padding:12px;margin:12px 0;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
+        <div>
+          <strong style="color:#0f172a;">AI-assisted recommendation</strong>
+          <p class="notice" style="margin:4px 0 0;">AI explains deterministic skill match and workload balance. It does not decide hiring.</p>
+        </div>
+        <span class="status-pill ${recommendationBadgeClass(rec.recommendationLevel)}">${escapeHtml(rec.recommendationLevel || "Not Recommended")}</span>
+      </div>
+      <div class="mo-wl-grid" style="margin-bottom:10px;">
+        <div><span class="mo-app-lbl">Skill Match</span><div class="mo-wl-big" style="color:#2563eb">${pct}%</div></div>
+        <div><span class="mo-app-lbl">Current Workload</span><div class="mo-wl-big">${escapeHtml(rec.currentWorkloadHours || 0)}h/week</div></div>
+        <div><span class="mo-app-lbl">Projected Workload</span><div class="mo-wl-big">${escapeHtml(rec.projectedWorkloadHours || 0)}h/week</div></div>
+        <div><span class="mo-app-lbl">Workload Status</span><div><span class="status-pill ${workloadStatusBadgeClass(rec.workloadStatus)}">${escapeHtml(rec.workloadStatus || "-")}</span></div></div>
+      </div>
+      <div style="margin-bottom:8px;"><span class="mo-app-lbl">Matched Skills</span><div class="mo-skill-tags">${renderSkillTags(rec.matchedSkills, "matched")}</div></div>
+      <div style="margin-bottom:8px;"><span class="mo-app-lbl">Missing Skills</span><div class="mo-skill-tags">${renderSkillTags(rec.missingSkills, "missing")}</div></div>
+      <p style="margin:0;color:#334155;line-height:1.5;">${escapeHtml(rec.aiExplanation || "")}</p>
+    </div>`;
+}
+
 function renderApplicantCard(item, closed) {
   const st = String(item.status || "").toLowerCase();
   const id = escapeHtml(item.applicationId);
@@ -590,6 +654,7 @@ function renderApplicantCard(item, closed) {
         <div class="mo-app-status-slot" style="flex-shrink:0;">${renderStatusSelect(item, closed)}</div>
       </div>
       ${renderSkillFitBlock(item)}
+      ${renderAiRecommendationBlock(item)}
       ${workloadBlock}
       ${actionsBlock}
       ${renderNotesAndFeedback(item, closed)}
@@ -667,6 +732,7 @@ function renderApplicantCardDashboard(item, closed) {
         ${renderWorkloadBadge(tier, ifHiredTotal)}
       </div>
       ${renderSkillFitCompact(item)}
+      ${renderAiRecommendationBlock(item)}
       ${actionsBlock}
       <details class="applicant-detail-drawer">
         <summary>Details, workload and feedback</summary>
@@ -978,6 +1044,21 @@ async function saveFeedback(applicationId, text) {
   if (it) it.decisionFeedback = text;
 }
 
+async function loadAiRecommendation(applicationId, jobId) {
+  if (!applicationId || !jobId) return;
+  state.aiRecommendations[applicationId] = { loading: true };
+  renderApplicantFeed(state.items);
+  try {
+    const data = await postJson(`${apiBase()}/applicant-ai-recommendation`, { applicationId, jobId });
+    state.aiRecommendations[applicationId] = data || { error: "No recommendation data returned." };
+  } catch (err) {
+    state.aiRecommendations[applicationId] = {
+      error: `${err.code || "ERROR"}: ${err.message || "Failed to load recommendation."}`
+    };
+  }
+  renderApplicantFeed(state.items);
+}
+
 async function persistFeedbackFromInput(feed, fbEl) {
   const appId = fbEl.getAttribute("data-app-id");
   const ind = feed.querySelector(`[data-fb-ind][data-app-id="${appId}"]`);
@@ -1186,6 +1267,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     const historyBtn = e.target.closest("[data-open-history]");
     if (historyBtn) {
       await openHistoryModal(historyBtn.getAttribute("data-open-history"));
+      return;
+    }
+    const aiBtn = e.target.closest("[data-ai-rec-load]");
+    if (aiBtn) {
+      await loadAiRecommendation(aiBtn.getAttribute("data-ai-rec-load"), aiBtn.getAttribute("data-job-id"));
       return;
     }
     const actionBtn = e.target.closest("[data-mo-action]");

@@ -21,6 +21,12 @@ public class FileStorageUtil {
     }
 
     private static String getBaseUploadDir(ServletContext context) {
+        String webinfPath = getLegacyBaseUploadDir(context);
+        if (webinfPath != null && !webinfPath.isBlank()) {
+            new File(webinfPath).mkdirs();
+            return webinfPath;
+        }
+
         String userHome = System.getProperty("user.home");
         String fallbackDir = userHome + File.separator + ".ta-recruitment-data" + File.separator + UPLOADS_BASE_DIR;
         new File(fallbackDir).mkdirs();

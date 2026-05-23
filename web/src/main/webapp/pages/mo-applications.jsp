@@ -1198,6 +1198,6 @@
 </div>
 </div>
 <script src="../assets/js/common.js?v=teacher-student-style"></script>
-<script src="../assets/js/mo-applications.js?v=teacher-student-style"></script>
+<script src="../assets/js/mo-applications.js?v=teacher-ai-rec"></script>
 </body>
 </html>
