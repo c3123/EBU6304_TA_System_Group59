@@ -335,7 +335,17 @@ public class StudentService {
                             HttpServletResponse.SC_UNAUTHORIZED
                     ));
 
+            String phone = trimToEmpty(request.getPhone());
+            if (!phone.isBlank() && !phone.matches("\\d{11}")) {
+                throw new StudentBusinessException(
+                        ErrorCodes.VALIDATION_ERROR,
+                        "phone must be 11 digits.",
+                        HttpServletResponse.SC_BAD_REQUEST
+                );
+            }
+
             student.setName(request.getName().trim());
+            student.setPhone(phone);
             JsonUtility.saveUsers(context, users);
 
             List<StudentProfile> profiles = JsonUtility.loadStudents(context);
@@ -350,6 +360,7 @@ public class StudentService {
 
             profile.setName(student.getName());
             profile.setEmail(student.getEmail());
+            profile.setPhone(student.getPhone());
             profile.setStudentId(student.getStudentId());
             profile.setSkills(trimToEmpty(request.getSkills()));
             profile.setExperience(trimToEmpty(request.getExperience()));
@@ -383,6 +394,15 @@ public class StudentService {
         item.setMatchedSkills(match.getMatchedSkills());
         item.setMissingSkills(match.getMissingSkills());
         item.setRequiredSkills(match.getRequiredSkills());
+        List<String> relatedLabels = new ArrayList<>();
+        if (match.getRelatedMatches() != null) {
+            for (SkillRelationHint hint : match.getRelatedMatches()) {
+                if (hint != null) {
+                    relatedLabels.add(hint.toDisplayLabel());
+                }
+            }
+        }
+        item.setRelatedMatches(relatedLabels);
         return item;
     }
 
@@ -407,6 +427,7 @@ public class StudentService {
         response.setUserId(user.getId());
         response.setName(profile != null && !isBlank(profile.getName()) ? profile.getName() : user.getName());
         response.setEmail(profile != null && !isBlank(profile.getEmail()) ? profile.getEmail() : user.getEmail());
+        response.setPhone(trimToEmpty(user.getPhone()));
         response.setStudentId(profile != null && !isBlank(profile.getStudentId()) ? profile.getStudentId() : user.getStudentId());
         response.setProgramme(profile != null ? profile.getProgramme() : user.getProgramme());
         response.setSkills(profile != null ? trimToEmpty(profile.getSkills()) : "");
@@ -420,6 +441,7 @@ public class StudentService {
         profile.setUserId(user.getId());
         profile.setName(user.getName());
         profile.setEmail(user.getEmail());
+        profile.setPhone(user.getPhone());
         profile.setStudentId(user.getStudentId());
         profile.setProgramme(user.getProgramme());
         profile.setSkills("");
@@ -555,6 +577,12 @@ public class StudentService {
             return attachment;
         } catch (StudentBusinessException e) {
             throw e;
+        } catch (IllegalArgumentException e) {
+            throw new StudentBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    e.getMessage(),
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
         } catch (Exception e) {
             throw new RuntimeException("Failed to upload attachment.", e);
         }

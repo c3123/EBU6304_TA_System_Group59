@@ -8,6 +8,7 @@ public class User {
     private String role;
     private String studentId;
     private String programme;
+    private String phone;
 
     public User() {
     }
@@ -20,6 +21,7 @@ public class User {
         this.role = role;
         this.studentId = studentId;
         this.programme = programme;
+        this.phone = "";
     }
 
     public String getId() {
@@ -76,6 +78,14 @@ public class User {
 
     public void setProgramme(String programme) {
         this.programme = programme;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
 
     public boolean matchesIdentifier(String identifier) {

@@ -59,6 +59,7 @@ public class RegisterServlet extends HttpServlet {
         user.setRole(role);
         user.setStudentId("student".equals(role) ? studentId : "");
         user.setProgramme("student".equals(role) ? programme : "");
+        user.setPhone("");
         users.add(user);
         JsonUtility.saveUsers(getServletContext(), users);
 
@@ -69,6 +70,7 @@ public class RegisterServlet extends HttpServlet {
             profile.setStudentId(studentId);
             profile.setName(name);
             profile.setEmail(email);
+            profile.setPhone("");
             profile.setProgramme(programme);
             students.add(profile);
             JsonUtility.saveStudents(getServletContext(), students);

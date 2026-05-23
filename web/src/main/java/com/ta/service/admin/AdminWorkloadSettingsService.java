@@ -1,9 +1,11 @@
 package com.ta.service.admin;
 
 import com.ta.constant.ErrorCodes;
+import com.ta.dto.admin.AdminWorkloadSettingsRequest;
 import com.ta.dto.admin.AdminWorkloadSettingsResponse;
 import com.ta.model.SystemSettings;
 import com.ta.util.JsonUtility;
+import com.ta.util.WorkloadLevelUtil;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -20,8 +22,8 @@ public class AdminWorkloadSettingsService {
         }
     }
 
-    public AdminWorkloadSettingsResponse saveThreshold(ServletContext context, Integer thresholdHours) {
-        if (thresholdHours == null || thresholdHours <= 0) {
+    public AdminWorkloadSettingsResponse saveSettings(ServletContext context, AdminWorkloadSettingsRequest request) {
+        if (request == null || request.getWorkloadThresholdHours() == null || request.getWorkloadThresholdHours() <= 0) {
             throw new AdminBusinessException(
                     ErrorCodes.VALIDATION_ERROR,
                     "workloadThresholdHours must be a positive integer.",
@@ -31,7 +33,7 @@ public class AdminWorkloadSettingsService {
 
         try {
             SystemSettings settings = JsonUtility.loadSystemSettings(context);
-            settings.setWorkloadThresholdHours(thresholdHours);
+            settings.setWorkloadThresholdHours(request.getWorkloadThresholdHours());
             settings.setUpdatedAt(Instant.now().toString());
             JsonUtility.saveSystemSettings(context, settings);
             return toResponse(settings, true);
@@ -42,7 +44,9 @@ public class AdminWorkloadSettingsService {
 
     private AdminWorkloadSettingsResponse toResponse(SystemSettings settings, boolean saved) {
         AdminWorkloadSettingsResponse response = new AdminWorkloadSettingsResponse();
-        response.setWorkloadThresholdHours(settings.getWorkloadThresholdHours());
+        response.setWorkloadThresholdHours(WorkloadLevelUtil.resolveThresholdHours(settings.getWorkloadThresholdHours()));
+        response.setWorkloadNormalPercent(WorkloadLevelUtil.DEFAULT_NORMAL_PERCENT);
+        response.setWorkloadWarningPercent(WorkloadLevelUtil.DEFAULT_WARNING_PERCENT);
         response.setUpdatedAt(settings.getUpdatedAt());
         response.setSaved(saved);
         return response;

@@ -31,7 +31,7 @@ import java.util.Set;
  */
 public class AdminRecruitmentOutcomeService {
 
-    private static final String DEPARTMENT_UNKNOWN = "\u672a\u586b";
+    private static final String DEPARTMENT_UNKNOWN = "Unspecified";
 
     public AdminRecruitmentOutcomeResponse load(ServletContext context,
                                                 int vacancyTopLimit,
@@ -84,16 +84,15 @@ public class AdminRecruitmentOutcomeService {
         }
 
         int totalApplications = 0;
-        int totalHired = 0;
         for (ApplicationRecord application : applications) {
             if (!application.isActive()) {
                 continue;
             }
             totalApplications++;
-            if ("hired".equalsIgnoreCase(trimToEmpty(application.getStatus()))) {
-                totalHired++;
-            }
         }
+
+        // Filled slots (capped per job) so hired + vacancies always equals total position slots.
+        int totalHired = totalPositionSlots - totalVacancies;
 
         int topLimit = normalizeVacancyTopLimit(vacancyTopLimit);
         AdminRecruitmentOutcomeResponse response = new AdminRecruitmentOutcomeResponse();
@@ -106,7 +105,7 @@ public class AdminRecruitmentOutcomeService {
         response.setTotalApplications(totalApplications);
         response.setTotalHired(totalHired);
         response.setTotalVacancies(totalVacancies);
-        response.setDepartments(buildDepartmentRows(jobsWindow, applications, hiredByJob));
+        response.setDepartments(buildDepartmentRows(jobsWindow, hiredByJob));
         response.setTopVacancyJobs(buildTopVacancyJobs(jobsWindow, hiredByJob, topLimit));
         response.setGeneratedAt(IsoTime.utcNowSeconds());
         return response;
@@ -303,26 +302,20 @@ public class AdminRecruitmentOutcomeService {
     }
 
     private List<AdminRecruitmentOutcomeDepartmentRow> buildDepartmentRows(List<JobPosting> jobs,
-                                                                         List<ApplicationRecord> applications,
                                                                          Map<String, Integer> hiredByJob) {
-        Map<String, JobPosting> jobById = new LinkedHashMap<>();
-        for (JobPosting job : jobs) {
-            if (job.getId() != null && !job.getId().isBlank()) {
-                jobById.put(job.getId(), job);
-            }
-        }
-
         Map<String, Integer> hiredByDept = new LinkedHashMap<>();
-        for (ApplicationRecord app : applications) {
-            if (!app.isActive() || app.getJobId() == null || app.getJobId().isBlank()) {
+        for (JobPosting job : jobs) {
+            if (Boolean.TRUE.equals(job.getWithdrawn())) {
                 continue;
             }
-            if (!"hired".equalsIgnoreCase(trimToEmpty(app.getStatus()))) {
+            if (job.getId() == null || job.getId().isBlank()) {
                 continue;
             }
-            JobPosting job = jobById.get(app.getJobId());
+            int positions = Math.max(job.getPositions(), 0);
+            int hired = hiredByJob.getOrDefault(job.getId(), 0);
+            int filled = Math.min(hired, positions);
             String dept = departmentLabel(job);
-            hiredByDept.put(dept, hiredByDept.getOrDefault(dept, 0) + 1);
+            hiredByDept.put(dept, hiredByDept.getOrDefault(dept, 0) + filled);
         }
 
         Map<String, Integer> vacancyByDept = new LinkedHashMap<>();

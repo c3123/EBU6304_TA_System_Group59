@@ -8,13 +8,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     search: "",
     statusFilter: "all",
     hoursFilter: "all",
+    scheduleFilter: "all",
     profile: {
       skills: "",
       experience: ""
     },
     attachments: [],
     notifications: [],
-    unreadCount: 0
+    unreadCount: 0,
+    calendarDate: new Date(),
+    calendarSelectedDate: null
   };
 
   const tabButtons = Array.from(document.querySelectorAll(".student-tab"));
@@ -45,23 +48,40 @@ document.addEventListener("DOMContentLoaded", async () => {
   const studentNotificationBtn = byId("studentNotificationBtn");
   const studentNotificationDot = byId("studentNotificationDot");
   const studentNotificationPanel = byId("studentNotificationPanel");
+  const studentTopNameEl = byId("studentTopName");
+  const studentAvatarEl = byId("studentAvatar");
 
   const jobSearchInput = byId("jobSearchInput");
   const jobStatusFilter = byId("jobStatusFilter");
   const jobHoursFilter = byId("jobHoursFilter");
+  const jobScheduleFilter = byId("jobScheduleFilter");
 
   const profileNameEl = byId("profileName");
   const profileEmailEl = byId("profileEmail");
+  const profilePhoneEl = byId("profilePhone");
   const profileStudentIdEl = byId("profileStudentId");
   const profileProgrammeEl = byId("profileProgramme");
   const profileSkillsEl = byId("profileSkills");
   const profileExperienceEl = byId("profileExperience");
+  const profileSkillChipsEl = byId("profileSkillChips");
+  const profileAvatarLargeEl = byId("profileAvatarLarge");
+  const profileCardNameEl = byId("profileCardName");
+  const profileCardProgrammeEl = byId("profileCardProgramme");
+  const profileApplicationsStatEl = byId("profileApplicationsStat");
+  const profileOffersStatEl = byId("profileOffersStat");
   const saveProfileBtn = byId("saveProfileBtn");
   const changePasswordBtn = byId("studentChangePasswordBtn");
   const aiAdvisorQuestionEl = byId("aiAdvisorQuestion");
   const aiAdvisorBtn = byId("aiAdvisorBtn");
   const aiAdvisorAnswerEl = byId("aiAdvisorAnswer");
   const aiAdvisorNoteEl = byId("aiAdvisorNote");
+
+  const calendarPrevBtn = byId("calendarPrevBtn");
+  const calendarNextBtn = byId("calendarNextBtn");
+  const calendarMonthLabel = byId("calendarMonthLabel");
+  const calendarSelectedDateLabel = byId("calendarSelectedDateLabel");
+  const jobCalendarGrid = byId("jobCalendarGrid");
+  const calendarEventList = byId("calendarEventList");
 
   const jobDetailOverlayEl = byId("jobDetailOverlay");
   const closeJobDetailBtn = byId("closeJobDetailBtn");
@@ -75,6 +95,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const detailDeadlineEl = byId("detailDeadline");
   const detailStatusEl = byId("detailStatus");
   const detailRequirementsEl = byId("detailRequirements");
+  const detailMatchBreakdownEl = byId("detailMatchBreakdown");
   const detailProfileSnapshotEl = byId("detailProfileSnapshot");
   const detailAttachmentsListEl = byId("detailAttachmentsList");
   const detailAttachmentHintEl = byId("detailAttachmentHint");
@@ -125,6 +146,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   function formatSkillList(value, emptyText) {
     const skills = normalizeSkillList(value);
     return skills.length ? skills.map(escapeHtml).join(", ") : emptyText;
+  }
+
+  function formatPartialMatches(value) {
+    const matches = normalizeSkillList(value);
+    if (!matches.length) return "";
+    return matches.map(escapeHtml).join(", ");
   }
 
   function matchPercent(job) {
@@ -202,6 +229,57 @@ document.addEventListener("DOMContentLoaded", async () => {
     return `${now.getFullYear()}-${m}-${d}`;
   }
 
+  function localDateKey(date) {
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, "0");
+    const day = `${date.getDate()}`.padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function parseLocalDateKey(dateKey) {
+    const [year, month, day] = String(dateKey || "").split("-");
+    return new Date(Number(year), Number(month) - 1, Number(day));
+  }
+
+  function initialsForName(name) {
+    const parts = String(name || "Student").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "S";
+    if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+    return `${parts[0].slice(0, 1)}${parts[parts.length - 1].slice(0, 1)}`.toUpperCase();
+  }
+
+  function syncStudentChrome() {
+    const student = state.student || {};
+    const name = student.name || "Student";
+    const initials = initialsForName(name);
+    if (studentTopNameEl) studentTopNameEl.textContent = name;
+    if (studentAvatarEl) studentAvatarEl.textContent = initials;
+    if (profileAvatarLargeEl) profileAvatarLargeEl.textContent = initials;
+    if (profileCardNameEl) profileCardNameEl.textContent = name;
+    if (profileCardProgrammeEl) profileCardProgrammeEl.textContent = student.programme || "Programme";
+
+    const applications = Array.isArray(state.applications) ? state.applications : [];
+    const offers = applications.filter((app) => normalizeStatus(app.status) === "hired").length;
+    if (profileApplicationsStatEl) profileApplicationsStatEl.textContent = String(applications.length);
+    if (profileOffersStatEl) profileOffersStatEl.textContent = String(offers);
+  }
+
+  function renderSkillChips() {
+    if (!profileSkillChipsEl) return;
+    const skills = String(state.profile.skills || "")
+      .split(",")
+      .map((skill) => skill.trim())
+      .filter(Boolean)
+      .slice(0, 8);
+    if (!skills.length) {
+      profileSkillChipsEl.innerHTML = '<span class="profile-skill-chip">Add skills</span>';
+      return;
+    }
+    profileSkillChipsEl.innerHTML = skills
+      .map((skill) => `<span class="profile-skill-chip">${escapeHtml(skill)} <span aria-hidden="true">x</span></span>`)
+      .join("");
+  }
+
   function switchTab(tabKey) {
     state.activeTab = tabKey;
     tabButtons.forEach((btn) => {
@@ -211,6 +289,40 @@ document.addEventListener("DOMContentLoaded", async () => {
     Object.keys(panels).forEach((key) => {
       panels[key].classList.toggle("active", key === tabKey);
     });
+  }
+
+  function normalizedSchedule(value) {
+    const text = String(value || "").trim();
+    return text && text !== "-" ? text : "";
+  }
+
+  function scheduleDay(value) {
+    const schedule = normalizedSchedule(value);
+    const match = schedule.match(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/i);
+    return match ? match[1].slice(0, 1).toUpperCase() + match[1].slice(1, 3).toLowerCase() : "";
+  }
+
+  function populateScheduleFilter() {
+    if (!jobScheduleFilter) return;
+    const selected = state.scheduleFilter || "all";
+    const dayOrder = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const days = Array.from(new Set(
+      state.jobs
+        .map((job) => scheduleDay(job.schedule))
+        .filter(Boolean)
+    )).sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
+
+    jobScheduleFilter.innerHTML = [
+      '<option value="all">All Schedules</option>',
+      ...days.map((day) => `<option value="${escapeHtml(day)}">${escapeHtml(day)}</option>`)
+    ].join("");
+
+    if (selected !== "all" && days.includes(selected)) {
+      jobScheduleFilter.value = selected;
+    } else {
+      state.scheduleFilter = "all";
+      jobScheduleFilter.value = "all";
+    }
   }
 
   function renderJobs() {
@@ -224,10 +336,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const query = state.search.trim().toLowerCase();
     const filtered = state.jobs.filter((job) => {
+      const searchableText = [
+        job.moduleCode,
+        job.title,
+        job.teacherName,
+        job.requirements,
+        ...(Array.isArray(job.requiredSkills) ? job.requiredSkills : [])
+      ].map((value) => String(value || "").toLowerCase()).join(" ");
+
       const matchesSearch =
         !query ||
-        String(job.moduleCode || "").toLowerCase().includes(query) ||
-        String(job.title || "").toLowerCase().includes(query);
+        searchableText.includes(query);
 
       const matchesStatus =
         state.statusFilter === "all" || String(job.status || "").toLowerCase() === state.statusFilter;
@@ -237,7 +356,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         (state.hoursFilter === "<=10" && (job.hours || 0) <= 10) ||
         (state.hoursFilter === ">10" && (job.hours || 0) > 10);
 
-      return matchesSearch && matchesStatus && matchesHours;
+      const day = scheduleDay(job.schedule);
+      const matchesSchedule =
+        state.scheduleFilter === "all" || day === state.scheduleFilter;
+
+      return matchesSearch && matchesStatus && matchesHours && matchesSchedule;
     });
 
     jobsLoadingEl.classList.add("hidden");
@@ -257,6 +380,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const applied = hasApplied(job.id);
       const percent = matchPercent(job);
       const tone = matchTone(percent);
+      const partialMatches = formatPartialMatches(job.relatedMatches);
       const detailBtn = `<button class="btn btn-outline open-detail-btn" data-job-id="${escapeHtml(job.id)}">View Details</button>`;
       const applyBtn = applied
         ? '<button class="btn btn-outline" disabled>Already Applied</button>'
@@ -279,6 +403,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               <strong>${escapeHtml(percent)}%</strong>
             </div>
             <p><span>Matched Skills:</span> ${formatSkillList(job.matchedSkills, "No matching skills detected.")}</p>
+            ${partialMatches ? `<p class="job-partial-match"><span>Partial Matches:</span> ${partialMatches}</p>` : ""}
             <p><span>Missing Skills:</span> ${formatSkillList(job.missingSkills, "No major missing skills.")}</p>
           </div>
           <div class="job-actions">${detailBtn}${applyBtn}</div>
@@ -288,6 +413,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function renderApplications() {
+    syncStudentChrome();
     if (state.loading) {
       appsLoadingEl.classList.remove("hidden");
       appsListEl.classList.add("hidden");
@@ -362,6 +488,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         : "Confirmed TA jobs will appear here after a teacher finalizes hiring.";
     }
 
+    state.calendarEventsByDay = buildHiredCalendarEvents(hiredApps, state.calendarDate);
+    if (!state.calendarSelectedDate || !state.calendarEventsByDay[state.calendarSelectedDate]) {
+      state.calendarSelectedDate = Object.keys(state.calendarEventsByDay)[0] || new Date().toISOString().slice(0, 10);
+    }
+    renderCalendarGrid(state.calendarDate, state.calendarEventsByDay);
+    renderCalendarEventList(state.calendarSelectedDate, state.calendarEventsByDay);
+
     if (!hiredApps.length) {
       hiredListEl.classList.add("hidden");
       hiredEmptyEl.classList.remove("hidden");
@@ -385,14 +518,156 @@ document.addEventListener("DOMContentLoaded", async () => {
     }).join("");
   }
 
+  function buildHiredCalendarEvents(hiredApps, referenceDate) {
+    const year = referenceDate.getFullYear();
+    const month = referenceDate.getMonth();
+    const eventsByDay = {};
+    const weekdayMap = {
+      Sun: 0,
+      Mon: 1,
+      Tue: 2,
+      Wed: 3,
+      Thu: 4,
+      Fri: 5,
+      Sat: 6
+    };
+
+    hiredApps.forEach((app) => {
+      const job = state.jobs.find((item) => item.id === app.jobId) || {};
+      const schedule = String(app.schedule || app.jobSchedule || job.schedule || "").trim();
+      const match = schedule.match(/^\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})/i);
+      if (!match) return;
+
+      const dayLabel = match[1];
+      const startTime = match[2];
+      const endTime = match[3];
+      const weekday = weekdayMap[dayLabel.slice(0, 3)];
+      if (weekday === undefined) return;
+
+      const eventTemplate = {
+        dateLabel: dayLabel,
+        startTime,
+        endTime,
+        jobTitle: app.jobTitle || job.title || app.moduleCode || job.moduleCode || "TA work",
+        moduleCode: app.moduleCode || job.moduleCode || "",
+        teacherName: app.teacherName || job.teacherName || "Teacher",
+        schedule: schedule
+      };
+
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      for (let day = 1; day <= daysInMonth; day += 1) {
+        const current = new Date(year, month, day);
+        if (current.getDay() !== weekday) continue;
+
+        const key = localDateKey(current);
+        if (!eventsByDay[key]) {
+          eventsByDay[key] = [];
+        }
+        eventsByDay[key].push(eventTemplate);
+      }
+    });
+
+    return eventsByDay;
+  }
+
+  function formatCalendarMonth(date) {
+    return date.toLocaleDateString(undefined, {
+      month: "long",
+      year: "numeric"
+    });
+  }
+
+  function renderCalendarGrid(currentDate, eventsByDay) {
+    if (!jobCalendarGrid) return;
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const todayKey = localDateKey(new Date());
+    const selectedDateKey = state.calendarSelectedDate || todayKey;
+
+    calendarMonthLabel && (calendarMonthLabel.textContent = formatCalendarMonth(currentDate));
+
+    let html = "";
+    ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].forEach((weekday) => {
+      html += `<div class="calendar-weekday">${weekday}</div>`;
+    });
+
+    for (let i = 0; i < firstDay; i += 1) {
+      html += `<div class="calendar-day-cell empty"></div>`;
+    }
+
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const current = new Date(year, month, day);
+      const key = localDateKey(current);
+      const events = eventsByDay[key] || [];
+      const classes = ["calendar-day-cell"];
+      if (events.length) classes.push("has-event");
+      if (key === todayKey) classes.push("today");
+      if (key === selectedDateKey) classes.push("selected");
+
+      html += `
+        <div class="${classes.join(" ")}" data-date="${key}">
+          <div class="calendar-day-number">${day}</div>
+          ${events.length ? `<div class="calendar-events-indicator">${events.length} scheduled</div>` : ""}
+        </div>
+      `;
+    }
+
+    jobCalendarGrid.innerHTML = html;
+  }
+
+  function renderCalendarEventList(dateKey, eventsByDay) {
+    if (!calendarEventList || !calendarSelectedDateLabel) return;
+    const events = eventsByDay[dateKey] || [];
+    const formattedDate = parseLocalDateKey(dateKey).toLocaleDateString(undefined, {
+      weekday: "long",
+      month: "short",
+      day: "numeric",
+      year: "numeric"
+    });
+
+    calendarSelectedDateLabel.textContent = events.length
+      ? `Scheduled TA work on ${formattedDate}`
+      : `No confirmed TA work on ${formattedDate}.`;
+
+    if (!events.length) {
+      calendarEventList.innerHTML = `<div class="calendar-empty-note">You have no scheduled TA hours on this date.</div>`;
+      return;
+    }
+
+    calendarEventList.innerHTML = events.map((event) => `
+      <div class="calendar-event-item">
+        <h4>${escapeHtml(event.jobTitle)}</h4>
+        <p>${escapeHtml(event.moduleCode)} | ${escapeHtml(event.teacherName)}</p>
+        <p>${escapeHtml(event.startTime)} - ${escapeHtml(event.endTime)}</p>
+        <p>${escapeHtml(event.schedule)}</p>
+      </div>
+    `).join("");
+  }
+
+  function changeCalendarMonth(offset) {
+    const currentDate = state.calendarDate || new Date();
+    state.calendarDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1);
+    state.calendarEventsByDay = buildHiredCalendarEvents(state.applications.filter((app) => normalizeStatus(app.status) === "hired"), state.calendarDate);
+    if (!state.calendarSelectedDate || !state.calendarEventsByDay[state.calendarSelectedDate]) {
+      state.calendarSelectedDate = Object.keys(state.calendarEventsByDay)[0] || localDateKey(new Date(state.calendarDate.getFullYear(), state.calendarDate.getMonth(), 1));
+    }
+    renderCalendarGrid(state.calendarDate, state.calendarEventsByDay);
+    renderCalendarEventList(state.calendarSelectedDate, state.calendarEventsByDay);
+  }
+
   function renderProfile() {
     const student = state.student || {};
     profileNameEl.value = student.name || "";
     profileEmailEl.value = student.email || "";
+    if (profilePhoneEl) profilePhoneEl.value = student.phone || "";
     profileStudentIdEl.value = student.studentId || "";
     profileProgrammeEl.value = student.programme || "";
     profileSkillsEl.value = state.profile.skills;
     profileExperienceEl.value = state.profile.experience;
+    syncStudentChrome();
+    renderSkillChips();
     renderAttachmentsList();
   }
 
@@ -406,14 +681,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const html = attachments.map((att) => `
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #f3f4f6;">
+      <div class="student-attachment-row">
         <div>
           <p style="margin: 0; font-size: 13px; font-weight: 500;">${escapeHtml(att.fileName)}</p>
           <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">
-            ${escapeHtml(att.label || "Unlabeled")} • ${formatFileSize(att.fileSize)} • ${extractDate(att.uploadedAt)}
+            ${escapeHtml(att.label || "Unlabeled")} - ${formatFileSize(att.fileSize)} - ${extractDate(att.uploadedAt)}
           </p>
         </div>
-        <button class="delete-attachment-btn" data-attachment-id="${escapeHtml(att.id)}" style="padding: 6px 10px; background-color: #fee2e2; color: #991b1b; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">Delete</button>
+        <button class="delete-attachment-btn" data-attachment-id="${escapeHtml(att.id)}">Delete</button>
       </div>
     `).join("");
 
@@ -590,6 +865,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (detailRequirementsEl) {
       detailRequirementsEl.textContent = job.requirements || "No detailed requirements provided yet.";
     }
+    if (detailMatchBreakdownEl) {
+      const percent = matchPercent(job);
+      const partialMatches = formatPartialMatches(job.relatedMatches);
+      detailMatchBreakdownEl.innerHTML = `
+        <div><strong>${escapeHtml(percent)}%</strong> overall match</div>
+        <div>Required skills: ${formatSkillList(job.requiredSkills, "No skill requirements detected.")}</div>
+        <div>Matched skills: ${formatSkillList(job.matchedSkills, "No exact matches detected.")}</div>
+        ${partialMatches ? `<div>Partial matches: ${partialMatches}</div>` : ""}
+        <div>Missing skills: ${formatSkillList(job.missingSkills, "No major missing skills.")}</div>
+      `;
+    }
     if (detailProfileSnapshotEl) {
       const snapshot = [
         `Name: ${profileNameEl.value || (state.student && state.student.name) || "-"}`,
@@ -712,7 +998,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     aiAdvisorBtn.disabled = true;
-    aiAdvisorBtn.textContent = "Asking...";
+    aiAdvisorBtn.textContent = "Thinking...";
     aiAdvisorAnswerEl.textContent = "Preparing advice from your current matching results...";
     aiAdvisorAnswerEl.classList.remove("hidden");
     aiAdvisorNoteEl.classList.add("hidden");
@@ -729,13 +1015,20 @@ document.addEventListener("DOMContentLoaded", async () => {
       aiAdvisorNoteEl.classList.add("hidden");
     } finally {
       aiAdvisorBtn.disabled = false;
-      aiAdvisorBtn.textContent = "Ask AI Advisor";
+      aiAdvisorBtn.textContent = "Send to AI Advisor";
     }
   }
 
   tabButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
       switchTab(btn.dataset.tab);
+    });
+  });
+
+  document.querySelectorAll("[data-tab-jump]").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      switchTab(link.getAttribute("data-tab-jump"));
     });
   });
 
@@ -752,6 +1045,29 @@ document.addEventListener("DOMContentLoaded", async () => {
   jobHoursFilter.addEventListener("change", (event) => {
     state.hoursFilter = event.target.value || "all";
     renderJobs();
+  });
+
+  if (jobScheduleFilter) {
+    jobScheduleFilter.addEventListener("change", (event) => {
+      state.scheduleFilter = event.target.value || "all";
+      renderJobs();
+    });
+  }
+
+  calendarPrevBtn?.addEventListener("click", () => {
+    changeCalendarMonth(-1);
+  });
+
+  calendarNextBtn?.addEventListener("click", () => {
+    changeCalendarMonth(1);
+  });
+
+  jobCalendarGrid?.addEventListener("click", (event) => {
+    const cell = event.target.closest(".calendar-day-cell");
+    if (!cell || !cell.dataset.date) return;
+    state.calendarSelectedDate = cell.dataset.date;
+    renderCalendarEventList(state.calendarSelectedDate, state.calendarEventsByDay || {});
+    renderCalendarGrid(state.calendarDate, state.calendarEventsByDay || {});
   });
 
   jobsListEl.addEventListener("click", (event) => {
@@ -791,8 +1107,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   saveProfileBtn.addEventListener("click", async () => {
     const name = profileNameEl.value.trim();
+    const phone = profilePhoneEl ? profilePhoneEl.value.trim() : "";
     if (!name) {
       showNotice("Full name cannot be empty.", true);
+      switchTab("profile");
+      return;
+    }
+    if (phone && !/^\d{11}$/.test(phone)) {
+      showNotice("Phone must be 11 digits.", true);
       switchTab("profile");
       return;
     }
@@ -802,6 +1124,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         method: "PUT",
         body: {
           name,
+          phone,
           skills: profileSkillsEl.value.trim(),
           experience: profileExperienceEl.value.trim()
         }
@@ -810,12 +1133,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         id: updated.userId,
         name: updated.name,
         email: updated.email,
+        phone: updated.phone,
         studentId: updated.studentId,
         programme: updated.programme
       };
       state.profile.skills = updated.skills || "";
       state.profile.experience = updated.experience || "";
       studentWelcomeEl.textContent = `Welcome, ${name}.`;
+      syncStudentChrome();
       renderProfile();
       showNotice("Profile saved successfully.", false);
     } catch (err) {
@@ -980,16 +1305,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       id: profileData.userId,
       name: profileData.name,
       email: profileData.email,
+      phone: profileData.phone,
       studentId: profileData.studentId,
       programme: profileData.programme
     };
     state.profile.skills = profileData.skills || "";
     state.profile.experience = profileData.experience || "";
     state.attachments = Array.isArray(profileData.attachments) ? profileData.attachments : [];
+    populateScheduleFilter();
 
     studentWelcomeEl.textContent = state.student.name
       ? `Welcome, ${state.student.name}.`
       : "Welcome, student.";
+    syncStudentChrome();
   }
 
   renderJobs();
@@ -1011,3 +1339,4 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderProfile();
   }
 });
+

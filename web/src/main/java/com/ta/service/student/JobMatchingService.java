@@ -5,9 +5,7 @@ import com.ta.model.StudentProfile;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Deterministic matching layer for TA job recommendations.
@@ -18,37 +16,37 @@ import java.util.Set;
  */
 public class JobMatchingService {
     private final SkillExtractionService skillExtractionService;
+    private final SkillMatchScorer skillMatchScorer;
 
     public JobMatchingService() {
-        this(new SkillExtractionService());
+        this(new SkillExtractionService(), new SkillMatchScorer());
     }
 
     public JobMatchingService(SkillExtractionService skillExtractionService) {
+        this(skillExtractionService, new SkillMatchScorer());
+    }
+
+    public JobMatchingService(SkillExtractionService skillExtractionService, SkillMatchScorer skillMatchScorer) {
         this.skillExtractionService = skillExtractionService != null
                 ? skillExtractionService
                 : new SkillExtractionService();
+        this.skillMatchScorer = skillMatchScorer != null ? skillMatchScorer : new SkillMatchScorer();
     }
 
     public JobMatchResult match(StudentProfile student, JobPosting job) {
         List<String> studentSkills = skillExtractionService.extractSkillsFromStudent(student);
         List<String> requiredSkills = skillExtractionService.extractSkillsFromJob(job);
-        Set<String> studentSkillSet = new HashSet<>(studentSkills);
 
-        List<String> matchedSkills = new ArrayList<>();
-        List<String> missingSkills = new ArrayList<>();
-        for (String requiredSkill : requiredSkills) {
-            if (studentSkillSet.contains(requiredSkill)) {
-                matchedSkills.add(requiredSkill);
-            } else {
-                missingSkills.add(requiredSkill);
-            }
-        }
+        SkillMatchScorer.SkillMatchOutcome outcome = skillMatchScorer.score(requiredSkills, studentSkills);
 
-        double matchScore = requiredSkills.isEmpty()
-                ? 0.0
-                : (double) matchedSkills.size() / requiredSkills.size();
-
-        return new JobMatchResult(job, studentSkills, requiredSkills, matchedSkills, missingSkills, matchScore);
+        return new JobMatchResult(
+                job,
+                studentSkills,
+                requiredSkills,
+                outcome.getMatchedSkills(),
+                outcome.getMissingSkills(),
+                outcome.getRelatedMatches(),
+                outcome.getMatchScore());
     }
 
     public List<JobMatchResult> matchJobs(StudentProfile student, List<JobPosting> jobs) {
