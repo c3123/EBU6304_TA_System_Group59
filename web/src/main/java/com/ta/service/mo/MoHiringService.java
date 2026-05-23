@@ -177,12 +177,7 @@ public class MoHiringService {
                 ));
             }
 
-            String now = Instant.now().toString();
-            job.setRecruitmentClosed(true);
-            job.setClosedAt(now);
-            job.setStatus("closed");
-            job.setPublished(false);
-            job.setUpdatedAt(now);
+            closeRecruitment(job);
 
             List<HiringHistoryRecord> history = JsonUtility.loadHiringHistory(context);
             HiringHistoryRecord record = new HiringHistoryRecord();
@@ -190,7 +185,7 @@ public class MoHiringService {
             record.setAction("finalize");
             record.setJobId(jobId);
             record.setMoId(moId);
-            record.setSubmittedAt(now);
+            record.setSubmittedAt(Instant.now().toString());
             record.setHiredApplicationIds(hiredIds);
             record.setHiredStudentNames(hiredNames);
             history.add(record);
@@ -249,6 +244,18 @@ public class MoHiringService {
         } catch (IOException e) {
             throw new RuntimeException("Failed to reopen hiring.", e);
         }
+    }
+
+    private void closeRecruitment(JobPosting job) {
+        if (job == null || Boolean.TRUE.equals(job.getRecruitmentClosed())) {
+            return;
+        }
+        String now = Instant.now().toString();
+        job.setRecruitmentClosed(true);
+        job.setClosedAt(now);
+        job.setStatus("closed");
+        job.setPublished(false);
+        job.setUpdatedAt(now);
     }
 
     private NotificationRecord buildNotification(String id,
