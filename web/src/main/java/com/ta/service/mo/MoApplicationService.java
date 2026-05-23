@@ -312,11 +312,7 @@ public class MoApplicationService {
             if ("hired".equals(normalized)) {
                 appendManualHireHistory(context, moId, record);
             }
-            boolean recruitmentClosedNow = closeRecruitmentIfQuotaReached(job, applications);
             JsonUtility.saveApplications(context, applications);
-            if (recruitmentClosedNow) {
-                JsonUtility.saveJobs(context, jobs);
-            }
             if ("hired".equals(normalized)) {
                 workloadOverloadAnnouncementService.notifyIfNewlyOverloaded(context, record.getStudentId(), weeklyHoursBefore);
             }
@@ -432,18 +428,6 @@ public class MoApplicationService {
                 }
             }
 
-            Set<String> targetJobIds = targets.stream()
-                    .map(ApplicationRecord::getJobId)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toCollection(LinkedHashSet::new));
-            boolean recruitmentClosedNow = false;
-            for (String jobId : targetJobIds) {
-                JobPosting job = jobById.get(jobId);
-                if (closeRecruitmentIfQuotaReached(job, applications)) {
-                    recruitmentClosedNow = true;
-                }
-            }
-
             // #region agent log
             if ("hired".equals(normalized)) {
                 try {
@@ -458,9 +442,6 @@ public class MoApplicationService {
             // #endregion
 
             JsonUtility.saveApplications(context, applications);
-            if (recruitmentClosedNow) {
-                JsonUtility.saveJobs(context, jobs);
-            }
             if ("hired".equals(normalized)) {
                 for (Map.Entry<String, Integer> entry : weeklyHoursBeforeByStudent.entrySet()) {
                     workloadOverloadAnnouncementService.notifyIfNewlyOverloaded(
@@ -568,30 +549,6 @@ public class MoApplicationService {
         } catch (IOException e) {
             throw new RuntimeException("Failed to save decision feedback.", e);
         }
-    }
-
-    private boolean closeRecruitmentIfQuotaReached(JobPosting job, List<ApplicationRecord> applications) {
-        if (job == null || Boolean.TRUE.equals(job.getRecruitmentClosed())) {
-            return false;
-        }
-        if (job.getPositions() <= 0) {
-            return false;
-        }
-        long hiredCount = applications.stream()
-                .filter(ApplicationRecord::isActive)
-                .filter(app -> job.getId() != null && job.getId().equals(app.getJobId()))
-                .filter(app -> "hired".equalsIgnoreCase(normalizeStatus(app.getStatus())))
-                .count();
-        if (hiredCount < job.getPositions()) {
-            return false;
-        }
-        String now = Instant.now().toString();
-        job.setRecruitmentClosed(true);
-        job.setClosedAt(now);
-        job.setStatus("closed");
-        job.setPublished(false);
-        job.setUpdatedAt(now);
-        return true;
     }
 
     private JobPosting requireOwnedJob(ServletContext context, String moId, String jobId) throws IOException {
