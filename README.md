@@ -1,5 +1,7 @@
 # EBU6304_TA_System_Group59
 
+International School Teaching Assistant Recruitment System - a Java Servlet/JSP web application with JSON file persistence and no external database.
+
 | GitHub Username | QMID |
 | --- | --- |
 | Chudadi-cfy | 231226613 |
@@ -9,31 +11,38 @@
 | MA0204 | 231226587 |
 | c3123 | 231226624 |
 
-International School Teaching Assistant Recruitment System — a Java Servlet/JSP web application with JSON file persistence (no database).
-
 ---
 
 ## Quick Start
 
 ### Requirements
 
-- **JDK 11+** (project `pom.xml` targets Java 11; JDK 17 is commonly used locally)
-- **Maven 3.8+**
-- **Apache Tomcat 10.1+** (Jakarta Servlet 6)
+- JDK 21 (`web/pom.xml` compiles with `--release 21`)
+- Maven 3.8+
+- Apache Tomcat 10.1+ (Jakarta Servlet 6)
+- Node.js 20+ and npm, for Playwright browser E2E tests
 
-### Project layout
+### Project Layout
 
 ```text
 web/
 |- pom.xml
 `- src/
    |- main/
-   |  |- java/          # servlets, services, DTOs, models
+   |  |- java/          # servlets, services, DTOs, models, utilities
    |  `- webapp/        # JSP pages, static assets, WEB-INF/data
    `- test/java/        # JUnit 5 unit tests
+e2e/
+|- scripts/             # Playwright data preparation
+`- tests/               # Browser E2E and Tomcat integration tests
 scripts/
-|- dev-deploy.ps1       # sync exploded WAR to Tomcat (keeps runtime data)
+|- dev-deploy.ps1       # sync exploded WAR to Tomcat while keeping runtime data
 `- generate_seed_data.py # regenerate demo JSON dataset
+docs/
+|- Acceptance_Test_Checklist.md
+`- JavaDocs.md
+package.json            # Playwright E2E commands
+playwright.config.ts    # Tomcat-backed browser test configuration
 ```
 
 ### Build
@@ -42,14 +51,19 @@ scripts/
 mvn -f web/pom.xml clean package
 ```
 
-WAR output: `web/target/web.war`
+WAR output:
 
-### Deploy (Tomcat)
+```text
+web/target/web.war
+```
+
+### Deploy To Tomcat
 
 1. Copy `web/target/web.war` to Tomcat `webapps/`.
-2. Start Tomcat and open: `http://localhost:8080/web/`
+2. Start Tomcat.
+3. Open `http://localhost:8080/web/`.
 
-Optional exploded deploy (preserves existing `WEB-INF/data` and uploads on the server):
+Optional exploded deployment for local development:
 
 ```powershell
 .\scripts\dev-deploy.ps1 -TomcatWebappsPath "C:\path\to\tomcat\webapps"
@@ -59,7 +73,7 @@ Optional exploded deploy (preserves existing `WEB-INF/data` and uploads on the s
 
 ## Demo Accounts
 
-Primary demo logins (password for all: `demo123`):
+Primary demo logins use password `demo123`.
 
 | Role | Login | Password |
 | --- | --- | --- |
@@ -67,9 +81,9 @@ Primary demo logins (password for all: `demo123`):
 | Teacher / MO | `teacher@demo.com` | `demo123` |
 | Admin | `admin@demo.com` | `demo123` |
 
-The bundled JSON seed dataset also includes **50 students**, **20 teachers**, and **1 admin** (71 users total). Additional teacher/student accounts follow the pattern `teacher02@demo.qmul.ac.uk`, `student02@demo.qmul.ac.uk`, etc., all with password `demo123`.
+The bundled seed data also includes 50 students, 20 teachers, and 1 admin. Extra demo accounts follow the patterns `student02@demo.qmul.ac.uk`, `student03@demo.qmul.ac.uk`, `teacher02@demo.qmul.ac.uk`, and so on, with password `demo123`.
 
-To regenerate demo jobs/applications/users:
+To regenerate demo jobs, users, applications, and related JSON data:
 
 ```powershell
 python scripts/generate_seed_data.py
@@ -77,224 +91,263 @@ python scripts/generate_seed_data.py
 
 ---
 
-## Running Unit Tests
+## Project Status
 
-Tests use an isolated temporary JSON directory via `System.setProperty("ta.data.dir", ...)` and do **not** require Tomcat.
+The current main-line code integrates Sprint 1, Sprint 2, Sprint 3, and Sprint 4 work. Sprint 4 is not represented by a separate git tag; it is integrated through later pull requests and commits on `main`.
 
-```powershell
-mvn -f web/pom.xml test
-```
+| Milestone | Evidence | Scope |
+| --- | --- | --- |
+| Sprint 1 | `v1.0-sprint1` | Authentication, base Servlet/JSP structure, TA profile foundation, basic MO job flow |
+| Sprint 2 | `v2.0-sprint2` | Admin dashboard/user management, demand review, richer TA and MO recruitment workflows |
+| Sprint 3 | `v3.0-Sprint3` | Workload settings, reports, password change, MO review tools, assigned-job visibility, documentation and testing |
+| Sprint 4 | PRs and commits after Sprint 3 tag | Admin analytics/alerts, announcements, AI assistance, student calendar, MO decision feedback, applicant recommendation, final test/documentation hardening |
 
-The suite currently contains **99** JUnit 5 tests under `web/src/test/java`.
+Recent main-line evidence from the Git history:
 
-| Test class | Coverage |
-| --- | --- |
-| `MoApplicationStatusTransitionTest` | Application status state machine (normal, boundary, error transitions) |
-| `MoApplicationStatusFilterTest` | MO list status filter parsing (`pending` includes `viewed`, `__none__`, etc.) |
-| `MoApplicationServiceTest` | List/detail, status update (single & batch), evaluation notes, decision feedback |
-| `MoApplicationExportServiceTest` | Applicant export CSV/JSON, scope filter, validation |
-| `MoJobServiceTest` | MO job publish/offline/withdraw/reuse/edit/delete rules |
-| `MoJobHistoryServiceTest` | Posted job history listing |
-| `MoDemandServiceTest` | MO demand creation and listing |
-| `MoNotificationServiceTest` | Notification list, backfill, announcements, mark-read |
-| `StudentServiceTest` | Profile persistence, attachment upload/delete, apply/withdraw, assigned jobs, AI advisor fallback |
-| `AccountServiceTest` | Password change success for student/MO/admin and validation failures |
-| `AuthFilterTest` | Unauthenticated API access and wrong-role access for admin/MO/student routes |
-
-Testing techniques: equivalence classes, boundary values, state-transition testing, role-access testing.
-
-Manual browser checks before demo/submission are still recommended — see [docs/Acceptance_Test_Checklist.md](docs/Acceptance_Test_Checklist.md).
+| PR / Commit | Branch / Author Area | Main contribution |
+| --- | --- | --- |
+| PR #98, `160b2c6` | `dev-Fangyu-Chu` | Improved student job selection and matching behavior |
+| PR #97, `39abc01`, `73a72a9` | `dev-Tianxiao-Ma` | Admin job analysis charts, seed data, workload overload notifications, README refresh |
+| PR #96, `bc64cdb` | `dev-Fangyu-Chu` | MO applicant AI recommendation support |
+| PR #95, `9690635` | `dev-Tianzi-Xiong` | Student hired-job calendar |
+| PR #93, `4abf5c0` | `dev-Sihan-Chen` | Expanded automated tests and final documentation readiness |
+| PR #92, `562f86b` | `dev-Sihan-Chen` | Admin UI alignment with the student dashboard style |
+| PRs #86-#87, `220adad`, `39abc01` | `dev-Tianxiao-Ma` | Sprint 4 admin charts, demand announcements, recruitment UI, workload notifications |
+| PR #85, `b5453ab` | `dev-Sihan-Chen` | Admin demand review and alert workflow refinement |
+| PRs #82-#84 | Student/Admin/AI branches | Student page improvements, admin extensions, AI bug fixes |
 
 ---
 
-## JavaDocs
-
-```powershell
-mvn -f web/pom.xml javadoc:javadoc
-```
-
-Entry point: `web/target/site/apidocs/index.html`
-
-Notes: [docs/JavaDocs.md](docs/JavaDocs.md)
-
----
-
-## Implemented Features (current `main`)
+## Implemented Features
 
 ### Shared
 
-- Session login/logout with role-based redirection (`student`, `teacher`, `admin`)
-- Self-service password change (`/api/account/change-password`)
-- Student self-registration (`/register`)
-- JSON persistence through `JsonUtility` (no external database)
+- Session login/logout with role-based redirection for `student`, `teacher`, and `admin`.
+- Role-based access control for protected JSP pages and `/api/*` routes.
+- Student self-registration.
+- Self-service password change through `/api/account/change-password`.
+- JSON persistence through `JsonUtility`; no database is required.
 
-### Student (TA)
+### Student / TA
 
-- Profile management and attachment upload/download/delete
-- Browse open jobs, view details, submit and withdraw applications
-- Track application status and notifications (including system announcements)
-- View assigned/hired jobs with weekly workload summary
-- **Hired-job calendar** on the student portal (month view from job schedules)
-- **AI advisor** endpoint with local fallback when external AI is unavailable
+- Profile management with personal details, programme, skills, and experience.
+- Supporting document upload, download, delete, and application-time selection.
+- Browse open jobs, inspect job details, apply once per job, and withdraw before final hiring.
+- Track application status and receive notifications, including system announcements.
+- View assigned/hired jobs with workload and schedule details.
+- Hired-job calendar on the student portal.
+- AI advisor with deterministic fallback when external AI is disabled or unavailable.
+- Improved job matching and selection behavior based on skills and workload context.
 
-### Module Organiser (Teacher / MO)
+### Module Organiser / Teacher
 
-- Submit TA **demands** for admin approval
-- Publish, edit, offline, withdraw, reuse, and delete job postings (with lifecycle constraints)
-- Dedicated applicant review UI (`mo-applications.jsp`) with workload preview
-- Single/batch applicant status updates, evaluation notes, decision feedback
-- Final hiring confirmation and recruitment closure
-- Applicant export (CSV/JSON), notifications, job history
+- Submit TA demands and track admin approval progress.
+- Publish approved demands as student-visible jobs.
+- Edit, offline, withdraw, reuse, and delete jobs under lifecycle constraints.
+- Review applicants on `mo-applications.jsp`, including detail view and automatic `pending` to `viewed` transition.
+- Single and batch status updates for pending/viewed/shortlisted/hired/rejected applicants.
+- Private evaluation notes and decision feedback for internal review.
+- Final hiring confirmation, recruitment closure, and hiring history.
+- Applicant export in CSV/JSON-compatible workflows.
+- MO notifications and announcement display.
+- Applicant workload preview and MO applicant AI recommendation support.
 
 ### Administrator
 
-- **System Overview**: role distribution pie chart; daily job publication and application trend line charts; quick summary KPIs
-- **Workload**: threshold configuration, overload/warning/normal levels, side-panel job breakdown, CSV/TXT export, **bulk overload reminder** to affected students
-- **Users**: create/delete users, reset passwords
-- **Demand Review**: approve/reject/pending with optional rejection reason; **auto system announcement** to the posting teacher on status change
-- **Jobs**: filter by status/department/teacher; job-level application drilldown; **job analysis** pie charts (by department; by status: Pending / Reject / Open / Overdue); CSV/TXT export; JSON backup
-- **Recruitment Results**: date-range filters, hiring-mix chart, department and vacancy analytics, CSV export
-- **Announcements**: broadcast to students, teachers, or all
-- **Alerts modal**: workload, vacancy, deadline, and data-quality risks
-- Recruitment reopen for closed jobs
-- My Account (password change)
+- System overview with role distribution, job publication trend, application trend, and KPI cards.
+- Workload monitoring with configurable threshold, Low/Normal/Warning/Overload levels, drilldown, and export.
+- Bulk overload reminders to affected students.
+- User management: create/delete users and reset passwords with safety constraints.
+- Demand review: approve, reject, or return to pending, with optional rejection reason and teacher notification.
+- Jobs view with status/department/teacher filters, job health labels, application drilldown, charts, CSV/TXT export, and JSON backup.
+- Recruitment Results view with date filters, hiring-mix chart, department/vacancy analytics, and CSV export.
+- Announcements broadcast to students, teachers, or all users.
+- Alerts modal for workload, vacancy, deadline, and data-quality risks.
+- Recruitment reopen for closed jobs.
+- My Account password change.
+
+---
+
+## Sprint Delivery Summary
+
+### Sprint 1 - Foundation
+
+Goal: establish the base recruitment system and role-specific entry points.
+
+| Area | Members | Delivered scope |
+| --- | --- | --- |
+| Core architecture and authentication | Sihan Chen, Tianxiao Ma | MVC-style Servlet/JSP project structure, Tomcat deployment setup, `JsonUtility`, `LoginServlet`, `LogoutServlet`, role-based login page |
+| TA / Applicant module | Tianzi Xiong, Fangyu Chu | Applicant profile foundation and available job listing |
+| MO / Teacher module | Wanhe Ji, Huishun Hu | Demand/job creation form, validation, and basic MO job dashboard |
+
+### Sprint 2 - End-To-End Recruitment Operations
+
+Goal: extend the foundation into a usable recruitment workflow across admin, TA, and MO roles.
+
+| Area | Members | Delivered scope |
+| --- | --- | --- |
+| Admin and shared backend | Sihan Chen, Tianxiao Ma | Admin dashboard, workload monitoring, demand review, user create/delete/reset password, shared JSON consistency |
+| TA workflow extension | Tianzi Xiong, Fangyu Chu | Profile persistence, attachments, application submission, withdrawal, and status tracking |
+| MO workflow extension | Wanhe Ji, Huishun Hu | Demand lifecycle, job publishing/editing/offline controls, applicant review, hiring confirmation, notifications, hiring history |
+
+### Sprint 3 - Reporting, Review Tools, And Final Delivery Readiness
+
+Goal: improve reporting, review productivity, account maintenance, and test/documentation coverage.
+
+| Area | Members | Delivered scope |
+| --- | --- | --- |
+| Admin monitoring/reporting | Sihan Chen, Tianxiao Ma | Workload threshold settings, weekly recruitment report export, job filtering, dashboard improvements |
+| Shared account and quality | Sihan Chen, Tianxiao Ma | Self-service password change, access-control tests, JavaDocs, acceptance checklist |
+| TA workflow polish | Tianzi Xiong, Fangyu Chu | Assigned jobs, schedule visibility, notifications, AI advisor baseline |
+| MO review productivity | Wanhe Ji, Huishun Hu | Status filters, batch status updates, evaluation notes, posted-job history, applicant export |
+
+### Sprint 4 - Final Enhancements
+
+Goal: complete remaining backlog items and add final analytics, AI assistance, alerts, and demo-readiness improvements.
+
+| Area | Members / Branch Evidence | Delivered scope |
+| --- | --- | --- |
+| Admin analytics and oversight | Sihan Chen, Tianxiao Ma; PRs #85, #87, #97 | Demand review refinement, workload levels and drilldown, filtered reports, recruitment results, charts, alerts, backup/export, overload notifications |
+| Student final experience | Tianzi Xiong, Fangyu Chu; PRs #89, #95, #98 | Student page improvements, hired-job calendar, AI advisor polish, improved job matching/selection, attachment download fixes |
+| MO final review features | Wanhe Ji, Huishun Hu; PRs #88, #91 plus later integration | Decision feedback, applicant workload colors, job history/reuse, export/test coverage |
+| AI-assisted review | Fangyu Chu branch evidence; PR #96 | MO applicant AI recommendation based on skill match and projected workload |
+| Final readiness | Sihan Chen and team; PR #93 | Expanded service tests, documentation alignment, JavaDocs notes, acceptance-test checklist |
 
 ---
 
 ## Runtime Data Storage
 
-All runtime data lives under `web/src/main/webapp/WEB-INF/data/`:
+All runtime data lives under `web/src/main/webapp/WEB-INF/data/`.
 
 | File | Purpose |
 | --- | --- |
 | `users.json` | Login accounts and roles |
-| `students.json` | Student profiles, skills, attachments metadata |
+| `students.json` | Student profiles, skills, experience, and attachment metadata |
 | `jobs.json` | Demands and job postings |
-| `applications.json` | Application records |
-| `notifications.json` | MO/student/admin notifications and announcements |
-| `hiring_history.json` | Final hiring events |
-| `system_settings.json` | Workload threshold (`workloadThresholdHours`, default 20) |
+| `applications.json` | Application records, statuses, notes, and decision feedback |
+| `notifications.json` | Student/MO/admin notifications and announcements |
+| `hiring_history.json` | Final hiring and reopen audit events |
+| `system_settings.json` | Workload threshold and related settings |
 
-Uploaded student files are stored under `WEB-INF/uploads/students/` (created at runtime).
+Uploaded student files are stored under `WEB-INF/uploads/students/`, which is created at runtime.
 
 Initialization rules:
 
-- Existing files are read/written in place.
-- Missing list files are created as `[]`.
+- Existing JSON files are read and written in place.
+- Missing list-based files are created as `[]`.
 - Missing `system_settings.json` is initialized with `workloadThresholdHours: 20`.
-
-To reset demo content, restore or regenerate the JSON files above (and optionally clear `WEB-INF/uploads`).
+- Demo content can be reset by restoring or regenerating the JSON files and optionally clearing `WEB-INF/uploads`.
 
 ---
 
-## Release Tags & Documentation
+## Testing
 
-| Tag | Scope |
+JUnit 5 tests use isolated temporary JSON data directories through `System.setProperty("ta.data.dir", ...)`; Tomcat is not required for unit tests.
+
+```powershell
+mvn -f web/pom.xml test
+```
+
+The automated suite currently contains **165** JUnit 5 tests covering Admin, MO, Student, shared account behavior, and servlet access control. The Maven build is configured for Java 21 bytecode. The Surefire configuration also enables Byte Buddy's experimental mode so the suite can still run on newer local JDKs when necessary.
+
+| Area | Test class | Coverage |
 | --- | --- |
-| `v1.0-sprint1` | Sprint 1 baseline |
-| `v2.0-sprint2` | Sprint 2 baseline |
-| `v3.0-Sprint3` | Sprint 3 delivery tag |
+| Admin | `AdminAnnouncementServiceTest` | Broadcast fan-out, student/teacher targeting, announcement validation |
+| Admin | `AdminApplicationArchiveServiceTest` | Application archive joins, filters, MO private fields |
+| Admin | `AdminDashboardServiceTest` | Dashboard counts, workload levels, filters, alerts |
+| Admin | `AdminDemandReviewServiceTest` | Demand listing, approve/reject/pending review, teacher notifications |
+| Admin | `AdminRecruitmentOutcomeServiceTest` | Recruitment outcome KPIs, date window filtering, CSV export |
+| Admin | `AdminReportServiceTest` | Weekly reports, workload reports, application archive reports, backup JSON |
+| Admin | `AdminUserServiceTest` | Create/delete/reset users, student profile synchronization, admin safety rules |
+| Admin | `AdminWorkloadSettingsServiceTest` | Workload threshold load/save validation |
+| Admin | `WorkloadOverloadAnnouncementServiceTest` | Workload calculation, overload transition notices, bulk reminders |
+| MO | `MoApplicationStatusTransitionTest` | Application status state machine |
+| MO | `MoApplicationStatusFilterTest` | MO status filter parsing and edge cases |
+| MO | `MoApplicationServiceTest` | List/detail, status update, batch update, notes, decision feedback, hiring rules |
+| MO | `MoApplicationExportServiceTest` | Applicant export, scope filtering, validation |
+| MO | `MoDemandServiceTest` | Demand creation, pending approval, duplicate blocking, validation |
+| MO | `MoJobServiceTest` | Publish, edit, offline, withdraw, reuse, delete lifecycle constraints |
+| MO | `MoJobHistoryServiceTest` | Posted-job history rows and ownership filtering |
+| MO | `MoNotificationServiceTest` | Notification list, backfill, announcements, mark-read |
+| MO | `ApplicantRecommendationServiceTest` | Applicant recommendation scoring and fallback behavior |
+| Student | `JobMatchingServiceTest` | Recommendable job filtering, match ordering, related skill hints |
+| Student | `SkillMatchScorerTest` | Exact skill matches, strict-skill misses, related partial credit |
+| Student | `StudentNotificationServiceTest` | Student notification listing, announcement mapping, mark-read ownership |
+| Student | `StudentServiceTest` | Profile persistence/fallback, attachments, job listing, apply/withdraw, assigned jobs, AI advisor fallback |
+| Shared | `AccountServiceTest` | Password change success and validation failures |
+| Shared / Access control | `AuthFilterTest` | Unauthenticated and wrong-role access handling |
 
-Sprint 4 backlog items (for example MO internal rejection reasons) are integrated on `main` where implemented; there is no separate Sprint 4 git tag.
+Testing techniques include equivalence classes, boundary values, state-transition testing, role-access testing, and temporary data isolation.
+
+### Browser E2E / Tomcat Integration
+
+Playwright tests under `e2e/tests` build the WAR, start Tomcat 10.1 through Maven Cargo on port `18080`, deploy the app under `/web`, copy seed JSON into an isolated `web/target/e2e-data` directory, and run browser/API checks against the real JSP application.
+
+Install the Node dependencies and Chromium browser once:
+
+```powershell
+npm install
+npx playwright install chromium
+```
+
+Run the full browser E2E suite:
+
+```powershell
+npm run e2e
+```
+
+Current coverage: **13 Playwright tests** covering protected-page redirects, unauthenticated and wrong-role API access, invalid login, successful Student/MO/Admin login, role API smoke tests, and key Admin, Student, and MO applicant page rendering.
+
+To run against an already-running Tomcat instance instead of Cargo:
+
+```powershell
+$env:E2E_BASE_URL = "http://localhost:8080/web"
+npm run e2e:against-running
+```
+
+Remaining manual checks:
+
+- File download contents, chart visual correctness, and longer data-changing demo flows are still validated through the manual acceptance checklist.
+
+Manual browser checks before demo/submission are documented in [docs/Acceptance_Test_Checklist.md](docs/Acceptance_Test_Checklist.md).
+
+---
+
+## JavaDocs
+
+Generate JavaDocs from the repository root:
+
+```powershell
+mvn -f web/pom.xml javadoc:javadoc
+```
+
+Entry point:
+
+```text
+web/target/site/apidocs/index.html
+```
+
+Code documentation notes are maintained in [docs/JavaDocs.md](docs/JavaDocs.md).
+
+---
+
+## Documentation
 
 | Document | Description |
 | --- | --- |
-| [Function_Details.md](Function_Details.md) | Full functional specification (Sprint 1–4) |
-| [docs/Sprint3_Minimal_Design.md](docs/Sprint3_Minimal_Design.md) | Sprint 3 interface/data design notes |
+| [Function_Details.md](Function_Details.md) | Full functional specification for Sprint 1, Sprint 2, Sprint 3, and Sprint 4 |
 | [docs/Acceptance_Test_Checklist.md](docs/Acceptance_Test_Checklist.md) | Manual acceptance checklist |
-| [docs/JavaDocs.md](docs/JavaDocs.md) | JavaDoc generation notes |
+| [docs/JavaDocs.md](docs/JavaDocs.md) | JavaDoc generation and code documentation notes |
 
 ---
 
-## 1. Project Introduction
+## Project Background
 
-### Project Overview
+The International School Teaching Assistant Recruitment System supports BUPT International School in replacing a manual, Excel-based TA recruitment process. The project follows Agile/Scrum delivery across multiple sprints and keeps persistence intentionally simple through JSON text files.
 
-The **International School Teaching Assistant Recruitment System** supports BUPT International School in replacing a manual, Excel-based TA recruitment process. The project follows Agile/Scrum delivery across multiple sprints.
+Technical stack:
 
-### Technical Stack
-
-- **Backend:** Java Servlet + JSP (Jakarta EE / Tomcat 10.1+)
-- **Persistence:** JSON text files and local upload folders (no database)
-- **Frontend:** JSP + vanilla JavaScript + Chart.js (admin charts)
-- **Testing:** JUnit 5 + Mockito
-
-### Sprint 1 Goal
-
-Foundational architecture: authentication, TA profile management, basic MO job posting, and job browsing.
-
-### Sprint 2 Progress
-
-Administrator control and end-to-end recruitment operations:
-
-- administrator dashboard and workload monitoring
-- administrator demand review and user management
-- MO applicant review, hiring decisions, and job lifecycle control
-- student profile persistence, attachments, and application management
-
-### Final Delivery Status
-
-`main` integrates Sprint 1–3 tagged deliverables plus Sprint 4 follow-ups (MO enhancements, admin reporting/charts, announcements, AI advisor, student hired-job calendar, automated workload notifications, and expanded demo dataset).
-
----
-
-## 2. Sprint 1 Member Task Allocation
-
-### Group A: Core Architecture & Authentication
-**Members:** Sihan Chen & Tianxiao Ma
-
-- MVC-style Servlet project structure and Tomcat deployment setup
-- Centralized `JsonUtility` for JSON file I/O (`users.json`, `students.json`, `jobs.json`, …)
-- `LoginServlet` / `LogoutServlet` and role-based login page
-
-### Group B: TA (Applicant) Module
-**Members:** Tianzi Xiong & Fangyu Chu
-
-- Applicant profile page backed by `students.json`
-- Available jobs listing from `jobs.json`
-
-### Group C: MO (Module Organiser) Module
-**Members:** Wanhe Ji & Huishun Hu
-
-- Job/demand creation form and validation
-- MO job dashboard for own postings
-- Basic job lifecycle control (draft / open / offline — not a separate "paused" state)
-
-### Sprint 1 Summary
-
-| Category | Tasks | Assignees | Priority |
-| --- | --- | --- | --- |
-| Core | Architecture, JsonUtility, login/logout | Sihan Chen, Tianxiao Ma | Must Have |
-| TA | Profile setup, job list viewing | Tianzi Xiong, Fangyu Chu | Must Have |
-| MO | Job posting form, my jobs dashboard | Wanhe Ji, Huishun Hu | Must Have |
-
----
-
-## 3. Sprint 2 Member Task Allocation
-
-### Group A: Administrator Module & Shared Backend Integration
-**Members:** Sihan Chen & Tianxiao Ma
-
-- Administrator dashboard, workload monitoring, demand review, recruitment reopen
-- Admin user create/delete/reset password
-- Shared JSON consistency across roles
-
-### Group B: TA Workflow Extension
-**Members:** Tianzi Xiong & Fangyu Chu
-
-- Profile persistence and attachment management
-- Apply, withdraw, and track applications
-
-### Group C: MO Workflow Extension
-**Members:** Wanhe Ji & Huishun Hu
-
-- Demand lifecycle, publishing, applicant review, hiring confirmation
-- MO notifications and hiring history support
-
-### Sprint 2 Summary
-
-| Category | Tasks | Assignees | Priority |
-| --- | --- | --- | --- |
-| Admin / Shared | Dashboard, workload, demand review, user management | Sihan Chen, Tianxiao Ma | Must Have |
-| TA Extension | Profile, attachments, applications | Tianzi Xiong, Fangyu Chu | Must Have |
-| MO Extension | Demand lifecycle, applicant review, hiring | Wanhe Ji, Huishun Hu | Must Have |
+- Backend: Java 21 Servlet + JSP on Jakarta EE / Tomcat 10.1+
+- Frontend: JSP, vanilla JavaScript, CSS, and Chart.js for admin charts
+- Persistence: JSON files and local upload folders
+- Testing: JUnit 5, Mockito, Playwright, and Maven Cargo Tomcat integration

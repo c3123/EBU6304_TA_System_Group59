@@ -577,6 +577,12 @@ public class StudentService {
             return attachment;
         } catch (StudentBusinessException e) {
             throw e;
+        } catch (IllegalArgumentException e) {
+            throw new StudentBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    e.getMessage(),
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
         } catch (Exception e) {
             throw new RuntimeException("Failed to upload attachment.", e);
         }
