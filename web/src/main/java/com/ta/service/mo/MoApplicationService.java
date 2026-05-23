@@ -603,9 +603,9 @@ public class MoApplicationService {
                 ));
         if (!moId.equals(job.getTeacherId())) {
             throw new MoBusinessException(
-                        ErrorCodes.FORBIDDEN_NOT_OWNER,
-                        "You can only update applications for your own jobs.",
-                        HttpServletResponse.SC_FORBIDDEN
+                    ErrorCodes.FORBIDDEN_NOT_OWNER,
+                    "You can only update applications for your own jobs.",
+                    HttpServletResponse.SC_FORBIDDEN
             );
         }
         return job;
@@ -613,6 +613,7 @@ public class MoApplicationService {
 
     static void applyMoApplicationStatusTransition(ApplicationRecord record, JobPosting job, String normalized) {
         String current = normalizeStatus(record.getStatus());
+        /** Allow undoing a mistaken hire after recruitment is closed (narrow exception). */
         boolean revertHireToPending = "pending".equals(normalized) && "hired".equals(current);
 
         if (Boolean.TRUE.equals(job.getRecruitmentClosed()) && !revertHireToPending) {
