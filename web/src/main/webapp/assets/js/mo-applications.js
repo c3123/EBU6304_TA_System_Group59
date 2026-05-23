@@ -325,11 +325,13 @@ function jobStatusCounts(groupItems) {
 
 function renderJobStatsBar(groupItems) {
   const c = jobStatusCounts(groupItems);
+  const jobId = groupItems.length ? groupItems[0].jobId : null;
+  const quota = jobId ? hireQuotaLabel(jobId) : "";
   return `<div class="mo-job-stats" aria-label="Application status summary">
     <span class="mo-stat-pill">Pending ${c.pending}</span>
     <span class="mo-stat-pill">Shortlisted ${c.shortlisted}</span>
     <span class="mo-stat-pill">Rejected ${c.rejected}</span>
-    <span class="mo-stat-pill">Hired ${c.hired}</span>
+    ${quota || `<span class="mo-stat-pill">Hired ${c.hired}</span>`}
   </div>`;
 }
 
@@ -437,6 +439,39 @@ function jobClosed(jobId) {
   return !!(m && m.recruitmentClosed === true);
 }
 
+function plannedCountForJob(jobId) {
+  const m = state.jobMeta[jobId];
+  const n = m ? Number(m.plannedCount) : NaN;
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function hiredCountForJob(jobId) {
+  return state.items.filter(
+    it => String(it.jobId ?? "") === String(jobId) && String(it.status || "").toLowerCase() === "hired"
+  ).length;
+}
+
+function remainingSlotsForJob(jobId) {
+  const planned = plannedCountForJob(jobId);
+  if (planned == null) return null;
+  return Math.max(0, planned - hiredCountForJob(jobId));
+}
+
+function jobRecruitmentFull(jobId) {
+  if (jobClosed(jobId)) return true;
+  const remaining = remainingSlotsForJob(jobId);
+  return remaining != null && remaining <= 0;
+}
+
+function hireQuotaLabel(jobId) {
+  const planned = plannedCountForJob(jobId);
+  if (planned == null) return "";
+  const hired = hiredCountForJob(jobId);
+  const remaining = remainingSlotsForJob(jobId);
+  const full = remaining <= 0;
+  return `<span class="mo-stat-pill${full ? " mo-stat-pill-full" : ""}" title="Planned hires vs hired">H ${hired}/${planned}${full ? " (full)" : ` · ${remaining} left`}</span>`;
+}
+
 function jobWeeklyHours(jobId) {
   const j = state.jobMeta[jobId];
   if (!j) return 0;
@@ -533,11 +568,12 @@ function renderStatusSelect(item, closed) {
   const id = escapeHtml(item.applicationId);
   const selVal = statusSelectValue(item.status);
   const selDis = closed && st !== "hired" ? "disabled" : "";
+  const hiredOptDis = (closed || jobRecruitmentFull(item.jobId)) && st !== "hired" ? "disabled" : "";
   return `<select class="mo-status-select" data-mo-status data-app-id="${id}" data-prev="${escapeHtml(selVal)}" ${selDis}>
     <option value="pending" ${selVal === "pending" ? "selected" : ""}>Pending</option>
     <option value="shortlisted" ${selVal === "shortlisted" ? "selected" : ""}>Shortlisted</option>
     <option value="rejected" ${selVal === "rejected" ? "selected" : ""}>Rejected</option>
-    <option value="hired" ${selVal === "hired" ? "selected" : ""}>Hired</option>
+    <option value="hired" ${selVal === "hired" ? "selected" : ""} ${hiredOptDis}>Hired</option>
   </select>`;
 }
 
@@ -652,6 +688,7 @@ function renderAiRecommendationBlock(item) {
 
 function renderApplicantCard(item, closed) {
   const st = String(item.status || "").toLowerCase();
+  const recruitmentBlocked = closed || jobRecruitmentFull(item.jobId);
   const id = escapeHtml(item.applicationId);
   const rawId = item.applicationId;
   const jobLabel = escapeHtml(safeText(state.jobTitles[item.jobId] || item.jobId || "—"));
@@ -678,8 +715,9 @@ function renderApplicantCard(item, closed) {
     </div>` : "";
 
   let actionsBlock = "";
-  if (closed) {
-    actionsBlock = `<div class="mo-wl-actions"><span class="mo-closed-flag">Recruitment Closed</span><button type="button" class="btn btn-primary mo-app-detail-btn">View details</button></div>`;
+  if (recruitmentBlocked) {
+    const flag = closed ? "Recruitment Closed" : "Position limit reached";
+    actionsBlock = `<div class="mo-wl-actions"><span class="mo-closed-flag">${flag}</span><button type="button" class="btn btn-primary mo-app-detail-btn">View details</button></div>`;
   } else if (st === "rejected") {
     actionsBlock = `<div class="mo-wl-actions"><button type="button" class="btn btn-outline" data-mo-action="viewed" data-app-id="${id}">Undo reject</button><button type="button" class="btn btn-primary mo-app-detail-btn">View details</button></div>`;
   } else if (st === "hired") {
@@ -688,7 +726,7 @@ function renderApplicantCard(item, closed) {
     actionsBlock = `<div class="mo-wl-actions"><button type="button" class="btn btn-success" data-mo-action="hired" data-app-id="${id}">${hireLabel}</button><button type="button" class="btn btn-outline" data-mo-action="shortlisted" data-app-id="${id}">Shortlist</button><button type="button" class="btn btn-outline" style="color:#b91c1c;border-color:#fecaca" data-mo-action="rejected" data-app-id="${id}">Reject</button><button type="button" class="btn btn-primary mo-app-detail-btn">View details</button></div>`;
   }
 
-  const chk = closed
+  const chk = recruitmentBlocked
     ? ""
     : `<label style="display:flex;align-items:center;gap:6px;margin-right:8px;flex-shrink:0;"><input type="checkbox" data-app-select="${id}" ${state.selectedIds.has(rawId) ? "checked" : ""} /></label>`;
 
@@ -699,13 +737,13 @@ function renderApplicantCard(item, closed) {
           ${chk}
           <div style="min-width:0;"><h4 style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">${escapeHtml(safeText(item.studentName))} ${renderMatchBadge(item)}</h4><p class="mo-app-meta">${jobLabel} • Applied: ${escapeHtml(safeText(item.appliedAt))}</p></div>
         </div>
-        <div class="mo-app-status-slot" style="flex-shrink:0;">${renderStatusSelect(item, closed)}</div>
+        <div class="mo-app-status-slot" style="flex-shrink:0;">${renderStatusSelect(item, recruitmentBlocked)}</div>
       </div>
       ${renderSkillFitBlock(item)}
       ${renderAiRecommendationBlock(item)}
       ${workloadBlock}
       ${actionsBlock}
-      ${renderNotesAndFeedback(item, closed)}
+      ${renderNotesAndFeedback(item, recruitmentBlocked)}
       <div class="mo-app-grid">
         <div><span class="mo-app-lbl">Student No</span><div>${escapeHtml(safeText(item.studentNo))}</div></div>
         <div><span class="mo-app-lbl">Programme</span><div>${escapeHtml(safeText(item.programme))}</div></div>
@@ -731,6 +769,7 @@ function renderApplicantCard(item, closed) {
 
 function renderApplicantCardDashboard(item, closed) {
   const st = String(item.status || "").toLowerCase();
+  const recruitmentBlocked = closed || jobRecruitmentFull(item.jobId);
   const id = escapeHtml(item.applicationId);
   const rawId = item.applicationId;
   const jobLabel = escapeHtml(safeText(state.jobTitles[item.jobId] || item.jobId || "-"));
@@ -755,8 +794,9 @@ function renderApplicantCardDashboard(item, closed) {
       ${warnNote}
     </div>` : "";
   let actionsBlock = "";
-  if (closed) {
-    actionsBlock = `<div class="mo-wl-actions"><span class="mo-closed-flag">Recruitment Closed</span><button type="button" class="btn btn-primary mo-app-detail-btn">View details</button></div>`;
+  if (recruitmentBlocked) {
+    const flag = closed ? "Recruitment Closed" : "Position limit reached";
+    actionsBlock = `<div class="mo-wl-actions"><span class="mo-closed-flag">${flag}</span><button type="button" class="btn btn-primary mo-app-detail-btn">View details</button></div>`;
   } else if (st === "rejected") {
     actionsBlock = `<div class="mo-wl-actions"><button type="button" class="btn btn-outline" data-mo-action="viewed" data-app-id="${id}">Undo reject</button><button type="button" class="btn btn-primary mo-app-detail-btn">View details</button></div>`;
   } else if (st === "hired") {
@@ -764,7 +804,7 @@ function renderApplicantCardDashboard(item, closed) {
   } else {
     actionsBlock = `<div class="mo-wl-actions"><button type="button" class="btn btn-success" data-mo-action="hired" data-app-id="${id}">${hireLabel}</button><button type="button" class="btn btn-outline" data-mo-action="shortlisted" data-app-id="${id}">Shortlist</button><button type="button" class="btn btn-outline" style="color:#b91c1c;border-color:#fecaca" data-mo-action="rejected" data-app-id="${id}">Reject</button><button type="button" class="btn btn-primary mo-app-detail-btn">View details</button></div>`;
   }
-  const chk = closed
+  const chk = recruitmentBlocked
     ? ""
     : `<label style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><input type="checkbox" data-app-select="${id}" ${state.selectedIds.has(rawId) ? "checked" : ""} /></label>`;
   const isExpanded = state.expandedDetailIds.has(String(rawId));
@@ -775,7 +815,7 @@ function renderApplicantCardDashboard(item, closed) {
       <div class="applicant-card-top">
         ${chk || "<span></span>"}
         <div style="min-width:0;"><h4>${escapeHtml(safeText(item.studentName))} ${renderMatchBadge(item)}</h4></div>
-        <div class="mo-app-status-slot">${renderStatusSelect(item, closed)}</div>
+        <div class="mo-app-status-slot">${renderStatusSelect(item, recruitmentBlocked)}</div>
       </div>
       <div class="applicant-card-subrow">
         <span>${jobLabel}</span>
@@ -813,8 +853,11 @@ function renderJobReviewItem(jobId, groupItems, allItems, isActive) {
   const c = jobStatusCounts(groupItems);
   const posHrs = jobWeeklyHours(jobId);
   const totalWorkload = groupItems.reduce((sum, item) => sum + ifHiredTotalForItem(item, allItems), 0);
+  const planned = plannedCountForJob(jobId);
+  const hLabel = planned != null ? `H ${c.hired}/${planned}` : `H ${c.hired}`;
+  const fullClass = jobRecruitmentFull(jobId) ? " mo-hire-full" : "";
   return `
-    <button class="job-review-item ${isActive ? "active" : ""}" type="button" data-review-job="${escapeHtml(jobId)}">
+    <button class="job-review-item ${isActive ? "active" : ""}${fullClass}" type="button" data-review-job="${escapeHtml(jobId)}">
       <h3>${escapeHtml(label)}</h3>
       <div class="job-review-meta">
         <span>${groupItems.length} applicant${groupItems.length === 1 ? "" : "s"}</span>
@@ -824,7 +867,7 @@ function renderJobReviewItem(jobId, groupItems, allItems, isActive) {
       <div class="job-review-counts">
         <span>P ${c.pending}</span>
         <span>S ${c.shortlisted}</span>
-        <span>H ${c.hired}</span>
+        <span class="${fullClass.trim()}">${hLabel}</span>
       </div>
     </button>`;
 }
@@ -858,7 +901,13 @@ function renderApplicantDashboardFeed(items) {
   const label = state.jobTitles[selectedJobId] || (selectedJobId ? `Job ${selectedJobId}` : "Unknown job");
   const posHrs = jobWeeklyHours(selectedJobId);
   const closed = jobClosed(selectedJobId);
+  const recruitmentFull = jobRecruitmentFull(selectedJobId);
   const closedAt = state.hiringState[selectedJobId] ? state.hiringState[selectedJobId].closedAt : "";
+  const planned = plannedCountForJob(selectedJobId);
+  const slotsLeft = remainingSlotsForJob(selectedJobId);
+  const quotaHint = planned != null
+    ? ` · Slots: <strong>${slotsLeft}/${planned}</strong> remaining`
+    : "";
   const shortlistedCount = selectedItems.filter(x => String(x.status || "").toLowerCase() === "shortlisted").length;
   const jEsc = escapeHtml(selectedJobId);
   const jobList = keys.map(jobId => renderJobReviewItem(jobId, groups.get(jobId), items || [], jobId === selectedJobId)).join("");
@@ -876,13 +925,13 @@ function renderApplicantDashboardFeed(items) {
           <div class="review-panel-head">
             <div>
               <h3>${escapeHtml(label)}</h3>
-              <p>${selectedItems.length} applicant${selectedItems.length === 1 ? "" : "s"} · This position: <strong>${posHrs || "-"}</strong> hours/week · Sorted by <strong>${escapeHtml(sortLabel)}</strong></p>
+              <p>${selectedItems.length} applicant${selectedItems.length === 1 ? "" : "s"} · This position: <strong>${posHrs || "-"}</strong> hours/week${quotaHint} · Sorted by <strong>${escapeHtml(sortLabel)}</strong></p>
             </div>
             <div class="review-panel-actions">
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#475569;"><input type="checkbox" data-select-all-job="${jEsc}" ${closed ? "disabled" : ""}/> Select all</label>
-              ${closed ? `<span class="mo-closed-flag">Recruitment Closed${closedAt ? ` (${escapeHtml(closedAt)})` : ""}</span>` : ""}
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#475569;"><input type="checkbox" data-select-all-job="${jEsc}" ${closed || recruitmentFull ? "disabled" : ""}/> Select all</label>
+              ${closed ? `<span class="mo-closed-flag">Recruitment Closed${closedAt ? ` (${escapeHtml(closedAt)})` : ""}</span>` : recruitmentFull ? `<span class="mo-closed-flag">Position limit reached</span>` : ""}
               <button class="btn btn-outline" type="button" data-open-history="${jEsc}">View history</button>
-              <button class="btn btn-primary" type="button" data-open-final="${jEsc}" ${closed ? "disabled" : ""}>Confirm Final Hiring</button>
+              <button class="btn btn-primary" type="button" data-open-final="${jEsc}" ${closed || recruitmentFull ? "disabled" : ""}>Confirm Final Hiring</button>
             </div>
           </div>
           ${renderJobStatsBar((items || []).filter(it => String(it.jobId ?? "") === selectedJobId))}
@@ -1043,24 +1092,65 @@ async function openCardDetail(card, btn) {
   }
 }
 
+function enforceFinalHiringSelectionLimit(jobId) {
+  const remaining = remainingSlotsForJob(jobId);
+  if (remaining == null) return;
+  const boxes = Array.from(document.querySelectorAll("#finalHiringList [data-final-app-id]"));
+  let checked = 0;
+  for (const box of boxes) {
+    if (box.checked) checked += 1;
+    if (box.checked && checked > remaining) {
+      box.checked = false;
+    }
+    box.disabled = !box.checked && checked >= remaining;
+  }
+  const hint = byId("finalHiringQuotaHint");
+  if (hint) {
+    hint.textContent =
+      remaining <= 0
+        ? "No hire slots remaining for this position."
+        : `You may select up to ${remaining} shortlisted applicant(s) (${hiredCountForJob(jobId)}/${plannedCountForJob(jobId)} already hired).`;
+  }
+}
+
 async function openFinalHiringModal(jobId) {
   state.finalModalJobId = jobId;
   const modal = byId("finalHiringModal");
   const label = byId("finalHiringJobLabel");
   const listEl = byId("finalHiringList");
   const items = state.items.filter(x => x.jobId === jobId && String(x.status || "").toLowerCase() === "shortlisted");
+  const planned = plannedCountForJob(jobId);
+  const remaining = remainingSlotsForJob(jobId);
   label.textContent = safeText(state.jobTitles[jobId] || jobId);
   if (!items.length) {
     listEl.innerHTML = `<p class="notice">No shortlisted applicants for this job.</p>`;
     byId("finalHiringConfirmBtn").disabled = true;
+  } else if (remaining != null && remaining <= 0) {
+    listEl.innerHTML = `<p class="notice">This position has reached its hire limit (${hiredCountForJob(jobId)}/${planned}).</p>`;
+    byId("finalHiringConfirmBtn").disabled = true;
   } else {
     byId("finalHiringConfirmBtn").disabled = false;
-    listEl.innerHTML = items.map(it => `
+    const quotaNote =
+      planned != null
+        ? `<p id="finalHiringQuotaHint" class="notice" style="margin-bottom:10px;"></p>`
+        : "";
+    listEl.innerHTML =
+      quotaNote +
+      items
+        .map((it, idx) => {
+          const preCheck = remaining == null || idx < remaining;
+          return `
       <label class="mo-modal-row">
-        <input type="checkbox" data-final-app-id="${escapeHtml(it.applicationId)}" checked />
+        <input type="checkbox" data-final-app-id="${escapeHtml(it.applicationId)}" ${preCheck ? "checked" : ""} />
         <span><strong>${escapeHtml(safeText(it.studentName))}</strong><br/><span style="font-size:12px;color:#64748b">${escapeHtml(safeText(it.studentNo))} • ${escapeHtml(safeText(it.programme))}</span></span>
         ${statusPill(it.status)}
-      </label>`).join("");
+      </label>`;
+        })
+        .join("");
+    listEl.querySelectorAll("[data-final-app-id]").forEach(box => {
+      box.addEventListener("change", () => enforceFinalHiringSelectionLimit(jobId));
+    });
+    enforceFinalHiringSelectionLimit(jobId);
   }
   modal.classList.add("open");
 }

@@ -15,6 +15,7 @@ import com.ta.service.student.JobMatchResult;
 import com.ta.service.student.JobMatchingService;
 import com.ta.service.student.SkillRelationHint;
 import com.ta.util.AgentDebugLog;
+import com.ta.util.JobRecruitmentUtil;
 import com.ta.util.JsonUtility;
 import com.ta.util.StudentWorkloadUtil;
 import jakarta.servlet.ServletContext;
@@ -295,8 +296,8 @@ public class MoApplicationService {
                 weeklyHoursBefore = workloadOverloadAnnouncementService.calculateWeeklyHours(context, record.getStudentId());
             }
 
-            if ("hired".equals(normalized)) {
-                checkAndRejectIfJobFull(context, jobs, job);
+            if ("hired".equals(normalized) && !"hired".equalsIgnoreCase(normalizeStatus(record.getStatus()))) {
+                JobRecruitmentUtil.assertCanHire(context, job, 1);
             }
 
             applyMoApplicationStatusTransition(record, job, normalized);
@@ -315,9 +316,11 @@ public class MoApplicationService {
             // #endregion
             if ("hired".equals(normalized)) {
                 appendManualHireHistory(context, moId, record);
-                autoCloseJobIfHiredFull(context, jobs, job);
             }
             JsonUtility.saveApplications(context, applications);
+            if ("hired".equals(normalized)) {
+                JobRecruitmentUtil.closeRecruitmentIfFull(context, jobs, job);
+            }
             if ("hired".equals(normalized)) {
                 workloadOverloadAnnouncementService.notifyIfNewlyOverloaded(context, record.getStudentId(), weeklyHoursBefore);
             }
@@ -423,15 +426,24 @@ public class MoApplicationService {
                     }
                 }
 
-                Map<String, JobPosting> jobsToCheck = new LinkedHashMap<>();
+                Map<String, Integer> newHiresByJobId = new LinkedHashMap<>();
                 for (ApplicationRecord record : targets) {
-                    JobPosting job = jobById.get(record.getJobId());
-                    if (job != null && !jobsToCheck.containsKey(job.getId())) {
-                        jobsToCheck.put(job.getId(), job);
+                    if ("hired".equalsIgnoreCase(normalizeStatus(record.getStatus()))) {
+                        continue;
+                    }
+                    String jid = record.getJobId();
+                    if (jid != null) {
+                        newHiresByJobId.merge(jid, 1, Integer::sum);
                     }
                 }
-                for (JobPosting job : jobsToCheck.values()) {
-                    checkAndRejectIfJobFull(context, jobs, job);
+                for (Map.Entry<String, Integer> entry : newHiresByJobId.entrySet()) {
+                    JobPosting job = jobById.get(entry.getKey());
+                    if (job != null) {
+                        JobRecruitmentUtil.assertCanHire(
+                                job,
+                                JobRecruitmentUtil.countHired(context, job.getId()),
+                                entry.getValue());
+                    }
                 }
             }
 
@@ -459,6 +471,18 @@ public class MoApplicationService {
 
             JsonUtility.saveApplications(context, applications);
             if ("hired".equals(normalized)) {
+                Set<String> affectedJobIds = new LinkedHashSet<>();
+                for (ApplicationRecord record : targets) {
+                    if (record.getJobId() != null) {
+                        affectedJobIds.add(record.getJobId());
+                    }
+                }
+                for (String jid : affectedJobIds) {
+                    JobPosting job = jobById.get(jid);
+                    if (job != null) {
+                        JobRecruitmentUtil.closeRecruitmentIfFull(context, jobs, job);
+                    }
+                }
                 for (Map.Entry<String, Integer> entry : weeklyHoursBeforeByStudent.entrySet()) {
                     workloadOverloadAnnouncementService.notifyIfNewlyOverloaded(
                             context, entry.getKey(), entry.getValue());
@@ -579,9 +603,9 @@ public class MoApplicationService {
                 ));
         if (!moId.equals(job.getTeacherId())) {
             throw new MoBusinessException(
-                        ErrorCodes.FORBIDDEN_NOT_OWNER,
-                        "You can only update applications for your own jobs.",
-                        HttpServletResponse.SC_FORBIDDEN
+                    ErrorCodes.FORBIDDEN_NOT_OWNER,
+                    "You can only update applications for your own jobs.",
+                    HttpServletResponse.SC_FORBIDDEN
             );
         }
         return job;
@@ -589,6 +613,7 @@ public class MoApplicationService {
 
     static void applyMoApplicationStatusTransition(ApplicationRecord record, JobPosting job, String normalized) {
         String current = normalizeStatus(record.getStatus());
+        /** Allow undoing a mistaken hire after recruitment is closed (narrow exception). */
         boolean revertHireToPending = "pending".equals(normalized) && "hired".equals(current);
 
         if (Boolean.TRUE.equals(job.getRecruitmentClosed()) && !revertHireToPending) {
@@ -653,53 +678,6 @@ public class MoApplicationService {
         }
 
         record.setStatus(normalized);
-    }
-
-    private void autoCloseJobIfHiredFull(ServletContext context, List<JobPosting> jobs, JobPosting job) throws IOException {
-        if (Boolean.TRUE.equals(job.getRecruitmentClosed())) {
-            return;
-        }
-        int hiredCount = (int) JsonUtility.loadApplications(context).stream()
-                .filter(a -> job.getId().equals(a.getJobId()))
-                .filter(a -> "hired".equalsIgnoreCase(a.getStatus()))
-                .count();
-        if (job.getPositions() > 0 && hiredCount >= job.getPositions()) {
-            String now = Instant.now().toString();
-            job.setRecruitmentClosed(true);
-            job.setClosedAt(now);
-            job.setStatus("closed");
-            job.setPublished(false);
-            job.setUpdatedAt(now);
-            JsonUtility.saveJobs(context, jobs);
-            // #region agent log
-            try {
-                Map<String, Object> d = new LinkedHashMap<>();
-                d.put("jobId", job.getId());
-                d.put("positions", job.getPositions());
-                d.put("hiredCount", hiredCount);
-                d.put("autoClosed", true);
-                AgentDebugLog.log("H6", "MoApplicationService.autoCloseJobIfHiredFull", "job_auto_closed", d);
-            } catch (Throwable ignored) {
-            }
-            // #endregion
-        }
-    }
-
-    private void checkAndRejectIfJobFull(ServletContext context, List<JobPosting> jobs, JobPosting job) throws IOException {
-        if (Boolean.TRUE.equals(job.getRecruitmentClosed())) {
-            return;
-        }
-        int hiredCount = (int) JsonUtility.loadApplications(context).stream()
-                .filter(a -> job.getId().equals(a.getJobId()))
-                .filter(a -> "hired".equalsIgnoreCase(a.getStatus()))
-                .count();
-        if (job.getPositions() > 0 && hiredCount >= job.getPositions()) {
-            throw new MoBusinessException(
-                    ErrorCodes.JOB_RECRUITMENT_CLOSED,
-                    "This job has reached its position limit (" + job.getPositions() + "). Cannot hire more applicants.",
-                    HttpServletResponse.SC_BAD_REQUEST
-            );
-        }
     }
 
     private void appendManualHireHistory(ServletContext context, String moId, ApplicationRecord hiredRecord) throws IOException {

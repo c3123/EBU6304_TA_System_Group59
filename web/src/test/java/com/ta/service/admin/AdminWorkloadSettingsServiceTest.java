@@ -1,6 +1,7 @@
 package com.ta.service.admin;
 
 import com.ta.constant.ErrorCodes;
+import com.ta.dto.admin.AdminWorkloadSettingsRequest;
 import com.ta.testsupport.AdminServiceTestSupport;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,8 +26,8 @@ class AdminWorkloadSettingsServiceTest extends AdminServiceTestSupport {
     }
 
     @Test
-    void saveThreshold_persistsPositiveValue() {
-        var response = service.saveThreshold(servletContext, 16);
+    void saveSettings_persistsPositiveValue() {
+        var response = service.saveSettings(servletContext, request(16));
 
         assertEquals(16, response.getWorkloadThresholdHours());
         assertTrue(response.isSaved());
@@ -34,11 +35,17 @@ class AdminWorkloadSettingsServiceTest extends AdminServiceTestSupport {
     }
 
     @Test
-    void saveThreshold_nonPositive_throws400() {
+    void saveSettings_nonPositive_throws400() {
         assertAdminBusinessException(
-                () -> service.saveThreshold(servletContext, 0),
+                () -> service.saveSettings(servletContext, request(0)),
                 ErrorCodes.VALIDATION_ERROR,
                 HttpServletResponse.SC_BAD_REQUEST
         );
+    }
+
+    private static AdminWorkloadSettingsRequest request(int hours) {
+        AdminWorkloadSettingsRequest request = new AdminWorkloadSettingsRequest();
+        request.setWorkloadThresholdHours(hours);
+        return request;
     }
 }

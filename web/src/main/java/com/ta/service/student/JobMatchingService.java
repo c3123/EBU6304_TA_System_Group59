@@ -1,11 +1,17 @@
 package com.ta.service.student;
 
+import com.ta.model.ApplicationRecord;
 import com.ta.model.JobPosting;
 import com.ta.model.StudentProfile;
+import com.ta.util.JsonUtility;
+import jakarta.servlet.ServletContext;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Deterministic matching layer for TA job recommendations.
@@ -64,13 +70,19 @@ public class JobMatchingService {
     }
 
     public List<JobMatchResult> getRecommendedJobs(StudentProfile student, List<JobPosting> jobs) {
+        return getRecommendedJobs(null, student, jobs);
+    }
+
+    public List<JobMatchResult> getRecommendedJobs(ServletContext context, StudentProfile student, List<JobPosting> jobs) {
         List<JobMatchResult> results = new ArrayList<>();
         if (jobs == null || jobs.isEmpty()) {
             return results;
         }
 
+        Map<String, Integer> hiredByJobId = loadHiredCountByJobId(context);
+
         for (JobPosting job : jobs) {
-            if (job != null && isRecommendable(job)) {
+            if (job != null && isRecommendable(job, hiredByJobId)) {
                 results.add(match(student, job));
             }
         }
@@ -82,7 +94,31 @@ public class JobMatchingService {
         return results;
     }
 
-    private boolean isRecommendable(JobPosting job) {
+    private Map<String, Integer> loadHiredCountByJobId(ServletContext context) {
+        if (context == null) {
+            return Map.of();
+        }
+        try {
+            Map<String, Integer> counts = new HashMap<>();
+            for (ApplicationRecord app : JsonUtility.loadApplications(context)) {
+                if (!app.isActive() || app.getJobId() == null) {
+                    continue;
+                }
+                if (!"hired".equalsIgnoreCase(safeText(app.getStatus()))) {
+                    continue;
+                }
+                counts.merge(app.getJobId(), 1, Integer::sum);
+            }
+            return counts;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load applications for job recommendations.", e);
+        }
+    }
+
+    private boolean isRecommendable(JobPosting job, Map<String, Integer> hiredByJobId) {
+        if (Boolean.TRUE.equals(job.getRecruitmentClosed())) {
+            return false;
+        }
         if (hasText(job.getStatus()) && !"open".equalsIgnoreCase(job.getStatus())) {
             return false;
         }
@@ -94,6 +130,13 @@ public class JobMatchingService {
         }
         if (job.getWithdrawn() != null && Boolean.TRUE.equals(job.getWithdrawn())) {
             return false;
+        }
+        int positions = job.getPositions();
+        if (positions > 0 && job.getId() != null) {
+            int hired = hiredByJobId.getOrDefault(job.getId(), 0);
+            if (hired >= positions) {
+                return false;
+            }
         }
         return true;
     }
