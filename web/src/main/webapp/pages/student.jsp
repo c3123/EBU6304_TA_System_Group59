@@ -1567,8 +1567,26 @@
             Confirmed TA jobs are counted from applications with Hired status.
           </div>
         </div>
-        <div id="hiredEmpty" class="empty-state hidden">You do not have any jobs yet.</div>
-        <div id="hiredList" class="hired-list hidden"></div>
+        <div class="hired-columns">
+          <div class="hired-jobs-column">
+            <div id="hiredEmpty" class="empty-state hidden">You do not have any jobs yet.</div>
+            <div id="hiredList" class="hired-list hidden"></div>
+          </div>
+          <div class="hired-calendar-column">
+            <div class="hired-schedule-panel">
+              <div class="calendar-toolbar">
+                <button id="calendarPrevBtn" class="btn btn-outline" type="button">Prev</button>
+                <div class="calendar-title">
+                  <strong id="calendarMonthLabel">Loading…</strong>
+                  <span id="calendarSelectedDateLabel">Select a date to view scheduled TA work.</span>
+                </div>
+                <button id="calendarNextBtn" class="btn btn-outline" type="button">Next</button>
+              </div>
+              <div id="jobCalendarGrid" class="calendar-grid"></div>
+              <div id="calendarEventList" class="calendar-event-list"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
