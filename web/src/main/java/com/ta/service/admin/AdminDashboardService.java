@@ -478,8 +478,8 @@ public class AdminDashboardService {
         WorkloadLevelUtil.WorkloadLevel level = WorkloadLevelUtil.classify(
                 item.getWeeklyHours(),
                 settings.getWorkloadThresholdHours(),
-                settings.getWorkloadNormalPercent(),
-                settings.getWorkloadWarningPercent()
+                null,
+                null
         );
         item.setWorkloadLevel(level.getKey());
         item.setWorkloadLabel(level.getLabel());

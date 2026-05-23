@@ -176,11 +176,6 @@ public final class JsonUtility {
         if (settings.getWorkloadThresholdHours() == null || settings.getWorkloadThresholdHours() <= 0) {
             settings.setWorkloadThresholdHours(20);
         }
-        settings.setWorkloadNormalPercent(WorkloadLevelUtil.resolveNormalPercent(settings.getWorkloadNormalPercent()));
-        settings.setWorkloadWarningPercent(WorkloadLevelUtil.resolveWarningPercent(
-                settings.getWorkloadNormalPercent(),
-                settings.getWorkloadWarningPercent()
-        ));
         if (settings.getUpdatedAt() == null || settings.getUpdatedAt().isBlank()) {
             settings.setUpdatedAt(Instant.now().toString());
         }
@@ -190,8 +185,6 @@ public final class JsonUtility {
     private static SystemSettings defaultSystemSettings() {
         SystemSettings settings = new SystemSettings();
         settings.setWorkloadThresholdHours(20);
-        settings.setWorkloadNormalPercent(WorkloadLevelUtil.DEFAULT_NORMAL_PERCENT);
-        settings.setWorkloadWarningPercent(WorkloadLevelUtil.DEFAULT_WARNING_PERCENT);
         settings.setUpdatedAt(Instant.now().toString());
         return settings;
     }

@@ -71,13 +71,6 @@
 
   <div class="admin-main">
     <header class="admin-topbar">
-      <div class="admin-top-search">
-        <input type="search" placeholder="Search users, jobs, demands, or reports..." aria-label="Search admin portal" />
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M10.8 18.1C14.8 18.1 18.1 14.8 18.1 10.8C18.1 6.8 14.8 3.5 10.8 3.5C6.8 3.5 3.5 6.8 3.5 10.8C3.5 14.8 6.8 18.1 10.8 18.1Z" stroke="currentColor" stroke-width="1.8"></path>
-          <path d="M16.2 16.2L20.5 20.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
-        </svg>
-      </div>
       <div></div>
       <div class="admin-header-actions">
         <button id="adminAlertsButton" class="admin-alert-trigger" type="button" aria-haspopup="dialog" aria-controls="adminAlertsModal" aria-label="Open administrator alerts">
@@ -182,24 +175,12 @@
       </div>
       <div class="card" style="margin-bottom:16px;">
         <h3 class="admin-subtitle">Workload Threshold</h3>
-        <p class="desc">Overload uses the hour threshold. Normal and Warning levels are calculated as percentages of that threshold (Low is below Normal).</p>
+        <p class="desc">Set the overload hour limit. Normal (50%) and Warning (75%) levels are fixed in system settings.</p>
         <form id="adminThresholdForm">
           <div class="admin-form-grid">
             <div class="field">
               <label for="adminThresholdHours">Threshold Hours (Overload)</label>
               <input id="adminThresholdHours" type="number" min="1" required />
-            </div>
-            <div class="field">
-              <label for="adminThresholdNormalPercent">Normal from (% of threshold)</label>
-              <input id="adminThresholdNormalPercent" type="number" min="1" max="98" required />
-            </div>
-            <div class="field">
-              <label for="adminThresholdWarningPercent">Warning from (% of threshold)</label>
-              <input id="adminThresholdWarningPercent" type="number" min="2" max="99" required />
-            </div>
-            <div class="field">
-              <label for="adminThresholdUpdatedAt">Last Updated</label>
-              <input id="adminThresholdUpdatedAt" type="text" readonly />
             </div>
           </div>
           <div class="row" style="margin-top:16px;">

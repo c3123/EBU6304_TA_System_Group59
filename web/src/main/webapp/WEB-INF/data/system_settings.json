@@ -1,6 +1,4 @@
 {
   "workloadThresholdHours": 20,
-  "workloadNormalPercent": 50,
-  "workloadWarningPercent": 75,
   "updatedAt": "2026-04-16T00:00:00Z"
 }
