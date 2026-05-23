@@ -23,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -63,7 +64,7 @@ class MoApplicationServiceTest extends MoTestSupport {
         MoApplicationListResponse response = service.listApplications(servletContext, MO_ID, null, null);
         List<String> ids = response.getItems().stream()
                 .map(MoApplicationListItemResponse::getApplicationId)
-                .toList();
+                .collect(Collectors.toList());
         assertEquals(5, ids.size());
         assertTrue(ids.contains("app_pending"));
         assertTrue(ids.contains("app_hired"));

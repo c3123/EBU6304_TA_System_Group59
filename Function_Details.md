@@ -35,7 +35,7 @@ A centralized login portal that validates credentials and directs users to their
 - **Session Management:** `HttpSession` must be used to persist user identity across the web application.
 
 **Assignee:** Sihan Chen / Tianxiao Ma
-**Completion Date:**
+**Completion Date:** 2026-03-22
 
 ---
 
@@ -95,7 +95,7 @@ The system ensures that applicants can smoothly complete the entire process from
   - User-specific data is retrieved based on session identity.
 
 **Assignee:** Fangyu Chu / Tianzi Xiong
-**Completion Date:**
+**Completion Date:** 2026-03-22
 
 ---
 
@@ -106,7 +106,7 @@ The system ensures that applicants can smoothly complete the entire process from
 **Full specification:** See **Section 6 — Module Organiser (MO) Consolidated Specification**, **6.2 Sprint 1 — Demand, Publish, and Application Review Baseline**, for complete description, acceptance criteria, servlets, services, persistence, and UI files.
 
 **Assignee:** Wanhe Ji / Huishun Hu  
-**Completion Date:**
+**Completion Date:** 2026-03-22
 
 ---
 
@@ -228,63 +228,66 @@ This provides the shared admin-side control layer for Sprint 2. In this iteratio
 
 -**Servlet Implementation**
 
-  -ApplicantCVUpdateServlet (POST /api/applicant/cv/update)
-    Allows applicants to upload a new CV and replace the existing CV file.
-  -ApplicantJobFilterServlet (GET /api/applicant/jobs/filter)
-    Retrieves job listings based on filter criteria such as module name, time, or requirements.
-  -ApplicationSubmitServlet (POST /api/applicant/apply/{jobId})
-    Handles submission of job applications and records them in the system.
-  -ApplicationWithdrawServlet (POST /api/applicant/withdraw/{applicationId})
-    Allows applicants to withdraw submitted applications before acceptance.
-  -ApplicantAssignedJobsServlet (GET /api/applicant/my-jobs)
-    Returns the list of accepted jobs assigned to the applicant.
+  -StudentProfileServlet (GET/PUT /api/student/profile)
+    Retrieves and updates the current student's profile, including skills, experience, phone, programme, and attachment metadata.
+  -StudentAttachmentUploadServlet (POST /api/student/attachments)
+    Uploads supporting documents attached to the student's profile.
+  -StudentAttachmentDeleteServlet (DELETE /api/student/attachments/{attachmentId})
+    Removes a supporting document from the current student's profile.
+  -StudentJobsServlet (GET /api/student/jobs)
+    Retrieves open jobs and job-matching fields for the logged-in student.
+  -StudentApplicationsServlet (GET/POST /api/student/applications, DELETE /api/student/applications/{applicationId})
+    Lists applications, submits a new job application, and withdraws an existing application before final hiring.
+  -StudentAssignedJobsServlet (GET /api/student/my-jobs)
+    Returns hired/accepted jobs assigned to the current student, including schedule, location, deadline, and weekly hours.
+  -StudentAiAdvisorServlet (POST /api/student/ai-advisor)
+    Returns AI-assisted or rule-based job guidance for the current student.
+  -StudentNotificationsServlet (GET /api/student/notifications)
+    Lists student-visible notifications.
+  -StudentNotificationReadServlet (POST /api/student/notifications/read/{notificationId})
+    Marks a student notification as read.
 
 -**Service Layer**
 
-  -ApplicantProfileService
-    Handles CV updating and validation.
-  -JobFilterService
-    Implements filtering logic based on module name, time, or skills.
-  -ApplicationService
-    Handles application submission, withdrawal, and retrieval of assigned jobs.
+  -StudentService
+    Handles profile updates, attachment metadata, job listing, application submission, withdrawal, and assigned job retrieval.
+  -JobMatchingService / SkillMatchScorer
+    Computes structured job-fit information based on student skills and job requirements.
+  -StudentNotificationService
+    Maps notification records into student-facing notification responses.
+  -AiAdvisorService
+    Combines structured matching context with optional external AI advice and deterministic fallback guidance.
 
 -**Data Management**
   -students.json
-    Stores applicant profile data and CV file paths.
+    Stores applicant profile data, skills, experience, phone, programme, and supporting document metadata.
   -jobs.json
     Stores job details including module name, schedule, and requirements.
   -applications.json
-    Stores application records and status values (Submitted, Accepted, Rejected, Withdrawn).
-  -Updating a CV replaces the existing CV path.
-  -Submitting an application creates a new application record.
-  -Withdrawn applications update their status to Withdrawn.
-  -Accepted applications are displayed in My TA Jobs.
+    Stores application records and backend status values such as `pending`, `viewed`, `shortlisted`, `hired`, `rejected`, plus `active` for withdrawn records.
+  -Submitting an application creates a new active application record.
+  -Withdrawn applications are marked inactive rather than physically removed.
+  -Hired applications are displayed in My Jobs / Assigned Jobs.
 
 -**Frontend Integration**
 
-  -applicantProfile.jsp
-    Provides CV upload and replacement interface.
-  -jobList.jsp
-    Displays available jobs and filtering options.
-  -application.jsp
-    Allows applicants to submit job applications.
-  -myApplications.jsp
-    Displays submitted applications with withdrawal options.
-  -myTAJobs.jsp
-    Displays accepted TA job assignments.
+  -student.jsp
+    Provides the student dashboard for profile editing, attachment upload/delete, job browsing, job details, applications, assigned jobs, notifications, password change, and AI advisor access.
+  -student.js
+    Connects the student dashboard to `/api/student/*` endpoints and renders job matching, application status, profile, assigned jobs, and notifications.
 
 -**Validation / Business Rules**
 
-  -Only PDF files are allowed for CV uploads.
+  -Supporting document upload accepts the file types allowed by `FileStorageUtil`.
   -Applicants can apply only once per job.
   -Applications can only be withdrawn before acceptance.
   -Multiple filtering criteria can be applied simultaneously.
-  -Only applications with status Accepted appear in My TA Jobs.
+  -Only applications with status `hired` appear in My Jobs / Assigned Jobs.
 
 -**Session / Access Control**
 
-  -All /api/applicant/* endpoints require an authenticated applicant session.
-  -Non-authenticated users cannot access applicant APIs.
+  -All /api/student/* endpoints require an authenticated student session.
+  -Non-authenticated users cannot access student APIs.
   -Each operation validates the applicant identity before processing.
 
 **Assignee:** Tianzi Xiong / Fangyu Chu  
@@ -373,8 +376,8 @@ The scope of this iteration contains three connected capabilities:
   - All `/api/admin/*` routes remain admin-only.
   - Non-admin users must not be able to read or modify threshold settings or export reports.
 
-**Assignee:**
-**Completion Date:**
+**Assignee:** Sihan Chen / Tianxiao Ma
+**Completion Date:** 2026-05-21
 
 ---
 
@@ -424,8 +427,8 @@ The feature allows users from different roles to update their own password throu
   - Only authenticated users can call `/api/account/change-password`.
   - Users can only change their own password and cannot modify another account through this endpoint.
 
-**Assignee:**
-**Completion Date:**
+**Assignee:** Sihan Chen / Tianxiao Ma
+**Completion Date:** 2026-05-21
 
 ---
 
@@ -466,8 +469,8 @@ The goal is to keep the application usable under realistic project data volume w
   - optimization must remain compatible with the required plain-text / JSON persistence approach.
   - no database, cache server, or heavyweight framework dependency may be introduced.
 
-**Assignee:**
-**Completion Date:**
+**Assignee:** Team-wide non-functional polish
+**Completion Date:** 2026-05-21
 
 ---
 
@@ -530,8 +533,8 @@ The feature provides a dedicated view of accepted jobs, associated schedule info
   - All `/api/student/*` routes require authenticated student identity.
   - Students can only view their own assigned jobs and schedule data.
 
-**Assignee:**
-**Completion Date:**
+**Assignee:** Tianzi Xiong / Fangyu Chu
+**Completion Date:** 2026-05-21
 
 ---
 
@@ -695,7 +698,7 @@ The scope of this feature is not to replace the Module Organiser workflow. The a
   - Admin actions that modify settings, such as threshold saving, must use POST and must validate the submitted value before persistence.
 
 **Assignee:** Sihan Chen / Tianxiao Ma  
-**Completion Date:** TBD
+**Completion Date:** 2026-05-21
 
 ---
 
@@ -778,12 +781,12 @@ This section is the **single end-to-end functional specification** for the Modul
 | **MO_05** | Single and batch status marking | **Yes** — per-row control + `POST /api/mo/applications/status`; batch + `POST /api/mo/applications/batch/status`. |
 | **MO_05** | Private evaluation notes | **Yes** — `evaluationNotes`, `POST /api/mo/applications/notes`; not exposed to applicants. |
 | **MO_05** | Filter list by marked status | **Yes** — checkboxes + `status` query (`__none__` when no box selected). |
-| **MO_05** | Auto-save without data loss | **Mostly** — notes auto-save via debounced POST; status saves on change and list reloads after success (see demo script for exact UX). |
-| **MO_08** | History list: sort, name, status, applicant count, hire count, release time, deadline | **Partial** — `GET /api/mo/demands/list` + `teacher.js` cards; confirm in demo whether every column in the board is shown or still TODO in API/UI. |
-| **MO_08** | Drill into historical job + application/hiring data | **Partial** — use existing job/application flows; confirm “historical” drill-down path for the report. |
-| **MO_08** | One-click copy to create new job | **Unverified in doc** — implement or document manual recreate if not present. |
+| **MO_05** | Auto-save without data loss | **Yes** — notes auto-save via debounced POST; status changes save immediately and reload the list after success. |
+| **MO_08** | History list: sort, name, status, applicant count, hire count, release time, deadline | **Yes** — `GET /api/mo/jobs/history` returns history rows with status, applicant count, hire count, release time, and deadline; teacher portal also shows demand/job progress cards. |
+| **MO_08** | Drill into historical job + application/hiring data | **Yes** — MO can move from job/history context into the applications and hiring history views for owned jobs. |
+| **MO_08** | One-click copy to create new job | **Yes** — `POST /api/mo/jobs/reuse` supports reuse/copy workflow for creating a new demand from an existing job. |
 | **MO_09** | Export respects filters | **Yes** — CSV from currently loaded filtered rows. |
-| **MO_09** | Core columns: name, ID, major, time, status, skills | **Partial** — list API carries profile fields; CSV columns are a **subset** unless extended in `exportCsv()`. |
+| **MO_09** | Core columns: name, ID, major, time, status, skills | **Yes** — applicant export service includes the core applicant identity, programme/major, application time, status, and skills columns. |
 | **MO_09** | Plain text, no DB | **Yes**. |
 | **MO_09** | Usable in Excel | **Yes** — UTF-8 CSV. |
 

@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -108,7 +109,7 @@ class MoNotificationServiceTest extends MoTestSupport {
         MoNotificationListResponse response = service.list(servletContext, MO_ID);
         List<String> times = response.getItems().stream()
                 .map(MoNotificationItemResponse::getApplicationTime)
-                .toList();
+                .collect(Collectors.toList());
         for (int i = 0; i < times.size() - 1; i++) {
             assertTrue(times.get(i).compareTo(times.get(i + 1)) >= 0);
         }

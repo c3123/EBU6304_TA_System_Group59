@@ -1,6 +1,6 @@
 # Acceptance Test Checklist
 
-This checklist is prepared for Sprint 3 hand test, regression check, and final demo rehearsal.
+This checklist is prepared for Sprint 3/Sprint 4 hand test, regression check, and final demo rehearsal.
 
 Status fields to fill during execution:
 
@@ -34,7 +34,7 @@ Recommended evidence:
 | AUTH-01 | All Users | JSON files under `WEB-INF/data` contain the demo accounts. | 1. Open the login page.<br>2. Log in as Student using `student@demo.com / demo123`.<br>3. Repeat for Teacher and Admin accounts. | Each account is redirected to the correct role page. |  |  |
 | AUTH-02 | All Users | Login page is open. | 1. Submit an incorrect password.<br>2. Submit an empty login form. | The system shows an error and does not create a session. |  |  |
 | AUTH-03 | All Users | User is logged in. | 1. Click Logout.<br>2. Try reopening a protected page in the same browser tab. | Session is invalidated and the protected page is no longer accessible directly. |  |  |
-| AUTH-04 | Tester | No valid session for the target role. | 1. Request a protected URL such as `/pages/admin.jsp` or `/api/admin/dashboard` without a matching session. | Access is rejected or redirected according to the current auth filter behavior. |  |  |
+| AUTH-04 | Tester | No valid session for the target role. | 1. Request a protected URL such as `/pages/admin.jsp` or `/api/admin/dashboard` without a matching session.<br>2. Log in as a different role and request an admin, MO, or student API directly. | Unauthenticated API access returns unauthorized, and wrong-role API access returns forbidden or redirects according to the current auth filter behavior. |  |  |
 
 ---
 
@@ -57,6 +57,7 @@ Recommended evidence:
 | STU-03 | Student | Student has one active non-hired application. | 1. Withdraw that application from the application list. | The application disappears from the active list or is shown as no longer active according to the current UI behavior. |  |  |
 | STU-04 | Student | Student has at least one hired application. | 1. Open the assigned jobs / my jobs / schedule view.<br>2. Inspect the listed assignment. | Only hired jobs are displayed, with module, organiser, weekly hours, schedule, location, and deadline. |  |  |
 | STU-05 | Student | Student has no hired applications. | 1. Open the assigned jobs / schedule view. | The system shows a clear empty state instead of a broken table or blank page. |  |  |
+| STU-06 | Student | Student is logged in and AI advisor is available. | 1. Open the AI advisor panel.<br>2. Submit a normal request.<br>3. If external AI is not configured, verify fallback guidance appears. | The panel returns useful advice without breaking the page, even when external AI configuration is unavailable. |  |  |
 
 ---
 
@@ -104,7 +105,7 @@ Recommended rehearsal order:
 1. `ENV-01` to `ENV-04`
 2. `AUTH-01` to `AUTH-04`
 3. `PWD-01` to `PWD-03`
-4. `STU-01` to `STU-05`
+4. `STU-01` to `STU-06`
 5. `MO-01` to `MO-06`
 6. `ADM-01` to `ADM-05`
 7. `REG-01` to `REG-05`
