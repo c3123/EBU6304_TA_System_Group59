@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     search: "",
     statusFilter: "all",
     hoursFilter: "all",
+    scheduleFilter: "all",
     profile: {
       skills: "",
       experience: ""
@@ -49,11 +50,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   const studentNotificationPanel = byId("studentNotificationPanel");
   const studentTopNameEl = byId("studentTopName");
   const studentAvatarEl = byId("studentAvatar");
-  const globalStudentSearchEl = byId("globalStudentSearch");
 
   const jobSearchInput = byId("jobSearchInput");
   const jobStatusFilter = byId("jobStatusFilter");
   const jobHoursFilter = byId("jobHoursFilter");
+  const jobScheduleFilter = byId("jobScheduleFilter");
 
   const profileNameEl = byId("profileName");
   const profileEmailEl = byId("profileEmail");
@@ -290,6 +291,40 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  function normalizedSchedule(value) {
+    const text = String(value || "").trim();
+    return text && text !== "-" ? text : "";
+  }
+
+  function scheduleDay(value) {
+    const schedule = normalizedSchedule(value);
+    const match = schedule.match(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/i);
+    return match ? match[1].slice(0, 1).toUpperCase() + match[1].slice(1, 3).toLowerCase() : "";
+  }
+
+  function populateScheduleFilter() {
+    if (!jobScheduleFilter) return;
+    const selected = state.scheduleFilter || "all";
+    const dayOrder = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const days = Array.from(new Set(
+      state.jobs
+        .map((job) => scheduleDay(job.schedule))
+        .filter(Boolean)
+    )).sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
+
+    jobScheduleFilter.innerHTML = [
+      '<option value="all">All Schedules</option>',
+      ...days.map((day) => `<option value="${escapeHtml(day)}">${escapeHtml(day)}</option>`)
+    ].join("");
+
+    if (selected !== "all" && days.includes(selected)) {
+      jobScheduleFilter.value = selected;
+    } else {
+      state.scheduleFilter = "all";
+      jobScheduleFilter.value = "all";
+    }
+  }
+
   function renderJobs() {
     if (state.loading) {
       jobsLoadingEl.classList.remove("hidden");
@@ -301,10 +336,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const query = state.search.trim().toLowerCase();
     const filtered = state.jobs.filter((job) => {
+      const searchableText = [
+        job.moduleCode,
+        job.title,
+        job.teacherName,
+        job.requirements,
+        ...(Array.isArray(job.requiredSkills) ? job.requiredSkills : [])
+      ].map((value) => String(value || "").toLowerCase()).join(" ");
+
       const matchesSearch =
         !query ||
-        String(job.moduleCode || "").toLowerCase().includes(query) ||
-        String(job.title || "").toLowerCase().includes(query);
+        searchableText.includes(query);
 
       const matchesStatus =
         state.statusFilter === "all" || String(job.status || "").toLowerCase() === state.statusFilter;
@@ -314,7 +356,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         (state.hoursFilter === "<=10" && (job.hours || 0) <= 10) ||
         (state.hoursFilter === ">10" && (job.hours || 0) > 10);
 
-      return matchesSearch && matchesStatus && matchesHours;
+      const day = scheduleDay(job.schedule);
+      const matchesSchedule =
+        state.scheduleFilter === "all" || day === state.scheduleFilter;
+
+      return matchesSearch && matchesStatus && matchesHours && matchesSchedule;
     });
 
     jobsLoadingEl.classList.add("hidden");
@@ -988,22 +1034,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   jobSearchInput.addEventListener("input", (event) => {
     state.search = event.target.value || "";
-    if (globalStudentSearchEl && globalStudentSearchEl.value !== state.search) {
-      globalStudentSearchEl.value = state.search;
-    }
     renderJobs();
   });
-
-  if (globalStudentSearchEl) {
-    globalStudentSearchEl.addEventListener("input", (event) => {
-      state.search = event.target.value || "";
-      if (jobSearchInput && jobSearchInput.value !== state.search) {
-        jobSearchInput.value = state.search;
-      }
-      renderJobs();
-    });
-    globalStudentSearchEl.addEventListener("focus", () => switchTab("jobs"));
-  }
 
   jobStatusFilter.addEventListener("change", (event) => {
     state.statusFilter = event.target.value || "all";
@@ -1014,6 +1046,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     state.hoursFilter = event.target.value || "all";
     renderJobs();
   });
+
+  if (jobScheduleFilter) {
+    jobScheduleFilter.addEventListener("change", (event) => {
+      state.scheduleFilter = event.target.value || "all";
+      renderJobs();
+    });
+  }
 
   calendarPrevBtn?.addEventListener("click", () => {
     changeCalendarMonth(-1);
@@ -1273,6 +1312,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     state.profile.skills = profileData.skills || "";
     state.profile.experience = profileData.experience || "";
     state.attachments = Array.isArray(profileData.attachments) ? profileData.attachments : [];
+    populateScheduleFilter();
 
     studentWelcomeEl.textContent = state.student.name
       ? `Welcome, ${state.student.name}.`
