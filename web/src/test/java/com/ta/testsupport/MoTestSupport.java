@@ -1,10 +1,13 @@
 package com.ta.testsupport;
 
 import com.ta.model.ApplicationRecord;
+import com.ta.model.HiringHistoryRecord;
 import com.ta.model.JobPosting;
 import com.ta.model.NotificationRecord;
 import com.ta.model.StudentProfile;
+import com.ta.model.SystemSettings;
 import com.ta.model.User;
+import com.ta.service.admin.AdminBusinessException;
 import com.ta.service.mo.MoBusinessException;
 import com.ta.util.JsonUtility;
 import jakarta.servlet.ServletContext;
@@ -60,6 +63,14 @@ public abstract class MoTestSupport {
         JsonUtility.saveNotifications(servletContext, notifications);
     }
 
+    protected void writeHiringHistory(List<HiringHistoryRecord> records) throws IOException {
+        JsonUtility.saveHiringHistory(servletContext, records);
+    }
+
+    protected void writeSystemSettings(SystemSettings settings) throws IOException {
+        JsonUtility.saveSystemSettings(servletContext, settings);
+    }
+
     protected void writeStudents(List<StudentProfile> students) throws IOException {
         JsonUtility.saveStudents(servletContext, students);
     }
@@ -72,8 +83,16 @@ public abstract class MoTestSupport {
         return JsonUtility.loadApplications(servletContext);
     }
 
+    protected List<JobPosting> readJobs() throws IOException {
+        return JsonUtility.loadJobs(servletContext);
+    }
+
     protected List<NotificationRecord> readNotifications() throws IOException {
         return JsonUtility.loadNotifications(servletContext);
+    }
+
+    protected List<HiringHistoryRecord> readHiringHistory() throws IOException {
+        return JsonUtility.loadHiringHistory(servletContext);
     }
 
     protected List<StudentProfile> readStudents() throws IOException {
@@ -86,6 +105,12 @@ public abstract class MoTestSupport {
 
     protected static void assertMoBusinessException(Runnable action, String expectedCode, int expectedHttpStatus) {
         MoBusinessException ex = assertThrows(MoBusinessException.class, action::run);
+        assertEquals(expectedCode, ex.getCode());
+        assertEquals(expectedHttpStatus, ex.getHttpStatus());
+    }
+
+    protected static void assertAdminBusinessException(Runnable action, String expectedCode, int expectedHttpStatus) {
+        AdminBusinessException ex = assertThrows(AdminBusinessException.class, action::run);
         assertEquals(expectedCode, ex.getCode());
         assertEquals(expectedHttpStatus, ex.getHttpStatus());
     }
