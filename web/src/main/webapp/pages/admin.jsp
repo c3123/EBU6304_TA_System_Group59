@@ -472,38 +472,33 @@
       <div class="admin-outcome-board">
       <div class="card" style="margin-bottom:16px;">
         <h3 class="admin-subtitle">Key indicators</h3>
-        <p class="desc">Aggregated across all non-withdrawn job postings and active applications. Total vacancies = sum of (positions - hired) per job.</p>
+        <p class="desc">Aggregated across all non-withdrawn job postings. Hired + vacancies = total slots (filled seats are capped per job headcount).</p>
       </div>
       <div class="admin-stats-grid admin-outcome-kpi-grid">
         <article class="admin-stat-card admin-stat-card--outcome">
-          <p class="admin-stat-label">Total position slots</p>
+          <p class="admin-stat-label">Total slots</p>
           <p id="adminOutcomeTotalSlots" class="admin-stat-value">0</p>
           <p class="admin-stat-sub">Sum of headcount targets (non-withdrawn jobs)</p>
         </article>
         <article class="admin-stat-card admin-stat-card--outcome">
-          <p class="admin-stat-label">Closed recruitment</p>
-          <p id="adminOutcomeClosedJobs" class="admin-stat-value">0</p>
-          <p class="admin-stat-sub">Jobs with recruitment closed or status closed</p>
-        </article>
-        <article class="admin-stat-card admin-stat-card--outcome">
-          <p class="admin-stat-label">Still recruiting</p>
-          <p id="adminOutcomeRecruitingJobs" class="admin-stat-value">0</p>
-          <p class="admin-stat-sub">Open jobs not yet closed</p>
-        </article>
-        <article class="admin-stat-card admin-stat-card--outcome">
-          <p class="admin-stat-label">Total applications</p>
-          <p id="adminOutcomeTotalApplications" class="admin-stat-value">0</p>
-          <p class="admin-stat-sub">Active application records</p>
-        </article>
-        <article class="admin-stat-card admin-stat-card--outcome">
-          <p class="admin-stat-label">Total hired</p>
+          <p class="admin-stat-label">Hired</p>
           <p id="adminOutcomeTotalHired" class="admin-stat-value">0</p>
-          <p class="admin-stat-sub">Active applications marked hired</p>
+          <p class="admin-stat-sub">Filled position slots across all jobs</p>
         </article>
         <article class="admin-stat-card admin-stat-card--outcome">
-          <p class="admin-stat-label">Total vacancies</p>
+          <p class="admin-stat-label">Vacancies</p>
           <p id="adminOutcomeTotalVacancies" class="admin-stat-value">0</p>
-          <p class="admin-stat-sub">Unfilled slots (positions minus hired)</p>
+          <p class="admin-stat-sub">Unfilled slots (positions minus hired per job)</p>
+        </article>
+        <article class="admin-stat-card admin-stat-card--outcome">
+          <p class="admin-stat-label">Open jobs</p>
+          <p id="adminOutcomeOpenJobs" class="admin-stat-value">0</p>
+          <p class="admin-stat-sub">Jobs currently open and accepting applications</p>
+        </article>
+        <article class="admin-stat-card admin-stat-card--outcome">
+          <p class="admin-stat-label">Application records</p>
+          <p id="adminOutcomeTotalApplications" class="admin-stat-value">0</p>
+          <p class="admin-stat-sub">Total active application records</p>
         </article>
       </div>
       <div class="card admin-outcome-card">

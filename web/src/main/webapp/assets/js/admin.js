@@ -455,18 +455,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     const chart = byId("adminOutcomeMixChart");
     if (!chart) return;
     const slots = Math.max(Number(data.totalPositionSlots) || 0, 0);
-    const hired = Math.max(Number(data.totalHired) || 0, 0);
     const vacancies = Math.max(Number(data.totalVacancies) || 0, 0);
+    const hired = Math.max(slots - vacancies, 0);
     if (slots === 0 && hired === 0 && vacancies === 0) {
       chart.innerHTML = `<p class="desc">No recruitment result data yet.</p>`;
       return;
     }
-    const total = Math.max(slots, hired + vacancies, 1);
+    const total = Math.max(slots, 1);
     const hiredDeg = Math.min(360, Math.round((hired / total) * 360));
     const vacancyDeg = Math.min(360 - hiredDeg, Math.round((vacancies / total) * 360));
-    const spareDeg = Math.max(0, 360 - hiredDeg - vacancyDeg);
     chart.innerHTML = `
-      <div class="admin-donut" style="--hired-deg:${hiredDeg}deg;--vacancy-deg:${vacancyDeg}deg;--spare-deg:${spareDeg}deg;" role="img" aria-label="Hired ${hired}, vacancies ${vacancies}, total slots ${slots}">
+      <div class="admin-donut" style="--hired-deg:${hiredDeg}deg;--vacancy-deg:${vacancyDeg}deg;--spare-deg:0deg;" role="img" aria-label="Hired ${hired}, vacancies ${vacancies}, total slots ${slots}">
         <div class="admin-donut-hole">
           <strong>${escapeHtml(String(slots))}</strong>
           <span>slots</span>
@@ -528,17 +527,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         adminOutcomeJobUntil.value = toDisplayDate(outcomeJobDateRange.until);
       }
       const slots = byId("adminOutcomeTotalSlots");
-      const closed = byId("adminOutcomeClosedJobs");
-      const recruiting = byId("adminOutcomeRecruitingJobs");
-      const apps = byId("adminOutcomeTotalApplications");
       const hired = byId("adminOutcomeTotalHired");
       const vac = byId("adminOutcomeTotalVacancies");
+      const openJobs = byId("adminOutcomeOpenJobs");
+      const apps = byId("adminOutcomeTotalApplications");
       if (slots) slots.textContent = data.totalPositionSlots ?? 0;
-      if (closed) closed.textContent = data.closedJobs ?? 0;
-      if (recruiting) recruiting.textContent = data.recruitingJobs ?? 0;
-      if (apps) apps.textContent = data.totalApplications ?? 0;
       if (hired) hired.textContent = data.totalHired ?? 0;
       if (vac) vac.textContent = data.totalVacancies ?? 0;
+      if (openJobs) openJobs.textContent = data.recruitingJobs ?? 0;
+      if (apps) apps.textContent = data.totalApplications ?? 0;
       const genEl = byId("adminOutcomeGeneratedAt");
       if (genEl && data.generatedAt) {
         genEl.setAttribute("datetime", data.generatedAt);
