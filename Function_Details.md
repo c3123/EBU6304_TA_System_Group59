@@ -461,6 +461,9 @@ The goal is to keep the application usable under realistic project data volume w
   - periodic refresh logic must avoid disruptive re-rendering of user-expanded content where possible.
 
 - **Testing / Verification:**
+  - automated regression suite is maintained under `web/src/test/java` and currently contains 165 JUnit 5 tests.
+  - browser E2E and Tomcat integration tests are maintained under `e2e/tests` and currently contain 13 Playwright tests.
+  - automated tests cover Admin services, MO services, Student services, shared account behavior, and servlet access control using isolated temporary JSON data directories.
   - manual response-time checks should be performed for login, dashboard loading, job browsing, application listing, and export flows.
   - regression checks should confirm that optimization changes do not alter business logic or access control.
   - test evidence should be recorded for the final report and demonstration preparation.

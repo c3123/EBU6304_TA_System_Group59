@@ -20,6 +20,8 @@ Recommended evidence:
 
 | Test ID | Role | Preconditions | Steps | Expected Result | Pass/Fail | Evidence Note |
 | --- | --- | --- | --- | --- | --- | --- |
+| ENV-00 | Tester | JDK 21 and Maven are available. | 1. Run `mvn -f web/pom.xml test` from the repository root.<br>2. Record the terminal result. | The automated JUnit suite completes successfully: 165 tests, 0 failures, 0 errors. |  |  |
+| ENV-00A | Tester | JDK 21+, Maven, Node.js/npm, and Playwright Chromium are available. | 1. Run `npm install` if dependencies are not installed.<br>2. Run `npx playwright install chromium` if Chromium is not installed.<br>3. Run `npm run e2e` from the repository root.<br>4. Record the terminal result. | Cargo starts Tomcat 10.1 on port `18080`, deploys `/web`, and the automated browser E2E suite completes successfully: 13 tests, 0 failures. |  |  |
 | ENV-01 | Tester | Application is stopped. | 1. Confirm the presence of `users.json`, `students.json`, `jobs.json`, `applications.json`, `notifications.json`, `hiring_history.json`, and `system_settings.json` under `web/src/main/webapp/WEB-INF/data`.<br>2. Start Tomcat and open the system.<br>3. Log in with the demo accounts. | The system starts successfully and uses the JSON files under `WEB-INF/data`. |  |  |
 | ENV-02 | Tester | Application is running. | 1. Perform a data-changing action, for example student applies for a job.<br>2. Open the corresponding JSON file under `web/src/main/webapp/WEB-INF/data`.<br>3. Verify the new record exists. | Changes made through the UI are written directly to the JSON files under `WEB-INF/data`. |  |  |
 | ENV-03 | Tester | Application is running and one JSON file has already been updated. | 1. Restart Tomcat.<br>2. Reopen the same page.<br>3. Compare the page content with the JSON file under `WEB-INF/data`. | The modified data remains available after restart because `WEB-INF/data` is the single source of truth. |  |  |
@@ -34,7 +36,7 @@ Recommended evidence:
 | AUTH-01 | All Users | JSON files under `WEB-INF/data` contain the demo accounts. | 1. Open the login page.<br>2. Log in as Student using `student@demo.com / demo123`.<br>3. Repeat for Teacher and Admin accounts. | Each account is redirected to the correct role page. |  |  |
 | AUTH-02 | All Users | Login page is open. | 1. Submit an incorrect password.<br>2. Submit an empty login form. | The system shows an error and does not create a session. |  |  |
 | AUTH-03 | All Users | User is logged in. | 1. Click Logout.<br>2. Try reopening a protected page in the same browser tab. | Session is invalidated and the protected page is no longer accessible directly. |  |  |
-| AUTH-04 | Tester | No valid session for the target role. | 1. Request a protected URL such as `/pages/admin.jsp` or `/api/admin/dashboard` without a matching session.<br>2. Log in as a different role and request an admin, MO, or student API directly. | Unauthenticated API access returns unauthorized, and wrong-role API access returns forbidden or redirects according to the current auth filter behavior. |  |  |
+| AUTH-04 | Tester | No valid session for the target role. | 1. Request a protected URL such as `/web/pages/admin.jsp` or `/web/api/admin/dashboard` without a matching session.<br>2. Log in as a different role and request an admin, MO, or student API directly. | Unauthenticated API access returns unauthorized, and wrong-role API access returns forbidden or redirects according to the current auth filter behavior. |  |  |
 
 ---
 

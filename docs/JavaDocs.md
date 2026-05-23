@@ -18,6 +18,8 @@ web/target/site/apidocs/index.html
 
 The generated `target` directory is ignored by Git. For the final `Software_group59.zip`, generate the JavaDocs before packaging the software evidence if HTML JavaDocs are required.
 
+The Maven project is configured for Java 21 (`maven.compiler.release=21`).
+
 ## Package Overview
 
 | Package | Responsibility |
@@ -53,14 +55,23 @@ Automated service tests live under:
 web/src/test/java
 ```
 
-The current automated tests cover:
+The current automated suite contains 165 JUnit 5 tests and covers:
 
-- MO applicant management, export, status filtering, status transitions, notes/feedback, and notifications.
-- Student profile persistence, attachment upload/delete, apply/withdraw, assigned jobs, and AI advisor fallback.
+- Admin dashboard aggregation, demand review, user management, reports, announcements, recruitment outcome analytics, application archive, workload settings, backup/export, and overload reminders.
+- MO applicant management, export, status filtering, status transitions, notes/feedback, hiring rules, job lifecycle, job history, applicant recommendation, and notifications.
+- Student profile persistence/fallback, attachment upload/delete validation, job matching, job listing, apply/withdraw rules, assigned jobs, notifications, skill scoring, and AI advisor fallback.
 - Shared password change success and validation failures.
 - Servlet access control for unauthenticated and wrong-role API access.
 
-Manual browser and Tomcat smoke acceptance testing remains documented in:
+Browser E2E and Tomcat integration tests live under:
+
+```text
+e2e/tests
+```
+
+The current Playwright suite contains 13 tests. It prepares isolated JSON data, starts Tomcat 10.1 through Maven Cargo, deploys the WAR under `/web`, and verifies role login, access control, key role APIs, and Admin/Student/MO page smoke rendering.
+
+Manual acceptance checks remain documented in:
 
 ```text
 docs/Acceptance_Test_Checklist.md
