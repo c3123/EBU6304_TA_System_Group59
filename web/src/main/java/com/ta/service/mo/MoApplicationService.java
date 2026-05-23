@@ -295,6 +295,10 @@ public class MoApplicationService {
                 weeklyHoursBefore = workloadOverloadAnnouncementService.calculateWeeklyHours(context, record.getStudentId());
             }
 
+            if ("hired".equals(normalized)) {
+                checkAndRejectIfJobFull(context, jobs, job);
+            }
+
             applyMoApplicationStatusTransition(record, job, normalized);
             // #region agent log
             try {
@@ -311,6 +315,7 @@ public class MoApplicationService {
             // #endregion
             if ("hired".equals(normalized)) {
                 appendManualHireHistory(context, moId, record);
+                autoCloseJobIfHiredFull(context, jobs, job);
             }
             JsonUtility.saveApplications(context, applications);
             if ("hired".equals(normalized)) {
@@ -416,6 +421,17 @@ public class MoApplicationService {
                                 }
                         );
                     }
+                }
+
+                Map<String, JobPosting> jobsToCheck = new LinkedHashMap<>();
+                for (ApplicationRecord record : targets) {
+                    JobPosting job = jobById.get(record.getJobId());
+                    if (job != null && !jobsToCheck.containsKey(job.getId())) {
+                        jobsToCheck.put(job.getId(), job);
+                    }
+                }
+                for (JobPosting job : jobsToCheck.values()) {
+                    checkAndRejectIfJobFull(context, jobs, job);
                 }
             }
 
@@ -563,9 +579,9 @@ public class MoApplicationService {
                 ));
         if (!moId.equals(job.getTeacherId())) {
             throw new MoBusinessException(
-                    ErrorCodes.FORBIDDEN_NOT_OWNER,
-                    "You can only update applications for your own jobs.",
-                    HttpServletResponse.SC_FORBIDDEN
+                        ErrorCodes.FORBIDDEN_NOT_OWNER,
+                        "You can only update applications for your own jobs.",
+                        HttpServletResponse.SC_FORBIDDEN
             );
         }
         return job;
@@ -573,7 +589,6 @@ public class MoApplicationService {
 
     static void applyMoApplicationStatusTransition(ApplicationRecord record, JobPosting job, String normalized) {
         String current = normalizeStatus(record.getStatus());
-        /** Allow undoing a mistaken hire after recruitment is closed (narrow exception). */
         boolean revertHireToPending = "pending".equals(normalized) && "hired".equals(current);
 
         if (Boolean.TRUE.equals(job.getRecruitmentClosed()) && !revertHireToPending) {
@@ -634,10 +649,57 @@ public class MoApplicationService {
                     ErrorCodes.VALIDATION_ERROR,
                     "Undo reject (viewed) or set to pending before changing status.",
                     HttpServletResponse.SC_BAD_REQUEST
-            );
+                );
         }
 
         record.setStatus(normalized);
+    }
+
+    private void autoCloseJobIfHiredFull(ServletContext context, List<JobPosting> jobs, JobPosting job) throws IOException {
+        if (Boolean.TRUE.equals(job.getRecruitmentClosed())) {
+            return;
+        }
+        int hiredCount = (int) JsonUtility.loadApplications(context).stream()
+                .filter(a -> job.getId().equals(a.getJobId()))
+                .filter(a -> "hired".equalsIgnoreCase(a.getStatus()))
+                .count();
+        if (job.getPositions() > 0 && hiredCount >= job.getPositions()) {
+            String now = Instant.now().toString();
+            job.setRecruitmentClosed(true);
+            job.setClosedAt(now);
+            job.setStatus("closed");
+            job.setPublished(false);
+            job.setUpdatedAt(now);
+            JsonUtility.saveJobs(context, jobs);
+            // #region agent log
+            try {
+                Map<String, Object> d = new LinkedHashMap<>();
+                d.put("jobId", job.getId());
+                d.put("positions", job.getPositions());
+                d.put("hiredCount", hiredCount);
+                d.put("autoClosed", true);
+                AgentDebugLog.log("H6", "MoApplicationService.autoCloseJobIfHiredFull", "job_auto_closed", d);
+            } catch (Throwable ignored) {
+            }
+            // #endregion
+        }
+    }
+
+    private void checkAndRejectIfJobFull(ServletContext context, List<JobPosting> jobs, JobPosting job) throws IOException {
+        if (Boolean.TRUE.equals(job.getRecruitmentClosed())) {
+            return;
+        }
+        int hiredCount = (int) JsonUtility.loadApplications(context).stream()
+                .filter(a -> job.getId().equals(a.getJobId()))
+                .filter(a -> "hired".equalsIgnoreCase(a.getStatus()))
+                .count();
+        if (job.getPositions() > 0 && hiredCount >= job.getPositions()) {
+            throw new MoBusinessException(
+                    ErrorCodes.JOB_RECRUITMENT_CLOSED,
+                    "This job has reached its position limit (" + job.getPositions() + "). Cannot hire more applicants.",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
     }
 
     private void appendManualHireHistory(ServletContext context, String moId, ApplicationRecord hiredRecord) throws IOException {
