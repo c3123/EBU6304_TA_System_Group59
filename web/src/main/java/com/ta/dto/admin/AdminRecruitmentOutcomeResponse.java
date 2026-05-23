@@ -16,11 +16,11 @@ public class AdminRecruitmentOutcomeResponse {
     private int recruitingJobs;
     /** Active application records across all jobs. */
     private int totalApplications;
-    /** Active applications with status hired. */
+    /** Filled position slots (totalPositionSlots minus totalVacancies). */
     private int totalHired;
     /** Sum over non-withdrawn jobs of max(0, positions - hiredCount). */
     private int totalVacancies;
-    /** Per department: hired applications and unfilled slots (blank department label is 未填). */
+    /** Per department: hired applications and unfilled slots (blank department label is Unspecified). */
     private List<AdminRecruitmentOutcomeDepartmentRow> departments = new ArrayList<>();
     /** Jobs with the largest unfilled slot counts (non-withdrawn, vacancy greater than zero), capped by request. */
     private List<AdminRecruitmentOutcomeVacancyRow> topVacancyJobs = new ArrayList<>();

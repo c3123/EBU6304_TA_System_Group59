@@ -2,6 +2,8 @@ package com.ta.service.admin;
 
 import com.ta.constant.ErrorCodes;
 import com.ta.dto.admin.AdminDashboardAlertResponse;
+import com.ta.dto.admin.AdminDashboardCountSlice;
+import com.ta.dto.admin.AdminDashboardDailyCountItem;
 import com.ta.dto.admin.AdminDashboardJobItemResponse;
 import com.ta.dto.admin.AdminDashboardResponse;
 import com.ta.dto.admin.AdminDashboardUserItemResponse;
@@ -14,6 +16,7 @@ import com.ta.model.SystemSettings;
 import com.ta.model.User;
 import com.ta.util.JobHoursUtil;
 import com.ta.util.JsonUtility;
+import com.ta.util.WorkloadLevelUtil;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -33,6 +36,8 @@ import java.util.Set;
 public class AdminDashboardService {
     private static final Set<String> ALLOWED_STATUS_FILTERS = Set.of("all", "draft", "open", "closed", "withdrawn");
     private static final int DEADLINE_WARNING_DAYS = 7;
+    private static final int DAILY_TREND_DAYS = 30;
+    private static final String DEPARTMENT_UNKNOWN = "Unspecified";
 
     public AdminDashboardResponse loadDashboard(ServletContext context, String statusFilter, String departmentFilter) {
         try {
@@ -45,8 +50,7 @@ public class AdminDashboardService {
             String normalizedStatus = normalizeStatusFilter(statusFilter);
             String normalizedDepartment = normalizeDepartmentFilter(jobs, departmentFilter);
             List<JobPosting> filteredJobs = filterJobs(jobs, normalizedStatus, normalizedDepartment);
-            List<AdminDashboardWorkloadItemResponse> workload = toWorkload(applications, jobs, settings.getWorkloadThresholdHours(), hiringHistory);
-
+            List<AdminDashboardWorkloadItemResponse> workload = toWorkload(applications, jobs, settings, hiringHistory);
             AdminDashboardResponse data = new AdminDashboardResponse();
             data.setTotalUsers(users.size());
             data.setTotalJobs(jobs.size());
@@ -56,6 +60,10 @@ public class AdminDashboardService {
             data.setJobs(toJobs(filteredJobs, applications));
             data.setWorkload(workload);
             data.setAlerts(buildAlerts(jobs, applications, workload, settings.getWorkloadThresholdHours()));
+            data.setDailyJobPublications(buildDailyJobPublicationTrend(jobs));
+            data.setDailyApplications(buildDailyApplicationTrend(applications));
+            data.setJobsByDepartment(buildJobDepartmentSlices(filteredJobs));
+            data.setJobsByStatus(buildJobStatusSlices(filteredJobs));
             return data;
         } catch (IOException e) {
             throw new RuntimeException("Failed to load admin dashboard.", e);
@@ -280,9 +288,9 @@ public class AdminDashboardService {
 
     private List<AdminDashboardWorkloadItemResponse> toWorkload(List<ApplicationRecord> applications,
                                                                 List<JobPosting> jobs,
-                                                                Integer thresholdHours,
+                                                                SystemSettings settings,
                                                                 List<HiringHistoryRecord> hiringHistory) {
-        int threshold = thresholdHours;
+        int threshold = WorkloadLevelUtil.resolveThresholdHours(settings.getWorkloadThresholdHours());
         Map<String, String> hiredAtByApplicationId = latestHiredSubmittedAtByApplicationId(hiringHistory);
         Map<String, Integer> jobHoursById = new LinkedHashMap<>();
         Map<String, JobPosting> jobById = new LinkedHashMap<>();
@@ -311,7 +319,7 @@ public class AdminDashboardService {
                 created.setWeeklyHours(0);
                 created.setThresholdHours(threshold);
                 created.setWarning(false);
-                applyWorkloadLevel(created, threshold);
+                applyWorkloadLevel(created, settings);
                 return created;
             });
 
@@ -324,7 +332,7 @@ public class AdminDashboardService {
             } else if (app.getJobId() != null && !app.getJobId().isBlank()) {
                 item.getAssignedJobs().add(toWorkloadJobMissing(app, hiredAtByApplicationId));
             }
-            applyWorkloadLevel(item, threshold);
+            applyWorkloadLevel(item, settings);
         }
 
         List<AdminDashboardWorkloadItemResponse> items = new ArrayList<>(workloadByStudent.values());
@@ -466,29 +474,16 @@ public class AdminDashboardService {
         return trimToEmpty(app.getAppliedAt());
     }
 
-    private void applyWorkloadLevel(AdminDashboardWorkloadItemResponse item, int threshold) {
-        int hours = item.getWeeklyHours();
-        if (hours >= threshold) {
-            item.setWorkloadLevel("overload");
-            item.setWorkloadLabel("Overload");
-            item.setWarning(true);
-            return;
-        }
-        if (hours >= 15) {
-            item.setWorkloadLevel("warning");
-            item.setWorkloadLabel("Warning");
-            item.setWarning(true);
-            return;
-        }
-        if (hours >= 10) {
-            item.setWorkloadLevel("normal");
-            item.setWorkloadLabel("Normal");
-            item.setWarning(false);
-            return;
-        }
-        item.setWorkloadLevel("low");
-        item.setWorkloadLabel("Low");
-        item.setWarning(false);
+    private void applyWorkloadLevel(AdminDashboardWorkloadItemResponse item, SystemSettings settings) {
+        WorkloadLevelUtil.WorkloadLevel level = WorkloadLevelUtil.classify(
+                item.getWeeklyHours(),
+                settings.getWorkloadThresholdHours(),
+                null,
+                null
+        );
+        item.setWorkloadLevel(level.getKey());
+        item.setWorkloadLabel(level.getLabel());
+        item.setWarning(level.isWarning());
     }
 
     private List<AdminDashboardAlertResponse> buildAlerts(List<JobPosting> jobs,
@@ -649,6 +644,153 @@ public class AdminDashboardService {
 
     private String safeText(String value) {
         return value == null ? "" : value + " ";
+    }
+
+    private List<AdminDashboardDailyCountItem> buildDailyJobPublicationTrend(List<JobPosting> jobs) {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        seedDailyBuckets(counts);
+        for (JobPosting job : jobs) {
+            if (Boolean.TRUE.equals(job.getWithdrawn())) {
+                continue;
+            }
+            if (!Boolean.TRUE.equals(job.getPublished()) && trimToEmpty(job.getPublishedAt()).isBlank()) {
+                continue;
+            }
+            String day = toDayKey(firstNonBlank(job.getPublishedAt(), job.getUpdatedAt(), job.getCreatedAt()));
+            if (day == null) {
+                continue;
+            }
+            counts.merge(day, 1, Integer::sum);
+        }
+        return toDailyItems(counts);
+    }
+
+    private List<AdminDashboardDailyCountItem> buildDailyApplicationTrend(List<ApplicationRecord> applications) {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        seedDailyBuckets(counts);
+        for (ApplicationRecord application : applications) {
+            if (!application.isActive()) {
+                continue;
+            }
+            String day = toDayKey(application.getAppliedAt());
+            if (day == null) {
+                continue;
+            }
+            counts.merge(day, 1, Integer::sum);
+        }
+        return toDailyItems(counts);
+    }
+
+    private List<AdminDashboardCountSlice> buildJobDepartmentSlices(List<JobPosting> filteredJobs) {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (JobPosting job : filteredJobs) {
+            if (Boolean.TRUE.equals(job.getWithdrawn())) {
+                continue;
+            }
+            String department = departmentLabel(job.getDepartment());
+            counts.merge(department, 1, Integer::sum);
+        }
+        return toSortedSlices(counts);
+    }
+
+    private List<AdminDashboardCountSlice> buildJobStatusSlices(List<JobPosting> filteredJobs) {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        counts.put("Pending", 0);
+        counts.put("Reject", 0);
+        counts.put("Open", 0);
+        counts.put("Overdue", 0);
+        for (JobPosting job : filteredJobs) {
+            String bucket = resolveJobAnalysisStatus(job);
+            if (bucket == null) {
+                continue;
+            }
+            counts.merge(bucket, 1, Integer::sum);
+        }
+        List<AdminDashboardCountSlice> slices = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : counts.entrySet()) {
+            if (entry.getValue() <= 0) {
+                continue;
+            }
+            slices.add(new AdminDashboardCountSlice(entry.getKey(), entry.getValue()));
+        }
+        return slices;
+    }
+
+    private String resolveJobAnalysisStatus(JobPosting job) {
+        if (Boolean.TRUE.equals(job.getWithdrawn())) {
+            return null;
+        }
+        String approval = trimToEmpty(job.getApprovalStatus()).toLowerCase(Locale.ROOT);
+        if ("rejected".equals(approval)) {
+            return "Reject";
+        }
+        if ("pending".equals(approval) || !Boolean.TRUE.equals(job.getPublished())) {
+            return "Pending";
+        }
+        if (isClosed(job)) {
+            return null;
+        }
+        if ("open".equalsIgnoreCase(trimToEmpty(job.getStatus()))) {
+            Integer days = resolveDaysUntilDeadline(job.getDeadline());
+            if (days != null && days < 0) {
+                return "Overdue";
+            }
+            return "Open";
+        }
+        return "Pending";
+    }
+
+    private void seedDailyBuckets(Map<String, Integer> counts) {
+        LocalDate today = LocalDate.now();
+        for (int i = DAILY_TREND_DAYS - 1; i >= 0; i--) {
+            counts.put(today.minusDays(i).toString(), 0);
+        }
+    }
+
+    private List<AdminDashboardDailyCountItem> toDailyItems(Map<String, Integer> counts) {
+        List<AdminDashboardDailyCountItem> items = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : counts.entrySet()) {
+            AdminDashboardDailyCountItem item = new AdminDashboardDailyCountItem();
+            item.setDay(entry.getKey());
+            item.setCount(entry.getValue());
+            items.add(item);
+        }
+        return items;
+    }
+
+    private List<AdminDashboardCountSlice> toSortedSlices(Map<String, Integer> counts) {
+        List<AdminDashboardCountSlice> slices = new ArrayList<>();
+        counts.entrySet().stream()
+                .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                .forEach(entry -> slices.add(new AdminDashboardCountSlice(entry.getKey(), entry.getValue())));
+        return slices;
+    }
+
+    private String departmentLabel(String department) {
+        String value = trimToEmpty(department);
+        return value.isBlank() ? DEPARTMENT_UNKNOWN : value;
+    }
+
+    private String toDayKey(String isoTimestamp) {
+        String value = trimToEmpty(isoTimestamp);
+        if (value.length() < 10) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(value.substring(0, 10)).toString();
+        } catch (DateTimeParseException ex) {
+            return null;
+        }
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            String trimmed = trimToEmpty(value);
+            if (!trimmed.isBlank()) {
+                return trimmed;
+            }
+        }
+        return "";
     }
 
     private String trimToEmpty(String value) {

@@ -19,6 +19,7 @@ public class StudentJobItemResponse {
     private List<String> matchedSkills = new ArrayList<>();
     private List<String> missingSkills = new ArrayList<>();
     private List<String> requiredSkills = new ArrayList<>();
+    private List<String> relatedMatches = new ArrayList<>();
 
     public String getId() {
         return id;
@@ -138,5 +139,13 @@ public class StudentJobItemResponse {
 
     public void setRequiredSkills(List<String> requiredSkills) {
         this.requiredSkills = requiredSkills != null ? requiredSkills : new ArrayList<>();
+    }
+
+    public List<String> getRelatedMatches() {
+        return relatedMatches;
+    }
+
+    public void setRelatedMatches(List<String> relatedMatches) {
+        this.relatedMatches = relatedMatches != null ? relatedMatches : new ArrayList<>();
     }
 }

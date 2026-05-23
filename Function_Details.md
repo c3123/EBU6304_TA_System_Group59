@@ -35,7 +35,7 @@ A centralized login portal that validates credentials and directs users to their
 - **Session Management:** `HttpSession` must be used to persist user identity across the web application.
 
 **Assignee:** Sihan Chen / Tianxiao Ma
-**Completion Date:**
+**Completion Date:** 2026-03-22
 
 ---
 
@@ -95,7 +95,7 @@ The system ensures that applicants can smoothly complete the entire process from
   - User-specific data is retrieved based on session identity.
 
 **Assignee:** Fangyu Chu / Tianzi Xiong
-**Completion Date:**
+**Completion Date:** 2026-03-22
 
 ---
 
@@ -106,7 +106,7 @@ The system ensures that applicants can smoothly complete the entire process from
 **Full specification:** See **Section 6 — Module Organiser (MO) Consolidated Specification**, **6.2 Sprint 1 — Demand, Publish, and Application Review Baseline**, for complete description, acceptance criteria, servlets, services, persistence, and UI files.
 
 **Assignee:** Wanhe Ji / Huishun Hu  
-**Completion Date:**
+**Completion Date:** 2026-03-22
 
 ---
 
@@ -228,63 +228,66 @@ This provides the shared admin-side control layer for Sprint 2. In this iteratio
 
 -**Servlet Implementation**
 
-  -ApplicantCVUpdateServlet (POST /api/applicant/cv/update)
-    Allows applicants to upload a new CV and replace the existing CV file.
-  -ApplicantJobFilterServlet (GET /api/applicant/jobs/filter)
-    Retrieves job listings based on filter criteria such as module name, time, or requirements.
-  -ApplicationSubmitServlet (POST /api/applicant/apply/{jobId})
-    Handles submission of job applications and records them in the system.
-  -ApplicationWithdrawServlet (POST /api/applicant/withdraw/{applicationId})
-    Allows applicants to withdraw submitted applications before acceptance.
-  -ApplicantAssignedJobsServlet (GET /api/applicant/my-jobs)
-    Returns the list of accepted jobs assigned to the applicant.
+  -StudentProfileServlet (GET/PUT /api/student/profile)
+    Retrieves and updates the current student's profile, including skills, experience, phone, programme, and attachment metadata.
+  -StudentAttachmentUploadServlet (POST /api/student/attachments)
+    Uploads supporting documents attached to the student's profile.
+  -StudentAttachmentDeleteServlet (DELETE /api/student/attachments/{attachmentId})
+    Removes a supporting document from the current student's profile.
+  -StudentJobsServlet (GET /api/student/jobs)
+    Retrieves open jobs and job-matching fields for the logged-in student.
+  -StudentApplicationsServlet (GET/POST /api/student/applications, DELETE /api/student/applications/{applicationId})
+    Lists applications, submits a new job application, and withdraws an existing application before final hiring.
+  -StudentAssignedJobsServlet (GET /api/student/my-jobs)
+    Returns hired/accepted jobs assigned to the current student, including schedule, location, deadline, and weekly hours.
+  -StudentAiAdvisorServlet (POST /api/student/ai-advisor)
+    Returns AI-assisted or rule-based job guidance for the current student.
+  -StudentNotificationsServlet (GET /api/student/notifications)
+    Lists student-visible notifications.
+  -StudentNotificationReadServlet (POST /api/student/notifications/read/{notificationId})
+    Marks a student notification as read.
 
 -**Service Layer**
 
-  -ApplicantProfileService
-    Handles CV updating and validation.
-  -JobFilterService
-    Implements filtering logic based on module name, time, or skills.
-  -ApplicationService
-    Handles application submission, withdrawal, and retrieval of assigned jobs.
+  -StudentService
+    Handles profile updates, attachment metadata, job listing, application submission, withdrawal, and assigned job retrieval.
+  -JobMatchingService / SkillMatchScorer
+    Computes structured job-fit information based on student skills and job requirements.
+  -StudentNotificationService
+    Maps notification records into student-facing notification responses.
+  -AiAdvisorService
+    Combines structured matching context with optional external AI advice and deterministic fallback guidance.
 
 -**Data Management**
   -students.json
-    Stores applicant profile data and CV file paths.
+    Stores applicant profile data, skills, experience, phone, programme, and supporting document metadata.
   -jobs.json
     Stores job details including module name, schedule, and requirements.
   -applications.json
-    Stores application records and status values (Submitted, Accepted, Rejected, Withdrawn).
-  -Updating a CV replaces the existing CV path.
-  -Submitting an application creates a new application record.
-  -Withdrawn applications update their status to Withdrawn.
-  -Accepted applications are displayed in My TA Jobs.
+    Stores application records and backend status values such as `pending`, `viewed`, `shortlisted`, `hired`, `rejected`, plus `active` for withdrawn records.
+  -Submitting an application creates a new active application record.
+  -Withdrawn applications are marked inactive rather than physically removed.
+  -Hired applications are displayed in My Jobs / Assigned Jobs.
 
 -**Frontend Integration**
 
-  -applicantProfile.jsp
-    Provides CV upload and replacement interface.
-  -jobList.jsp
-    Displays available jobs and filtering options.
-  -application.jsp
-    Allows applicants to submit job applications.
-  -myApplications.jsp
-    Displays submitted applications with withdrawal options.
-  -myTAJobs.jsp
-    Displays accepted TA job assignments.
+  -student.jsp
+    Provides the student dashboard for profile editing, attachment upload/delete, job browsing, job details, applications, assigned jobs, notifications, password change, and AI advisor access.
+  -student.js
+    Connects the student dashboard to `/api/student/*` endpoints and renders job matching, application status, profile, assigned jobs, and notifications.
 
 -**Validation / Business Rules**
 
-  -Only PDF files are allowed for CV uploads.
+  -Supporting document upload accepts the file types allowed by `FileStorageUtil`.
   -Applicants can apply only once per job.
   -Applications can only be withdrawn before acceptance.
   -Multiple filtering criteria can be applied simultaneously.
-  -Only applications with status Accepted appear in My TA Jobs.
+  -Only applications with status `hired` appear in My Jobs / Assigned Jobs.
 
 -**Session / Access Control**
 
-  -All /api/applicant/* endpoints require an authenticated applicant session.
-  -Non-authenticated users cannot access applicant APIs.
+  -All /api/student/* endpoints require an authenticated student session.
+  -Non-authenticated users cannot access student APIs.
   -Each operation validates the applicant identity before processing.
 
 **Assignee:** Tianzi Xiong / Fangyu Chu  
@@ -373,8 +376,8 @@ The scope of this iteration contains three connected capabilities:
   - All `/api/admin/*` routes remain admin-only.
   - Non-admin users must not be able to read or modify threshold settings or export reports.
 
-**Assignee:**
-**Completion Date:**
+**Assignee:** Sihan Chen / Tianxiao Ma
+**Completion Date:** 2026-05-21
 
 ---
 
@@ -424,8 +427,8 @@ The feature allows users from different roles to update their own password throu
   - Only authenticated users can call `/api/account/change-password`.
   - Users can only change their own password and cannot modify another account through this endpoint.
 
-**Assignee:**
-**Completion Date:**
+**Assignee:** Sihan Chen / Tianxiao Ma
+**Completion Date:** 2026-05-21
 
 ---
 
@@ -458,6 +461,9 @@ The goal is to keep the application usable under realistic project data volume w
   - periodic refresh logic must avoid disruptive re-rendering of user-expanded content where possible.
 
 - **Testing / Verification:**
+  - automated regression suite is maintained under `web/src/test/java` and currently contains 165 JUnit 5 tests.
+  - browser E2E and Tomcat integration tests are maintained under `e2e/tests` and currently contain 13 Playwright tests.
+  - automated tests cover Admin services, MO services, Student services, shared account behavior, and servlet access control using isolated temporary JSON data directories.
   - manual response-time checks should be performed for login, dashboard loading, job browsing, application listing, and export flows.
   - regression checks should confirm that optimization changes do not alter business logic or access control.
   - test evidence should be recorded for the final report and demonstration preparation.
@@ -466,8 +472,8 @@ The goal is to keep the application usable under realistic project data volume w
   - optimization must remain compatible with the required plain-text / JSON persistence approach.
   - no database, cache server, or heavyweight framework dependency may be introduced.
 
-**Assignee:**
-**Completion Date:**
+**Assignee:** Team-wide non-functional polish
+**Completion Date:** 2026-05-21
 
 ---
 
@@ -530,8 +536,8 @@ The feature provides a dedicated view of accepted jobs, associated schedule info
   - All `/api/student/*` routes require authenticated student identity.
   - Students can only view their own assigned jobs and schedule data.
 
-**Assignee:**
-**Completion Date:**
+**Assignee:** Tianzi Xiong / Fangyu Chu
+**Completion Date:** 2026-05-21
 
 ---
 
@@ -554,10 +560,10 @@ The feature provides a dedicated view of accepted jobs, associated schedule info
 - **ADM_08:** As an Admin, I want to view enhanced overview statistics, so that I can quickly understand current user, job, application, vacancy, and recruitment progress across the system.
 - **ADM_09:** As an Admin, I want to monitor recruitment health by job, so that I can identify posts with too few applicants, unfilled vacancies, or approaching deadlines.
 - **ADM_10:** As an Admin, I want workload risk to be displayed with clear levels such as Low, Normal, Warning, and Overload, so that I can distinguish normal workload from potential over-assignment instead of relying on one generic threshold only.
-- **ADM_11:** As an Admin, I want to view and filter an application archive, so that I can audit recruitment decisions and preserve hiring records after recruitment is complete.
+- **ADM_11:** As an Admin, I want to inspect applications from a specific job, so that I can audit applicant status and MO notes without exposing a separate global archive screen.
 - **ADM_12:** As an Admin, I want to export and back up recruitment data in simple file formats, so that the school can keep offline records and share summaries with management.
-- **ADM_13:** As an Admin, I want to receive system alerts for risky or incomplete recruitment situations, so that I can follow up with Module Organisers before issues affect TA allocation.
-- **ADM_14:** As an Admin, I want a demand approval workbench, so that newly submitted Module Organiser TA demands are visible and can be approved or rejected from one place.
+- **ADM_13:** As an Admin, I want to receive system alerts from a header alert modal, so that risks are visible on demand without occupying the main dashboard area.
+- **ADM_14:** As an Admin, I want a demand approval workbench with editable pending / approved / rejected decisions, so that demand review can be corrected or reset from one place.
 - **ADM_15:** As an Admin, I want to drill down from a job to its applications, so that I can audit applicant status and MO notes for a specific post without leaving the administrator portal.
 - **ADM_16:** As an Admin, I want recruitment exports to respect the current job filters, so that exported reports match what is shown on screen.
 
@@ -591,38 +597,48 @@ The scope of this feature is not to replace the Module Organiser workflow. The a
    - Workload cards and legend use the same classification rules so that the UI and backend remain consistent.
    - Assigned job chips show the module/job title and weekly hours used in the calculation.
 
-4. **Application archive**
-   - The admin can view application records including applicant identity, job, organiser, status, timestamps, evaluation notes, and decision feedback where available.
-   - The archive can be filtered by status, job, organiser, or student where the UI supports the filter.
-   - Archive access is read-only; administrators must not edit MO evaluation notes or decision feedback from the archive.
+4. **Single-job application audit**
+   - The standalone application archive page is not exposed in the administrator navigation.
+   - The admin can still open applications from an individual job row or card.
+   - The selected job drilldown shows applicant identity, student number, status, applied time, evaluation notes, and decision feedback where available.
+   - The drilldown is read-only; administrators must not edit MO evaluation notes or decision feedback.
    - Withdrawn, rejected, hired, shortlisted, and pending records remain distinguishable.
 
 5. **Data export and backup**
    - The admin can export weekly recruitment reports in CSV and TXT formats.
    - Exported reports include at least job title, organiser, status, hired count, available positions, and unfilled positions.
    - Export actions do not modify live recruitment data.
-   - The system can be extended to export workload reports, application archives, and JSON backups using the same admin-only access model.
+   - The system can be extended to export workload reports, job-level application drilldowns, and JSON backups using the same admin-only access model.
 
 6. **Administrator alerts**
    - The admin dashboard can surface alerts for overload risk, unfilled jobs, jobs close to deadline, jobs with no applicants, and unusual incomplete records.
    - Alerts include enough context for follow-up, such as job title, organiser, student name, current workload, or deadline.
-   - Alerts can be shown as dashboard cards or a dedicated alert panel.
+   - Alerts are opened from a warning button next to Logout, with a badge showing the active alert count.
+   - The alert modal supports close button, backdrop click, and Escape key dismissal.
    - If no alerts exist, the page shows a clear "No alerts" state.
 
 7. **Demand approval workbench**
    - The admin can view demand records by approval status, especially newly submitted `pending` demands.
    - Demand rows show module code, title, submitting organiser, submitted time, planned count, hour range, demand notes where provided, and current approval status.
-   - The admin can approve a pending demand, after which the MO can publish it through the existing publish workflow.
-   - The admin can reject a pending demand and optionally provide a short rejection reason.
+   - The admin can set each demand to `pending`, `approved`, or `rejected` from the workbench.
+   - Setting a demand to `approved` allows the MO to publish it through the existing publish workflow.
+   - Setting a demand to `pending` or `rejected` prevents MO publishing until it is approved again.
+   - The admin can optionally provide a short rejection reason when selecting `rejected`.
    - Rejected demand reasons are persisted and visible to the submitting MO in the demand progress view.
 
-8. **Single-job application drilldown**
+8. **Recruitment results overview entry**
+   - Recruitment Results is not shown as a top-level tab.
+   - The System Overview panel provides a clear button to open the Recruitment Results view.
+   - Recruitment Results retains KPI cards and adds visual charts, including department hired/vacancy bars and an overall hiring mix chart.
+   - Empty recruitment result datasets show a clear empty chart state instead of broken graphics.
+
+9. **Single-job application drilldown**
    - Each admin job row or card provides a read-only "View Applications" action.
    - The drilldown shows only applications for the selected job, including applicant name, student number, applied time, status, evaluation notes, and decision feedback.
-   - The drilldown can be filtered by application status without changing the global application archive.
+   - The drilldown can be filtered by application status without exposing a separate global application page.
    - The admin can export the selected job's application rows in CSV or TXT format.
 
-9. **Filtered weekly export**
+10. **Filtered weekly export**
    - Weekly recruitment report exports include the same `status` and `department` filters used by the jobs dashboard.
    - Exporting with no filters or `all` filters still produces the full report.
    - Export file names include the selected filter scope and export date where possible.
@@ -634,19 +650,20 @@ The scope of this feature is not to replace the Module Organiser workflow. The a
   - `AdminDashboardServlet` (`GET /api/admin/dashboard`) remains the main dashboard endpoint and may be extended with additional overview, recruitment health, workload, and alert fields.
   - `AdminWorkloadSettingsServlet` (`GET/POST /api/admin/settings/workload-threshold`) remains responsible for loading and saving the overload threshold.
   - `AdminRecruitmentReportExportServlet` (`GET /api/admin/reports/weekly?format=csv|txt`) remains responsible for downloadable weekly recruitment summaries.
-  - `AdminApplicationsServlet` (`GET /api/admin/applications`) provides read-only application archive rows for administrator audit.
+  - `AdminApplicationsServlet` (`GET /api/admin/applications?jobId=&status=`) provides read-only application rows for the selected job drilldown.
   - `AdminDemandsServlet` (`GET /api/admin/demands?status=pending|approved|rejected|all`) provides the administrator demand approval workbench data.
-  - `AdminDemandReviewServlet` (`POST /api/admin/demands/review/{jobId}?action=approve|reject`) approves or rejects pending demand records; reject accepts an optional JSON body containing `reason`.
+  - `AdminDemandReviewServlet` (`POST /api/admin/demands/review/{jobId}?action=pending|approve|reject`) sets demand approval status; reject accepts an optional JSON body containing `reason`.
   - `AdminWorkloadReportExportServlet` (`GET /api/admin/reports/workload?format=csv|txt`) exports workload rows and assigned job details.
-  - `AdminApplicationArchiveExportServlet` (`GET /api/admin/reports/applications?format=csv|txt&jobId=&status=`) exports the read-only application archive or a single job's filtered application rows.
+  - `AdminApplicationArchiveExportServlet` (`GET /api/admin/reports/applications?format=csv|txt&jobId=&status=`) remains available for exporting a single job's filtered application rows.
   - `AdminBackupExportServlet` (`GET /api/admin/reports/backup`) exports a JSON backup bundle for the current file-based data.
-  - Administrator alerts are returned through `GET /api/admin/dashboard` so the overview and alert panel share one data source.
+  - `AdminRecruitmentOutcomeServlet` (`GET /api/admin/recruitment-outcome`) provides the Recruitment Results view launched from System Overview.
+  - Administrator alerts are returned through `GET /api/admin/dashboard` so the header alert modal shares the dashboard data source.
 
 - **Service Layer:**
   - `AdminDashboardService` computes overview statistics, job health fields, workload rows, and risk labels from `jobs.json`, `applications.json`, `users.json`, and `students.json`.
   - `AdminDemandReviewService` lists demand records and applies approval or rejection decisions while preserving MO-owned job publishing rules.
   - `AdminReportService` prepares CSV and TXT export content using the same job and application aggregation rules as the dashboard, including current job filters for weekly reports.
-  - Application archive logic reads existing `ApplicationRecord` fields without changing MO-owned decision data.
+  - Single-job application drilldown logic reads existing `ApplicationRecord` fields without changing MO-owned decision data.
   - Workload calculation must reuse the shared weekly-hours rule:
     - if `job.hours > 0`, use `hours`;
     - otherwise, if both `hourMin` and `hourMax` exist, use `round((min + max) / 2)`;
@@ -660,28 +677,31 @@ The scope of this feature is not to replace the Module Organiser workflow. The a
   - Sprint 4 admin features must remain compatible with old JSON records that do not contain newer optional fields such as `department`, `schedule`, or decision feedback.
 
 - **Frontend Integration:**
-  - `admin.jsp` provides separate dashboard areas for overview, workload, users, jobs, demand review, archive, and alerts where implemented.
+  - `admin.jsp` provides separate dashboard areas for overview, workload, users, jobs, demand review, announcements, account settings, and a Recruitment Results view opened from System Overview.
   - `admin.js` loads dashboard data, applies status/department/organiser filters, renders workload level cards, handles demand approval actions, opens single-job application drilldowns, and triggers CSV/TXT export downloads.
+  - Admin alerts are opened through the header warning button instead of a persistent overview card or top-level tab.
+  - The standalone Application Archive tab is removed; job-level application drilldown remains available from Jobs.
   - Workload UI must show level labels, weekly hours, assigned positions, and a legend matching backend classification.
   - Job cards should display business-friendly recruitment health information instead of only raw table columns.
-  - Empty states must be explicit for no jobs, no workload records, no archived applications, and no alerts.
+  - Empty states must be explicit for no jobs, no workload records, no job applications, no recruitment result data, and no alerts.
 
 - **Validation / Business Rules:**
   - All admin APIs require an authenticated admin session.
-  - Admin monitoring views must not expose student-only private upload files unless the existing application archive explicitly requires a downloadable attachment link.
-  - Archive and report APIs are read-only and must not change job status, application status, or MO feedback.
+  - Admin monitoring views must not expose student-only private upload files unless the job-level application drilldown explicitly requires a downloadable attachment link.
+  - Application drilldown and report APIs are read-only and must not change job status, application status, or MO feedback.
   - Filters must be optional; when no filter is supplied, the dashboard returns the full admin-visible dataset.
   - Invalid export formats must return a clear validation error instead of generating an ambiguous file.
-  - Only `pending` demand records can be approved or rejected.
+  - Demand records can be switched between `pending`, `approved`, and `rejected` by admins.
+  - Only `approved` demand records can be published by MOs.
   - Rejection reason text is optional but must remain short enough for display in the MO demand progress view.
 
 - **Session / Access Control:**
   - Non-admin users must be rejected from `/api/admin/*`.
-  - Student and teacher sessions must not be able to access admin reports, archive, workload settings, or alert data.
+  - Student and teacher sessions must not be able to access admin reports, job application drilldown, workload settings, or alert data.
   - Admin actions that modify settings, such as threshold saving, must use POST and must validate the submitted value before persistence.
 
 **Assignee:** Sihan Chen / Tianxiao Ma  
-**Completion Date:** TBD
+**Completion Date:** 2026-05-21
 
 ---
 
@@ -764,12 +784,12 @@ This section is the **single end-to-end functional specification** for the Modul
 | **MO_05** | Single and batch status marking | **Yes** — per-row control + `POST /api/mo/applications/status`; batch + `POST /api/mo/applications/batch/status`. |
 | **MO_05** | Private evaluation notes | **Yes** — `evaluationNotes`, `POST /api/mo/applications/notes`; not exposed to applicants. |
 | **MO_05** | Filter list by marked status | **Yes** — checkboxes + `status` query (`__none__` when no box selected). |
-| **MO_05** | Auto-save without data loss | **Mostly** — notes auto-save via debounced POST; status saves on change and list reloads after success (see demo script for exact UX). |
-| **MO_08** | History list: sort, name, status, applicant count, hire count, release time, deadline | **Partial** — `GET /api/mo/demands/list` + `teacher.js` cards; confirm in demo whether every column in the board is shown or still TODO in API/UI. |
-| **MO_08** | Drill into historical job + application/hiring data | **Partial** — use existing job/application flows; confirm “historical” drill-down path for the report. |
-| **MO_08** | One-click copy to create new job | **Unverified in doc** — implement or document manual recreate if not present. |
+| **MO_05** | Auto-save without data loss | **Yes** — notes auto-save via debounced POST; status changes save immediately and reload the list after success. |
+| **MO_08** | History list: sort, name, status, applicant count, hire count, release time, deadline | **Yes** — `GET /api/mo/jobs/history` returns history rows with status, applicant count, hire count, release time, and deadline; teacher portal also shows demand/job progress cards. |
+| **MO_08** | Drill into historical job + application/hiring data | **Yes** — MO can move from job/history context into the applications and hiring history views for owned jobs. |
+| **MO_08** | One-click copy to create new job | **Yes** — `POST /api/mo/jobs/reuse` supports reuse/copy workflow for creating a new demand from an existing job. |
 | **MO_09** | Export respects filters | **Yes** — CSV from currently loaded filtered rows. |
-| **MO_09** | Core columns: name, ID, major, time, status, skills | **Partial** — list API carries profile fields; CSV columns are a **subset** unless extended in `exportCsv()`. |
+| **MO_09** | Core columns: name, ID, major, time, status, skills | **Yes** — applicant export service includes the core applicant identity, programme/major, application time, status, and skills columns. |
 | **MO_09** | Plain text, no DB | **Yes**. |
 | **MO_09** | Usable in Excel | **Yes** — UTF-8 CSV. |
 

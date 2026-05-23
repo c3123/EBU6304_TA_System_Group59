@@ -11,6 +11,7 @@ public class JobMatchResult {
     private List<String> requiredSkills;
     private List<String> matchedSkills;
     private List<String> missingSkills;
+    private List<SkillRelationHint> relatedMatches;
     private double matchScore;
 
     public JobMatchResult() {
@@ -18,6 +19,7 @@ public class JobMatchResult {
         this.requiredSkills = new ArrayList<>();
         this.matchedSkills = new ArrayList<>();
         this.missingSkills = new ArrayList<>();
+        this.relatedMatches = new ArrayList<>();
     }
 
     public JobMatchResult(JobPosting job,
@@ -26,11 +28,22 @@ public class JobMatchResult {
                           List<String> matchedSkills,
                           List<String> missingSkills,
                           double matchScore) {
+        this(job, studentSkills, requiredSkills, matchedSkills, missingSkills, new ArrayList<>(), matchScore);
+    }
+
+    public JobMatchResult(JobPosting job,
+                          List<String> studentSkills,
+                          List<String> requiredSkills,
+                          List<String> matchedSkills,
+                          List<String> missingSkills,
+                          List<SkillRelationHint> relatedMatches,
+                          double matchScore) {
         this.job = job;
         this.studentSkills = studentSkills != null ? studentSkills : new ArrayList<>();
         this.requiredSkills = requiredSkills != null ? requiredSkills : new ArrayList<>();
         this.matchedSkills = matchedSkills != null ? matchedSkills : new ArrayList<>();
         this.missingSkills = missingSkills != null ? missingSkills : new ArrayList<>();
+        this.relatedMatches = relatedMatches != null ? relatedMatches : new ArrayList<>();
         this.matchScore = matchScore;
     }
 
@@ -72,6 +85,14 @@ public class JobMatchResult {
 
     public void setMissingSkills(List<String> missingSkills) {
         this.missingSkills = missingSkills != null ? missingSkills : new ArrayList<>();
+    }
+
+    public List<SkillRelationHint> getRelatedMatches() {
+        return relatedMatches;
+    }
+
+    public void setRelatedMatches(List<SkillRelationHint> relatedMatches) {
+        this.relatedMatches = relatedMatches != null ? relatedMatches : new ArrayList<>();
     }
 
     public double getMatchScore() {

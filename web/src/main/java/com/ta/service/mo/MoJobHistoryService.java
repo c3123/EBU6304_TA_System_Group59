@@ -12,6 +12,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class MoJobHistoryService {
 
@@ -36,7 +37,7 @@ public class MoJobHistoryService {
                     .filter(job -> moId.equals(job.getTeacherId()))
                     .map(job -> toHistoryItem(job, applicantCountByJobId, hireCountByJobId))
                     .sorted(Comparator.comparing(MoJobHistoryItemResponse::getReleaseTime, Comparator.nullsLast(String::compareTo)).reversed())
-                    .toList();
+                    .collect(Collectors.toList());
 
             MoJobHistoryResponse response = new MoJobHistoryResponse();
             response.setItems(items);

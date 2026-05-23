@@ -53,6 +53,59 @@ function teacherStatusTag(item) {
   return '<span class="mo-status-pill mo-status-pending">pending</span>';
 }
 
+function teacherStatusBadge(label, tone) {
+  const normalizedTone = tone || "pending";
+  return `<span class="mo-status-pill mo-status-${normalizedTone}">${teacherEscapeHtml(label)}</span>`;
+}
+
+function teacherApprovalBadge(value) {
+  const normalized = String(value || "pending").toLowerCase();
+  if (normalized === "approved") return teacherStatusBadge("approval: approved", "approved");
+  if (normalized === "rejected") return teacherStatusBadge("approval: rejected", "rejected");
+  return teacherStatusBadge("approval: pending", "pending");
+}
+
+function teacherJobStateBadge(item) {
+  const normalized = String(item && item.status ? item.status : "draft").toLowerCase();
+  if (normalized === "open" || normalized === "published") return teacherStatusBadge("job: published", "published");
+  if (normalized === "rejected") return teacherStatusBadge("job: rejected", "rejected");
+  if (normalized === "recruitment_closed" || normalized === "closed") return teacherStatusBadge("job: closed", "withdrawn");
+  return teacherStatusBadge(`job: ${normalized || "draft"}`, "pending");
+}
+
+function teacherBooleanBadge(label, value, trueTone) {
+  return teacherStatusBadge(`${label}: ${value === true ? "yes" : "no"}`, value === true ? (trueTone || "published") : "pending");
+}
+
+function parseCount(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function renderWorkflowSummary() {
+  const totalJobs = teacherState.items.length;
+  const publishedJobs = teacherState.items.filter((item) => item && item.published === true).length;
+  const pendingDemands = teacherState.items.filter((item) => {
+    const approval = String(item && item.approvalStatus ? item.approvalStatus : "pending").toLowerCase();
+    return approval === "pending" && item.published !== true && item.withdrawn !== true && item.recruitmentClosed !== true;
+  }).length;
+  const totalApplicants = teacherState.historyItems.reduce((sum, item) => sum + parseCount(item.applicantCount), 0);
+  const hired = teacherState.historyItems.reduce((sum, item) => sum + parseCount(item.hireCount), 0);
+
+  const values = {
+    summaryTotalJobs: totalJobs,
+    summaryPublishedJobs: publishedJobs,
+    summaryPendingDemands: pendingDemands,
+    summaryTotalApplicants: totalApplicants,
+    summaryHired: hired
+  };
+
+  Object.keys(values).forEach((id) => {
+    const el = byId(id);
+    if (el) el.textContent = String(values[id]);
+  });
+}
+
 function teacherSetNotice(id, message, isError) {
   const el = byId(id);
   if (!el) return;
@@ -105,12 +158,14 @@ async function loadTeacherJobs() {
   const data = await teacherRequest(`${teacherApiBase()}/demands/list`, { method: "GET" });
   teacherState.items = data && Array.isArray(data.items) ? data.items : [];
   renderTeacherJobs();
+  renderWorkflowSummary();
 }
 
 async function loadJobHistory() {
   const data = await teacherRequest(`${teacherApiBase()}/jobs/history`, { method: "GET" });
   teacherState.historyItems = data && Array.isArray(data.items) ? data.items : [];
   renderJobHistory();
+  renderWorkflowSummary();
 }
 
 function historyStatusTag(status) {
@@ -214,7 +269,7 @@ function renderTeacherJobCard(item) {
           </div>
           <div class="field">
             <label>Deadline</label>
-            <input name="deadline" type="date" required />
+            <input name="deadline" type="text" class="admin-date-input" placeholder="yyyy/mm/dd" inputmode="numeric" lang="en" autocomplete="off" required />
           </div>
           <div class="field">
             <label>Schedule</label>
@@ -277,27 +332,43 @@ function renderTeacherJobCard(item) {
           <h4>${teacherEscapeHtml(teacherSafeText(item.courseName))}</h4>
           <p>Job ID: ${teacherEscapeHtml(teacherSafeText(item.jobId))}</p>
         </div>
-        <div>${teacherStatusTag(item)}</div>
+        <div class="mo-job-badges">
+          ${teacherApprovalBadge(item.approvalStatus)}
+          ${teacherJobStateBadge(item)}
+          ${teacherBooleanBadge("published", item.published, "published")}
+          ${teacherBooleanBadge("withdrawn", item.withdrawn === true || item.recruitmentClosed === true, "withdrawn")}
+        </div>
       </div>
 
-      <div class="mo-demand-meta">
-        <div><span>Planned Count</span><strong>${teacherEscapeHtml(teacherSafeText(item.plannedCount))}</strong></div>
+      <div class="mo-job-main-grid">
         <div><span>Department</span><strong>${teacherEscapeHtml(teacherSafeText(item.department))}</strong></div>
+        <div><span>Planned Count</span><strong>${teacherEscapeHtml(teacherSafeText(item.plannedCount))}</strong></div>
         <div><span>Hours</span><strong>${teacherEscapeHtml(teacherSafeText(item.hourMin))} - ${teacherEscapeHtml(teacherSafeText(item.hourMax))}</strong></div>
+        <div><span>Deadline</span><strong>${teacherEscapeHtml(teacherSafeText(item.deadline))}</strong></div>
+      </div>
+
+      <div class="mo-job-detail-grid">
+        <div><span>Schedule</span><strong>${teacherEscapeHtml(teacherSafeText(item.schedule))}</strong></div>
+        <div><span>Location</span><strong>${teacherEscapeHtml(teacherSafeText(item.location))}</strong></div>
         <div><span>Created</span><strong>${teacherEscapeHtml(teacherFormatDateTime(item.createdAt))}</strong></div>
         <div><span>Updated</span><strong>${teacherEscapeHtml(teacherFormatDateTime(item.updatedAt))}</strong></div>
+        <div><span>Approval Status</span><strong>${teacherEscapeHtml(teacherSafeText(item.approvalStatus || "pending"))}</strong></div>
+        <div><span>Job Status</span><strong>${teacherEscapeHtml(teacherSafeText(item.status || "-"))}</strong></div>
       </div>
 
-      <p class="notice">Approval status: <strong>${teacherEscapeHtml(teacherSafeText(item.approvalStatus || "pending"))}</strong>. Job status: <strong>${teacherEscapeHtml(teacherSafeText(item.status || "-"))}</strong>. Published: <strong>${teacherEscapeHtml(String(item.published === true))}</strong>. Withdrawn: <strong>${teacherEscapeHtml(String(item.withdrawn === true))}</strong>.</p>
-      ${item.rejectionReason ? `<p class="notice" style="color:#dc2626;">Rejection reason: <strong>${teacherEscapeHtml(item.rejectionReason)}</strong></p>` : ""}
-      <p class="notice">Schedule: <strong>${teacherEscapeHtml(teacherSafeText(item.schedule))}</strong>. Location: <strong>${teacherEscapeHtml(teacherSafeText(item.location))}</strong>. Deadline: <strong>${teacherEscapeHtml(teacherSafeText(item.deadline))}</strong>.</p>
+      ${item.rejectionReason ? `<p class="mo-rejection-note">Rejection reason: <strong>${teacherEscapeHtml(item.rejectionReason)}</strong></p>` : ""}
 
       <div class="mo-demand-actions">
         <button class="btn btn-primary" type="button" data-open-publish="${teacherEscapeHtml(item.jobId)}" ${publishDisabled}>${publishLocked}</button>
-        <button class="btn btn-outline" type="button" data-open-edit="${teacherEscapeHtml(item.jobId)}" ${canEdit ? "" : "disabled"}>Edit</button>
-        <button class="btn btn-outline" type="button" data-delete-job="${teacherEscapeHtml(item.jobId)}" ${canDelete ? "" : "disabled"}>Delete</button>
-        <button class="btn btn-outline" type="button" data-offline-job="${teacherEscapeHtml(item.jobId)}" ${canTakeOffline ? "" : "disabled"}>Take offline</button>
         <a class="btn btn-outline" href="mo-applications.jsp?jobId=${teacherEscapeHtml(item.jobId)}">Applicants</a>
+        <details class="mo-more-actions">
+          <summary class="btn btn-outline">More</summary>
+          <div class="mo-more-actions-menu">
+            <button class="btn btn-outline" type="button" data-open-edit="${teacherEscapeHtml(item.jobId)}" ${canEdit ? "" : "disabled"}>Edit</button>
+            <button class="btn btn-outline" type="button" data-delete-job="${teacherEscapeHtml(item.jobId)}" ${canDelete ? "" : "disabled"}>Delete</button>
+            <button class="btn btn-outline" type="button" data-offline-job="${teacherEscapeHtml(item.jobId)}" ${canTakeOffline ? "" : "disabled"}>Take offline</button>
+          </div>
+        </details>
       </div>
 
       ${detailBlock}
@@ -346,7 +417,7 @@ async function submitPublishForm(form) {
   try {
     const payload = {
       location: form.location.value,
-      deadline: form.deadline.value,
+      deadline: (form.deadline.value || "").trim().replace(/\//g, "-"),
       schedule: form.schedule.value.trim(),
       requirements: form.requirements.value.trim()
     };
@@ -729,7 +800,10 @@ async function reloadTeacherWorkflow() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   byId("demandForm").addEventListener("submit", submitDemandForm);
-  byId("teacherChangePasswordForm").addEventListener("submit", changeTeacherPassword);
+  const passwordForm = byId("teacherChangePasswordForm");
+  if (passwordForm) {
+    passwordForm.addEventListener("submit", changeTeacherPassword);
+  }
   byId("reloadBtn").addEventListener("click", reloadTeacherWorkflow);
   byId("notificationBtn").addEventListener("click", () => {
     const panel = byId("notificationPanel");

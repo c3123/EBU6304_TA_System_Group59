@@ -37,6 +37,13 @@ function statusSelectValue(st) {
   return s || "pending";
 }
 
+const FEEDBACK_TEMPLATES = [
+  { value: "", label: "Quick template…" },
+  { value: "Insufficient relevant experience for this module.", label: "Insufficient experience" },
+  { value: "Skills do not meet the module requirements.", label: "Skills not met" },
+  { value: "Position has been filled.", label: "Position filled" }
+];
+
 const state = {
   items: [],
   jobTitles: {},
@@ -44,8 +51,287 @@ const state = {
   hiringState: {},
   pollingTimer: null,
   finalModalJobId: null,
-  selectedIds: new Set()
+  selectedIds: new Set(),
+  aiRecommendations: {},
+  sortMode: "applied",
+  highMatchOnly: false,
+  applicantSearchQuery: "",
+  selectedJobId: null,
+  expandedDetailIds: new Set(),
+  detailCache: {}
 };
+
+function normalizeSkillList(value) {
+  return Array.isArray(value) ? value.filter(item => String(item || "").trim()) : [];
+}
+
+function matchPercent(item) {
+  const score = Number(item && item.matchScore);
+  if (!Number.isFinite(score) || score < 0) return 0;
+  return Math.round(score * 100);
+}
+
+function matchBadgeClass(percent) {
+  if (percent >= 80) return "mo-match-high";
+  if (percent >= 50) return "mo-match-mid";
+  return "mo-match-low";
+}
+
+function renderSkillTags(skills, cssClass) {
+  const list = normalizeSkillList(skills);
+  if (!list.length) return `<span style="color:#94a3b8;">—</span>`;
+  return list.map(s => `<span class="mo-skill-tag ${cssClass}">${escapeHtml(s)}</span>`).join("");
+}
+
+function renderSummaryCards(items) {
+  const list = Array.isArray(items) ? items : [];
+  const counts = { total: list.length, pending: 0, shortlisted: 0, hired: 0, highMatch: 0, overloaded: 0 };
+  for (const item of list) {
+    const st = String(item.status || "").toLowerCase();
+    if (st === "pending" || st === "viewed") counts.pending += 1;
+    if (st === "shortlisted") counts.shortlisted += 1;
+    if (st === "hired") counts.hired += 1;
+    if (normalizeSkillList(item.requiredSkills).length && matchPercent(item) >= 60) counts.highMatch += 1;
+    if (ifHiredTotalForItem(item, list) >= 20) counts.overloaded += 1;
+  }
+  const targets = {
+    summaryTotalApplications: counts.total,
+    summaryPendingApplications: counts.pending,
+    summaryShortlistedApplications: counts.shortlisted,
+    summaryHiredApplications: counts.hired,
+    summaryHighMatchApplications: counts.highMatch,
+    summaryOverloadedApplications: counts.overloaded
+  };
+  Object.keys(targets).forEach(id => {
+    const el = byId(id);
+    if (el) el.textContent = String(targets[id]);
+  });
+}
+
+function jobRequirementsRaw(jobId) {
+  const j = state.jobMeta[jobId];
+  if (!j || j.requirements == null) return "";
+  return String(j.requirements).trim();
+}
+
+function renderMatchBadge(item) {
+  const pct = matchPercent(item);
+  const req = normalizeSkillList(item.requiredSkills);
+  const matched = normalizeSkillList(item.matchedSkills);
+  const rawReq = jobRequirementsRaw(item.jobId);
+  if (!req.length) {
+    const tip = rawReq
+      ? `Job text: "${rawReq}" — not mapped to our skill list yet`
+      : "This job has no requirements text";
+    return `<span class="mo-match-badge mo-match-low" title="${escapeHtml(tip)}">N/A</span>`;
+  }
+  const tone = matchBadgeClass(pct);
+  const related = normalizeSkillList(item.relatedMatches);
+  const tip = related.length
+    ? `Weighted score ${pct}%: exact matches plus partial credit for related skills (e.g. MATLAB for Statistics).`
+    : `Match = ${matched.length} exact of ${req.length} required (${pct}%). Strict skills need exact names.`;
+  return `<span class="mo-match-badge ${tone}" title="${escapeHtml(tip)}">${pct}% Match</span>`;
+}
+
+function renderSkillFitBlock(item) {
+  const matched = normalizeSkillList(item.matchedSkills);
+  const missing = normalizeSkillList(item.missingSkills);
+  const required = normalizeSkillList(item.requiredSkills);
+  const detected = normalizeSkillList(item.detectedStudentSkills);
+  const rawProfileSkills = safeText(item.skills);
+  const rawReq = jobRequirementsRaw(item.jobId);
+  const pct = matchPercent(item);
+  const tone = matchBadgeClass(pct);
+
+  if (!required.length) {
+    const hint = rawReq
+      ? `Job requirements text: <strong>${escapeHtml(rawReq)}</strong>. We could not map this to known skills — please review manually.`
+      : "This job has no requirements text. Add requirements in <strong>My Jobs</strong> to enable automatic matching.";
+    const profileHtml =
+      rawProfileSkills === "-"
+        ? '<span style="color:#94a3b8;">No skills on profile</span>'
+        : escapeHtml(rawProfileSkills);
+    return `
+      <div class="mo-skill-fit">
+        <div class="mo-skill-fit-head">
+          <h4 class="mo-skill-fit-title">Skill match</h4>
+          <span class="mo-match-badge mo-match-low">N/A</span>
+        </div>
+        <p class="mo-skill-fit-formula">${hint}</p>
+        <div class="mo-skill-compare">
+          <div class="mo-skill-compare-cell">
+            <span class="mo-app-lbl">Applicant profile (raw)</span>
+            <div>${profileHtml}</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  const related = normalizeSkillList(item.relatedMatches);
+  const formula = `Weighted score <strong>${pct}%</strong>: programming skills need an <strong>exact</strong> match; topics like Statistics accept <strong>related</strong> tools (e.g. MATLAB) at 50–80% credit each.`;
+  const applicantLine = detected.length
+    ? renderSkillTags(detected, "neutral")
+    : rawProfileSkills !== "-"
+      ? `<span style="color:#64748b;">${escapeHtml(rawProfileSkills)} (not recognised)</span>`
+      : `<span style="color:#94a3b8;">No skills on profile</span>`;
+  const relatedBlock = related.length
+    ? `<div><span class="mo-app-lbl">↔ Related (partial credit)</span><div class="mo-skill-tags">${related.map(r => `<span class="mo-skill-tag related">${escapeHtml(r)}</span>`).join("")}</div></div>`
+    : "";
+  let resultHint =
+    pct >= 80
+      ? "Strong fit — exact or closely related skills cover the requirements."
+      : pct >= 50
+        ? "Partial fit — some requirements met via related skills; review gaps."
+        : pct > 0
+          ? "Weak fit — limited overlap; consider training or other candidates."
+          : "No overlap — strict skills need exact matches; no related credit applied.";
+  if (related.length && pct > 0 && pct < 80) {
+    resultHint = "Partial credit applied: related tools count toward flexible requirements (not for strict language skills like Java-only roles).";
+  }
+
+  return `
+    <div class="mo-skill-fit">
+      <div class="mo-skill-fit-head">
+        <h4 class="mo-skill-fit-title">Skill match</h4>
+        <span class="mo-match-score-big ${tone}">${pct}%</span>
+      </div>
+      <div class="mo-match-bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
+        <div class="mo-match-bar-fill ${tone}" style="width:${pct}%"></div>
+      </div>
+      <p class="mo-skill-fit-formula">${formula}</p>
+      <div class="mo-skill-compare">
+        <div class="mo-skill-compare-cell">
+          <span class="mo-app-lbl">Job requires</span>
+          <div class="mo-skill-tags">${renderSkillTags(required, "neutral")}</div>
+        </div>
+        <div class="mo-skill-compare-cell">
+          <span class="mo-app-lbl">Applicant has (detected)</span>
+          <div class="mo-skill-tags">${applicantLine}</div>
+        </div>
+      </div>
+      <div><span class="mo-app-lbl">✓ Matched (exact)</span><div class="mo-skill-tags">${renderSkillTags(matched, "matched")}</div></div>
+      ${relatedBlock}
+      <div><span class="mo-app-lbl">✗ Still missing</span><div class="mo-skill-tags">${renderSkillTags(missing, "missing")}</div></div>
+      <p class="mo-skill-fit-hint">${escapeHtml(resultHint)}</p>
+    </div>`;
+}
+
+function renderSkillFitCompact(item) {
+  const matched = normalizeSkillList(item.matchedSkills);
+  const missing = normalizeSkillList(item.missingSkills);
+  const related = normalizeSkillList(item.relatedMatches);
+  const required = normalizeSkillList(item.requiredSkills);
+  const pct = matchPercent(item);
+  const tone = matchBadgeClass(pct);
+  const rawReq = jobRequirementsRaw(item.jobId);
+  const summary = required.length
+    ? `${matched.length} exact match${matched.length === 1 ? "" : "es"} / ${required.length} required`
+    : (rawReq ? "Requirements need manual review" : "No requirements text");
+  return `
+    <div class="skill-compact">
+      <div class="skill-compact-head">
+        <span>Skill match</span>
+        <strong class="mo-match-score-big ${tone}">${required.length ? `${pct}%` : "N/A"}</strong>
+      </div>
+      <div class="mo-match-bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
+        <div class="mo-match-bar-fill ${tone}" style="width:${required.length ? pct : 0}%"></div>
+      </div>
+      <p class="mo-skill-fit-summary">${escapeHtml(summary)}</p>
+      <div class="skill-chip-row">
+        ${matched.length ? renderSkillTags(matched, "matched") : '<span class="mo-skill-tag missing">No exact matches</span>'}
+        ${missing.slice(0, 4).map(s => `<span class="mo-skill-tag missing">${escapeHtml(s)}</span>`).join("")}
+        ${related.slice(0, 3).map(s => `<span class="mo-skill-tag related">${escapeHtml(s)}</span>`).join("")}
+      </div>
+    </div>`;
+}
+
+function ifHiredTotalForItem(item, items) {
+  const projected = Number(item && item.projectedIfHiredHours);
+  if (Number.isFinite(projected) && projected >= 0) return projected;
+  const positionHrs = jobWeeklyHours(item.jobId);
+  const currentOther = currentHiredHoursElsewhere(items, item.studentId, item.applicationId);
+  return currentOther + positionHrs;
+}
+
+function sortGroupItems(groupItems, items, sortMode) {
+  const copy = [...groupItems];
+  if (sortMode === "match") {
+    copy.sort((a, b) => matchPercent(b) - matchPercent(a) || String(b.appliedAt || "").localeCompare(String(a.appliedAt || "")));
+  } else if (sortMode === "workload") {
+    copy.sort((a, b) => ifHiredTotalForItem(b, items) - ifHiredTotalForItem(a, items) || String(b.appliedAt || "").localeCompare(String(a.appliedAt || "")));
+  } else {
+    copy.sort((a, b) => String(b.appliedAt || "").localeCompare(String(a.appliedAt || "")));
+  }
+  return copy;
+}
+
+function sortModeLabel(mode) {
+  if (mode === "match") return "Best match";
+  if (mode === "workload") return "Workload risk";
+  return "Applied date";
+}
+
+function syncToolbarControls() {
+  const sortEl = byId("sortMode");
+  if (sortEl && sortEl.value !== state.sortMode) sortEl.value = state.sortMode;
+  const highMatchEl = byId("filterHighMatch");
+  if (highMatchEl) highMatchEl.checked = !!state.highMatchOnly;
+  const searchEl = byId("applicantSearchInput");
+  if (searchEl && searchEl.value !== state.applicantSearchQuery) searchEl.value = state.applicantSearchQuery;
+}
+
+function applicantMatchesSearch(item, query) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return true;
+  const haystack = [
+    item.studentName,
+    item.studentNo,
+    item.studentId,
+    item.applicationId,
+    item.programme,
+    item.skills
+  ]
+    .map(v => String(v || "").toLowerCase())
+    .join(" ");
+  return haystack.includes(q);
+}
+
+function filterItemsForDisplay(items) {
+  let list = Array.isArray(items) ? items : [];
+  if (state.highMatchOnly) {
+    list = list.filter(it => {
+      const req = normalizeSkillList(it.requiredSkills);
+      if (!req.length) return false;
+      return matchPercent(it) >= 60;
+    });
+  }
+  if (state.applicantSearchQuery.trim()) {
+    list = list.filter(it => applicantMatchesSearch(it, state.applicantSearchQuery));
+  }
+  return list;
+}
+
+function jobStatusCounts(groupItems) {
+  const counts = { pending: 0, shortlisted: 0, rejected: 0, hired: 0 };
+  for (const it of groupItems) {
+    const st = String(it.status || "").toLowerCase();
+    if (st === "pending" || st === "viewed") counts.pending += 1;
+    else if (st === "shortlisted") counts.shortlisted += 1;
+    else if (st === "rejected") counts.rejected += 1;
+    else if (st === "hired") counts.hired += 1;
+  }
+  return counts;
+}
+
+function renderJobStatsBar(groupItems) {
+  const c = jobStatusCounts(groupItems);
+  return `<div class="mo-job-stats" aria-label="Application status summary">
+    <span class="mo-stat-pill">Pending ${c.pending}</span>
+    <span class="mo-stat-pill">Shortlisted ${c.shortlisted}</span>
+    <span class="mo-stat-pill">Rejected ${c.rejected}</span>
+    <span class="mo-stat-pill">Hired ${c.hired}</span>
+  </div>`;
+}
 
 async function getJson(url) {
   const res = await fetch(url, { method: "GET", credentials: "same-origin" });
@@ -165,6 +451,11 @@ function jobWeeklyHours(jobId) {
 }
 
 function currentHiredHoursElsewhere(items, studentId, excludeApplicationId) {
+  const item = (items || []).find(
+    it => it.studentId === studentId && it.applicationId === excludeApplicationId
+  );
+  const fromApi = Number(item && item.currentHiredHours);
+  if (Number.isFinite(fromApi) && fromApi >= 0) return fromApi;
   let sum = 0;
   for (const it of items) {
     if (it.studentId !== studentId || it.applicationId === excludeApplicationId) continue;
@@ -231,6 +522,8 @@ async function loadList() {
   const data = await getJson(url);
   state.items = data && Array.isArray(data.items) ? data.items : [];
   pruneSelectionToItems();
+  pruneExpandedDetails();
+  renderSummaryCards(state.items);
   renderApplicantFeed(state.items);
   updateBatchBar();
 }
@@ -257,6 +550,12 @@ function renderNotesAndFeedback(item, closed) {
   const fbVal = escapeHtml(fbRaw);
   const fbLen = String(fbRaw).length;
   const notesDis = closed ? "disabled" : "";
+  const fbTemplateOpts = FEEDBACK_TEMPLATES.map(
+    t => `<option value="${escapeHtml(t.value)}">${escapeHtml(t.label)}</option>`
+  ).join("");
+  const fbTemplate = fbAllowed && !closed
+    ? `<select class="mo-fb-template" data-fb-template data-app-id="${id}" aria-label="Feedback template">${fbTemplateOpts}</select>`
+    : "";
   const fbBlock = fbAllowed
     ? `<input type="text" maxlength="200" style="flex:1;min-width:140px;" data-mo-feedback data-app-id="${id}" placeholder="Reason (max 200 chars)" value="${fbVal}" ${closed ? "disabled" : ""}/>`
     : `<span style="color:#94a3b8;">—</span>`;
@@ -275,11 +574,79 @@ function renderNotesAndFeedback(item, closed) {
     <div class="mo-field-inline" data-fb-wrap>
       <label>Decision feedback</label>
       <div style="flex:1;display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
+        ${fbTemplate}
         ${fbBlock}
         ${fbSaveBtn}
         <span class="mo-save-indicator" data-fb-ind data-app-id="${id}"></span>
         ${cnt}
       </div>
+    </div>`;
+}
+
+function renderWorkloadBadge(tier, total) {
+  return `<span class="workload-badge ${tier.key}">${escapeHtml(tier.label)} · ${escapeHtml(String(total))}h/week</span>`;
+}
+
+function recommendationBadgeClass(level) {
+  const normalized = String(level || "").toLowerCase();
+  if (normalized === "highly recommended" || normalized === "recommended") return "status-hired";
+  if (normalized === "use with caution") return "status-pending";
+  return "status-rejected";
+}
+
+function workloadStatusBadgeClass(status) {
+  const normalized = String(status || "").toLowerCase();
+  if (normalized === "balanced") return "status-hired";
+  if (normalized === "near limit") return "status-pending";
+  return "status-rejected";
+}
+
+function renderAiRecommendationBlock(item) {
+  const appId = String(item.applicationId || "");
+  const escapedAppId = escapeHtml(appId);
+  const rec = state.aiRecommendations[appId];
+  if (!rec) {
+    return `
+      <div class="mo-ai-rec" data-ai-rec-panel="${escapedAppId}" style="border:1px solid #dbeafe;background:#eff6ff;border-radius:8px;padding:12px;margin:12px 0;">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+          <div>
+            <strong style="color:#1e3a8a;">AI-assisted recommendation</strong>
+            <p class="notice" style="margin:4px 0 0;">Rule-based skill and workload summary with an AI-generated explanation.</p>
+          </div>
+          <button type="button" class="btn btn-outline" data-ai-rec-load="${escapedAppId}" data-job-id="${escapeHtml(item.jobId || "")}">View AI Suggestion</button>
+        </div>
+      </div>`;
+  }
+  if (rec.loading) {
+    return `<div class="mo-ai-rec" data-ai-rec-panel="${escapedAppId}" style="border:1px solid #dbeafe;background:#eff6ff;border-radius:8px;padding:12px;margin:12px 0;">Loading AI-assisted recommendation...</div>`;
+  }
+  if (rec.error) {
+    return `
+      <div class="mo-ai-rec" data-ai-rec-panel="${escapedAppId}" style="border:1px solid #fecaca;background:#fef2f2;border-radius:8px;padding:12px;margin:12px 0;">
+        <strong style="color:#991b1b;">AI recommendation unavailable</strong>
+        <p style="margin:4px 0 0;color:#7f1d1d;">${escapeHtml(rec.error)}</p>
+        <button type="button" class="btn btn-outline" data-ai-rec-load="${escapedAppId}" data-job-id="${escapeHtml(item.jobId || "")}" style="margin-top:8px;">Retry</button>
+      </div>`;
+  }
+  const pct = Math.round(Number(rec.skillMatchScore || 0) * 100);
+  return `
+    <div class="mo-ai-rec" data-ai-rec-panel="${escapedAppId}" style="border:1px solid #c7d2fe;background:#f8fafc;border-radius:8px;padding:12px;margin:12px 0;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
+        <div>
+          <strong style="color:#0f172a;">AI-assisted recommendation</strong>
+          <p class="notice" style="margin:4px 0 0;">AI explains deterministic skill match and workload balance. It does not decide hiring.</p>
+        </div>
+        <span class="status-pill ${recommendationBadgeClass(rec.recommendationLevel)}">${escapeHtml(rec.recommendationLevel || "Not Recommended")}</span>
+      </div>
+      <div class="mo-wl-grid" style="margin-bottom:10px;">
+        <div><span class="mo-app-lbl">Skill Match</span><div class="mo-wl-big" style="color:#2563eb">${pct}%</div></div>
+        <div><span class="mo-app-lbl">Current Workload</span><div class="mo-wl-big">${escapeHtml(rec.currentWorkloadHours || 0)}h/week</div></div>
+        <div><span class="mo-app-lbl">Projected Workload</span><div class="mo-wl-big">${escapeHtml(rec.projectedWorkloadHours || 0)}h/week</div></div>
+        <div><span class="mo-app-lbl">Workload Status</span><div><span class="status-pill ${workloadStatusBadgeClass(rec.workloadStatus)}">${escapeHtml(rec.workloadStatus || "-")}</span></div></div>
+      </div>
+      <div style="margin-bottom:8px;"><span class="mo-app-lbl">Matched Skills</span><div class="mo-skill-tags">${renderSkillTags(rec.matchedSkills, "matched")}</div></div>
+      <div style="margin-bottom:8px;"><span class="mo-app-lbl">Missing Skills</span><div class="mo-skill-tags">${renderSkillTags(rec.missingSkills, "missing")}</div></div>
+      <p style="margin:0;color:#334155;line-height:1.5;">${escapeHtml(rec.aiExplanation || "")}</p>
     </div>`;
 }
 
@@ -330,10 +697,12 @@ function renderApplicantCard(item, closed) {
       <div class="mo-app-card-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
         <div style="display:flex;align-items:flex-start;gap:8px;min-width:0;">
           ${chk}
-          <div style="min-width:0;"><h4>${escapeHtml(safeText(item.studentName))}</h4><p class="mo-app-meta">${jobLabel} • Applied: ${escapeHtml(safeText(item.appliedAt))}</p></div>
+          <div style="min-width:0;"><h4 style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">${escapeHtml(safeText(item.studentName))} ${renderMatchBadge(item)}</h4><p class="mo-app-meta">${jobLabel} • Applied: ${escapeHtml(safeText(item.appliedAt))}</p></div>
         </div>
         <div class="mo-app-status-slot" style="flex-shrink:0;">${renderStatusSelect(item, closed)}</div>
       </div>
+      ${renderSkillFitBlock(item)}
+      ${renderAiRecommendationBlock(item)}
       ${workloadBlock}
       ${actionsBlock}
       ${renderNotesAndFeedback(item, closed)}
@@ -360,10 +729,180 @@ function renderApplicantCard(item, closed) {
     </article>`;
 }
 
-function renderApplicantFeed(items) {
+function renderApplicantCardDashboard(item, closed) {
+  const st = String(item.status || "").toLowerCase();
+  const id = escapeHtml(item.applicationId);
+  const rawId = item.applicationId;
+  const jobLabel = escapeHtml(safeText(state.jobTitles[item.jobId] || item.jobId || "-"));
+  const positionHrs = jobWeeklyHours(item.jobId);
+  const currentOther = currentHiredHoursElsewhere(state.items, item.studentId, item.applicationId);
+  const ifHiredTotal = currentOther + positionHrs;
+  const tier = workloadTier(ifHiredTotal);
+  const showWorkloadPanel = st !== "hired";
+  const borderClass = (showWorkloadPanel ? wlCardClass(tier.key) : "mo-wl-neutral") + (state.selectedIds.has(rawId) ? " mo-app-card-selected" : "");
+  const hireLabel = ifHiredTotal >= 20 ? "Hire (Override Warning)" : "Hire";
+  const warnNote = tier.key === "over"
+    ? `<p style="margin:8px 0 0;font-size:12px;color:#b91c1c;font-weight:600;">Warning: Hiring this student will exceed 20h/week workload limit!</p>`
+    : `<p style="margin:8px 0 0;font-size:12px;color:#854d0e;">If hired, total workload would be <strong>${ifHiredTotal}h/week</strong> (${tier.label} level).</p>`;
+  const workloadBlock = showWorkloadPanel ? `
+    <div class="mo-wl-panel ${wlPanelClass(tier.key)}">
+      <div style="font-weight:700;margin-bottom:8px;color:#0f172a;">Current Workload Status</div>
+      <div class="mo-wl-grid">
+        <div><span class="mo-app-lbl">Current Hours/Week</span><div class="mo-wl-big" style="color:#2563eb">${currentOther}h</div></div>
+        <div><span class="mo-app-lbl">If Hired (Total)</span><div class="mo-wl-big" style="color:${tier.key === "over" ? "#dc2626" : "#ca8a04"}">${ifHiredTotal}h</div></div>
+        <div><span class="mo-app-lbl">Status</span><div><span class="status-pill ${tier.key === "over" ? "status-rejected" : tier.key === "warn" ? "status-pending" : "status-hired"}">${tier.label}</span></div></div>
+      </div>
+      ${warnNote}
+    </div>` : "";
+  let actionsBlock = "";
+  if (closed) {
+    actionsBlock = `<div class="mo-wl-actions"><span class="mo-closed-flag">Recruitment Closed</span><button type="button" class="btn btn-primary mo-app-detail-btn">View details</button></div>`;
+  } else if (st === "rejected") {
+    actionsBlock = `<div class="mo-wl-actions"><button type="button" class="btn btn-outline" data-mo-action="viewed" data-app-id="${id}">Undo reject</button><button type="button" class="btn btn-primary mo-app-detail-btn">View details</button></div>`;
+  } else if (st === "hired") {
+    actionsBlock = `<div class="mo-wl-actions"><button type="button" class="btn btn-success" disabled>Hire</button><button type="button" class="btn btn-outline" disabled>Shortlist</button><button type="button" class="btn btn-outline" style="color:#b91c1c;border-color:#fecaca" disabled>Reject</button><button type="button" class="btn btn-primary mo-app-detail-btn">View details</button></div>`;
+  } else {
+    actionsBlock = `<div class="mo-wl-actions"><button type="button" class="btn btn-success" data-mo-action="hired" data-app-id="${id}">${hireLabel}</button><button type="button" class="btn btn-outline" data-mo-action="shortlisted" data-app-id="${id}">Shortlist</button><button type="button" class="btn btn-outline" style="color:#b91c1c;border-color:#fecaca" data-mo-action="rejected" data-app-id="${id}">Reject</button><button type="button" class="btn btn-primary mo-app-detail-btn">View details</button></div>`;
+  }
+  const chk = closed
+    ? ""
+    : `<label style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><input type="checkbox" data-app-select="${id}" ${state.selectedIds.has(rawId) ? "checked" : ""} /></label>`;
+  const isExpanded = state.expandedDetailIds.has(String(rawId));
+  const detailBtnLabel = isExpanded ? "Hide details" : "View details";
+  const expandClass = isExpanded ? "mo-app-expand mo-open" : "mo-app-expand";
+  return `
+    <article class="mo-app-card-proto ${borderClass}" data-application-id="${id}">
+      <div class="applicant-card-top">
+        ${chk || "<span></span>"}
+        <div style="min-width:0;"><h4>${escapeHtml(safeText(item.studentName))} ${renderMatchBadge(item)}</h4></div>
+        <div class="mo-app-status-slot">${renderStatusSelect(item, closed)}</div>
+      </div>
+      <div class="applicant-card-subrow">
+        <span>${jobLabel}</span>
+        <span>Applied: ${escapeHtml(safeText(item.appliedAt))}</span>
+        ${renderWorkloadBadge(tier, ifHiredTotal)}
+      </div>
+      ${workloadBlock}
+      ${renderSkillFitCompact(item)}
+      ${renderAiRecommendationBlock(item)}
+      ${actionsBlock.replace(/View details/g, detailBtnLabel)}
+      <div class="${expandClass}">
+        <p class="mo-app-meta" style="margin-bottom:10px">Attachments and full record (opening details marks <strong>pending</strong> as <strong>viewed</strong> on the server).</p>
+        ${renderNotesAndFeedback(item, closed)}
+        <div class="mo-app-grid">
+          <div><span class="mo-app-lbl">Student No</span><div>${escapeHtml(safeText(item.studentNo))}</div></div>
+          <div><span class="mo-app-lbl">Programme</span><div>${escapeHtml(safeText(item.programme))}</div></div>
+        </div>
+        <div style="margin-bottom:12px;"><span class="mo-app-lbl">Skills</span><div>${escapeHtml(safeText(item.skills))}</div></div>
+        <div style="margin-bottom:12px;"><span class="mo-app-lbl">Experience / Statement</span><div style="font-size:14px;color:#334155;">${escapeHtml(safeText(item.experience))}</div></div>
+        <div class="mo-app-expand-grid">
+          <div><span class="mo-app-lbl">Application ID</span><div data-field="applicationId"></div></div>
+          <div><span class="mo-app-lbl">Job ID</span><div data-field="jobId"></div></div>
+          <div><span class="mo-app-lbl">Course grade</span><div data-field="courseGrade"></div></div>
+          <div><span class="mo-app-lbl">Applied at</span><div data-field="appliedAt"></div></div>
+          <div><span class="mo-app-lbl">Status</span><div data-field="status"></div></div>
+          <div><span class="mo-app-lbl">Updated at</span><div data-field="updatedAt"></div></div>
+          <div style="grid-column:1/-1;"><span class="mo-app-lbl">Attachments</span><div data-field="attachments"></div></div>
+        </div>
+      </div>
+    </article>`;
+}
+
+function renderJobReviewItem(jobId, groupItems, allItems, isActive) {
+  const label = state.jobTitles[jobId] || (jobId ? `Job ${jobId}` : "Unknown job");
+  const c = jobStatusCounts(groupItems);
+  const posHrs = jobWeeklyHours(jobId);
+  const totalWorkload = groupItems.reduce((sum, item) => sum + ifHiredTotalForItem(item, allItems), 0);
+  return `
+    <button class="job-review-item ${isActive ? "active" : ""}" type="button" data-review-job="${escapeHtml(jobId)}">
+      <h3>${escapeHtml(label)}</h3>
+      <div class="job-review-meta">
+        <span>${groupItems.length} applicant${groupItems.length === 1 ? "" : "s"}</span>
+        <span>${posHrs || "-"}h/week</span>
+        <span>${totalWorkload}h total risk</span>
+      </div>
+      <div class="job-review-counts">
+        <span>P ${c.pending}</span>
+        <span>S ${c.shortlisted}</span>
+        <span>H ${c.hired}</span>
+      </div>
+    </button>`;
+}
+
+function renderApplicantDashboardFeed(items) {
   const feed = byId("applicationsFeed");
   const emptyEl = byId("applicationsEmpty");
-  if (!items || !items.length) {
+  const displayItems = filterItemsForDisplay(items || []);
+  if (!displayItems.length) {
+    emptyEl.style.display = "block";
+    feed.style.display = "none";
+    feed.innerHTML = "";
+    return;
+  }
+  emptyEl.style.display = "none";
+  feed.style.display = "grid";
+  const groups = new Map();
+  for (const item of displayItems) {
+    const j = item.jobId != null ? String(item.jobId) : "";
+    if (!groups.has(j)) groups.set(j, []);
+    groups.get(j).push(item);
+  }
+  const keys = Array.from(groups.keys()).sort();
+  const firstJobWithApplicants = keys.find(k => (groups.get(k) || []).length);
+  if (!state.selectedJobId || !groups.has(state.selectedJobId) || !(groups.get(state.selectedJobId) || []).length) {
+    state.selectedJobId = firstJobWithApplicants || keys[0];
+  }
+  const selectedJobId = state.selectedJobId;
+  const selectedItems = sortGroupItems(groups.get(selectedJobId) || [], items, state.sortMode);
+  const sortLabel = sortModeLabel(state.sortMode);
+  const label = state.jobTitles[selectedJobId] || (selectedJobId ? `Job ${selectedJobId}` : "Unknown job");
+  const posHrs = jobWeeklyHours(selectedJobId);
+  const closed = jobClosed(selectedJobId);
+  const closedAt = state.hiringState[selectedJobId] ? state.hiringState[selectedJobId].closedAt : "";
+  const shortlistedCount = selectedItems.filter(x => String(x.status || "").toLowerCase() === "shortlisted").length;
+  const jEsc = escapeHtml(selectedJobId);
+  const jobList = keys.map(jobId => renderJobReviewItem(jobId, groups.get(jobId), items || [], jobId === selectedJobId)).join("");
+  const cards = selectedItems.length
+    ? selectedItems.map(item => renderApplicantCardDashboard(item, closed)).join("")
+    : `<p class="notice">No applicants match the current search or filters for this job. Try another position or clear filters.</p>`;
+  feed.innerHTML = `
+    <div class="review-workspace">
+      <aside class="job-review-list" aria-label="Job position list">
+        <div class="job-review-title">Positions</div>
+        ${jobList}
+      </aside>
+      <section class="applicant-review-panel">
+        <div class="mo-job-group" data-job-group="${jEsc}">
+          <div class="review-panel-head">
+            <div>
+              <h3>${escapeHtml(label)}</h3>
+              <p>${selectedItems.length} applicant${selectedItems.length === 1 ? "" : "s"} · This position: <strong>${posHrs || "-"}</strong> hours/week · Sorted by <strong>${escapeHtml(sortLabel)}</strong></p>
+            </div>
+            <div class="review-panel-actions">
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#475569;"><input type="checkbox" data-select-all-job="${jEsc}" ${closed ? "disabled" : ""}/> Select all</label>
+              ${closed ? `<span class="mo-closed-flag">Recruitment Closed${closedAt ? ` (${escapeHtml(closedAt)})` : ""}</span>` : ""}
+              <button class="btn btn-outline" type="button" data-open-history="${jEsc}">View history</button>
+              <button class="btn btn-primary" type="button" data-open-final="${jEsc}" ${closed ? "disabled" : ""}>Confirm Final Hiring</button>
+            </div>
+          </div>
+          ${renderJobStatsBar((items || []).filter(it => String(it.jobId ?? "") === selectedJobId))}
+          ${!closed && shortlistedCount === 0 ? `<p class="notice">No shortlisted applicant yet for final confirmation.</p>` : ""}
+          <div class="applicant-card-list">${cards}</div>
+        </div>
+      </section>
+    </div>`;
+  syncSelectAllMasters();
+  restoreExpandedDetails();
+  syncToolbarControls();
+}
+
+function renderApplicantFeed(items) {
+  renderApplicantDashboardFeed(items);
+  return;
+  const feed = byId("applicationsFeed");
+  const emptyEl = byId("applicationsEmpty");
+  const displayItems = filterItemsForDisplay(items || []);
+  if (!displayItems.length) {
     emptyEl.style.display = "block";
     feed.style.display = "none";
     feed.innerHTML = "";
@@ -372,7 +911,7 @@ function renderApplicantFeed(items) {
   emptyEl.style.display = "none";
   feed.style.display = "flex";
   const groups = new Map();
-  for (const item of items) {
+  for (const item of displayItems) {
     const j = item.jobId != null ? String(item.jobId) : "";
     if (!groups.has(j)) groups.set(j, []);
     groups.get(j).push(item);
@@ -380,7 +919,7 @@ function renderApplicantFeed(items) {
   const keys = Array.from(groups.keys()).sort();
   const parts = [];
   for (const jobId of keys) {
-    const groupItems = groups.get(jobId);
+    const groupItems = sortGroupItems(groups.get(jobId), items, state.sortMode);
     const label = state.jobTitles[jobId] || (jobId ? `Job ${jobId}` : "Unknown job");
     const posHrs = jobWeeklyHours(jobId);
     const closed = jobClosed(jobId);
@@ -391,6 +930,8 @@ function renderApplicantFeed(items) {
     parts.push(`<h3 class="mo-job-group-title">${escapeHtml(label)} <span style="font-weight:500;color:#64748b">(${groupItems.length} applicant${groupItems.length === 1 ? "" : "s"})</span></h3>`);
     parts.push(`<div class="mo-job-tools"><label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-right:8px;color:#475569;"><input type="checkbox" data-select-all-job="${jEsc}" ${closed ? "disabled" : ""}/> Select all</label><span class="mo-pos-hrs">This position: <strong>${posHrs || "—"}</strong> hours/week</span>${closed ? `<span class="mo-closed-flag">Recruitment Closed${closedAt ? ` (${escapeHtml(closedAt)})` : ""}</span>` : ""}<button class="btn btn-outline" type="button" data-open-history="${jEsc}">View history</button><button class="btn btn-primary" type="button" data-open-final="${jEsc}" ${closed ? "disabled" : ""}>Confirm Final Hiring</button></div>`);
     parts.push(`</div>`);
+    const allForJob = (items || []).filter(it => String(it.jobId ?? "") === jobId);
+    parts.push(renderJobStatsBar(allForJob));
     if (!closed && shortlistedCount === 0) {
       parts.push(`<p class="notice">No shortlisted applicant yet for final confirmation.</p>`);
     }
@@ -416,6 +957,38 @@ function syncSelectAllMasters() {
   });
 }
 
+function encodeAttachmentUrl(url) {
+  if (!url) return "";
+  const parts = String(url).split("/");
+  return parts.map((part, index) => index === 0 ? part : encodeURIComponent(part)).join("/");
+}
+
+function pruneExpandedDetails() {
+  const ids = new Set(state.items.map(i => String(i.applicationId)));
+  for (const id of state.expandedDetailIds) {
+    if (!ids.has(id)) {
+      state.expandedDetailIds.delete(id);
+      delete state.detailCache[id];
+    }
+  }
+}
+
+function restoreExpandedDetails() {
+  const feed = byId("applicationsFeed");
+  if (!feed) return;
+  for (const appId of state.expandedDetailIds) {
+    const card = feed.querySelector(`[data-application-id="${CSS.escape(appId)}"]`);
+    if (!card) continue;
+    const expand = card.querySelector(".mo-app-expand");
+    const btn = card.querySelector(".mo-app-detail-btn");
+    if (!expand) continue;
+    expand.classList.add("mo-open");
+    if (btn) btn.textContent = "Hide details";
+    const cached = state.detailCache[appId];
+    if (cached) fillDetailFields(expand, cached);
+  }
+}
+
 function fillDetailFields(expandEl, detail) {
   expandEl.querySelectorAll("[data-field]").forEach(el => {
     const k = el.getAttribute("data-field");
@@ -427,7 +1000,7 @@ function fillDetailFields(expandEl, detail) {
       }
       const contextPath = getContextPath();
       el.innerHTML = list.map(att => {
-        const href = `${window.location.origin}${contextPath}${att.downloadUrl}`;
+        const href = `${window.location.origin}${contextPath}${encodeAttachmentUrl(att.downloadUrl)}`;
         const sizeText = Number(att.fileSize || 0) > 0 ? ` (${Math.round((att.fileSize / 1024) * 10) / 10} KB)` : "";
         return `<div style="margin:6px 0;display:flex;justify-content:space-between;gap:12px;align-items:center;"><span>${escapeHtml(safeText(att.label || "Attachment"))}: ${escapeHtml(safeText(att.fileName || "file"))}${escapeHtml(sizeText)}</span><a class="btn btn-outline" style="padding:4px 10px;font-size:12px;" href="${encodeURI(href)}" target="_blank" rel="noopener">Download</a></div>`;
       }).join("");
@@ -445,9 +1018,14 @@ async function openCardDetail(card, btn) {
   if (!rawId || !expand || !btn) return;
   btn.disabled = true;
   try {
-    const detail = await getJson(`${apiBase()}/applications/detail/${encodeURIComponent(rawId)}`);
+    let detail = state.detailCache[rawId];
+    if (!detail) {
+      detail = await getJson(`${apiBase()}/applications/detail/${encodeURIComponent(rawId)}`);
+      state.detailCache[rawId] = detail;
+    }
     fillDetailFields(expand, detail);
     expand.classList.add("mo-open");
+    state.expandedDetailIds.add(String(rawId));
     const it = state.items.find(i => i.applicationId === rawId);
     if (it) {
       it.status = detail.status;
@@ -546,6 +1124,21 @@ async function saveFeedback(applicationId, text) {
   if (it) it.decisionFeedback = text;
 }
 
+async function loadAiRecommendation(applicationId, jobId) {
+  if (!applicationId || !jobId) return;
+  state.aiRecommendations[applicationId] = { loading: true };
+  renderApplicantFeed(state.items);
+  try {
+    const data = await postJson(`${apiBase()}/applicant-ai-recommendation`, { applicationId, jobId });
+    state.aiRecommendations[applicationId] = data || { error: "No recommendation data returned." };
+  } catch (err) {
+    state.aiRecommendations[applicationId] = {
+      error: `${err.code || "ERROR"}: ${err.message || "Failed to load recommendation."}`
+    };
+  }
+  renderApplicantFeed(state.items);
+}
+
 async function persistFeedbackFromInput(feed, fbEl) {
   const appId = fbEl.getAttribute("data-app-id");
   const ind = feed.querySelector(`[data-fb-ind][data-app-id="${appId}"]`);
@@ -594,9 +1187,9 @@ async function queryWithFeedback() {
 }
 
 function exportCsv() {
-  const lines = ["applicationId,jobId,studentName,status,appliedAt,evaluationNotes,decisionFeedback"];
+  const lines = ["applicationId,jobId,studentName,status,matchPercent,appliedAt,evaluationNotes,decisionFeedback"];
   for (const it of state.items) {
-    const row = [it.applicationId, it.jobId, it.studentName, it.status, it.appliedAt, it.evaluationNotes, it.decisionFeedback].map(v =>
+    const row = [it.applicationId, it.jobId, it.studentName, it.status, matchPercent(it), it.appliedAt, it.evaluationNotes, it.decisionFeedback].map(v =>
       `"${String(v ?? "").replace(/"/g, '""')}"`
     );
     lines.push(row.join(","));
@@ -627,11 +1220,50 @@ document.addEventListener("DOMContentLoaded", async () => {
   ["filterPending", "filterShortlisted", "filterRejected", "filterHired"].forEach(fid => {
     byId(fid).addEventListener("change", () => {
       clearTimeout(filterDeb);
-      filterDeb = setTimeout(() => queryWithFeedback(), 200);
+      filterDeb = setTimeout(async () => {
+        await queryWithFeedback();
+        setNotice("Applicant list updated by status filter.", false);
+      }, 200);
     });
   });
 
+  byId("sortMode").addEventListener("change", e => {
+    state.sortMode = e.target.value || "applied";
+    renderApplicantFeed(state.items);
+    setNotice(`Applicants sorted by ${sortModeLabel(state.sortMode)}.`, false);
+  });
+
+  byId("filterHighMatch").addEventListener("change", e => {
+    state.highMatchOnly = e.target.checked;
+    renderApplicantFeed(state.items);
+    setNotice(state.highMatchOnly ? "Showing high match applicants only (≥60%)." : "Showing all match levels.", false);
+  });
+
+  let searchDeb;
+  byId("applicantSearchInput").addEventListener("input", e => {
+    state.applicantSearchQuery = e.target.value || "";
+    clearTimeout(searchDeb);
+    searchDeb = setTimeout(() => {
+      renderApplicantFeed(state.items);
+      const q = state.applicantSearchQuery.trim();
+      setNotice(q ? `Filtered by search: "${q}"` : "Search cleared.", false);
+    }, 200);
+  });
+
   feed.addEventListener("change", async e => {
+    const fbTemplate = e.target.closest("[data-fb-template]");
+    if (fbTemplate) {
+      const appId = fbTemplate.getAttribute("data-app-id");
+      const fbEl = feed.querySelector(`[data-mo-feedback][data-app-id="${appId}"]`);
+      if (fbEl && fbTemplate.value) {
+        fbEl.value = fbTemplate.value;
+        const cnt = feed.querySelector(`[data-fb-count][data-app-id="${appId}"]`);
+        if (cnt) cnt.textContent = `${fbEl.value.length}/200`;
+      }
+      fbTemplate.selectedIndex = 0;
+      return;
+    }
+
     if (e.target.matches("input[type=checkbox][data-select-all-job]")) {
       const section = e.target.closest(".mo-job-group");
       if (!section) return;
@@ -716,6 +1348,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   feed.addEventListener("click", async e => {
+    const jobReviewBtn = e.target.closest("[data-review-job]");
+    if (jobReviewBtn) {
+      state.selectedJobId = jobReviewBtn.getAttribute("data-review-job");
+      renderApplicantFeed(state.items);
+      return;
+    }
+
     const finalBtn = e.target.closest("[data-open-final]");
     if (finalBtn && !finalBtn.disabled) {
       await openFinalHiringModal(finalBtn.getAttribute("data-open-final"));
@@ -724,6 +1363,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     const historyBtn = e.target.closest("[data-open-history]");
     if (historyBtn) {
       await openHistoryModal(historyBtn.getAttribute("data-open-history"));
+      return;
+    }
+    const aiBtn = e.target.closest("[data-ai-rec-load]");
+    if (aiBtn) {
+      await loadAiRecommendation(aiBtn.getAttribute("data-ai-rec-load"), aiBtn.getAttribute("data-job-id"));
       return;
     }
     const actionBtn = e.target.closest("[data-mo-action]");
@@ -758,8 +1402,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!btn) return;
     const card = btn.closest(".mo-app-card-proto");
     const expand = card.querySelector(".mo-app-expand");
+    const rawId = card.getAttribute("data-application-id");
     if (expand.classList.contains("mo-open")) {
       expand.classList.remove("mo-open");
+      state.expandedDetailIds.delete(String(rawId));
       btn.textContent = "View details";
       return;
     }
@@ -796,6 +1442,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     byId("filterShortlisted").checked = true;
     byId("filterRejected").checked = true;
     byId("filterHired").checked = true;
+    byId("sortMode").value = "applied";
+    state.sortMode = "applied";
+    byId("filterHighMatch").checked = false;
+    state.highMatchOnly = false;
+    byId("applicantSearchInput").value = "";
+    state.applicantSearchQuery = "";
     await queryWithFeedback();
   });
   byId("exportCsvBtn").addEventListener("click", exportCsv);
