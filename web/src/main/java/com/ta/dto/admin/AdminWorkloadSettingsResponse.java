@@ -2,6 +2,8 @@ package com.ta.dto.admin;
 
 public class AdminWorkloadSettingsResponse {
     private Integer workloadThresholdHours;
+    private Integer workloadNormalPercent;
+    private Integer workloadWarningPercent;
     private String updatedAt;
     private boolean saved;
 
@@ -11,6 +13,22 @@ public class AdminWorkloadSettingsResponse {
 
     public void setWorkloadThresholdHours(Integer workloadThresholdHours) {
         this.workloadThresholdHours = workloadThresholdHours;
+    }
+
+    public Integer getWorkloadNormalPercent() {
+        return workloadNormalPercent;
+    }
+
+    public void setWorkloadNormalPercent(Integer workloadNormalPercent) {
+        this.workloadNormalPercent = workloadNormalPercent;
+    }
+
+    public Integer getWorkloadWarningPercent() {
+        return workloadWarningPercent;
+    }
+
+    public void setWorkloadWarningPercent(Integer workloadWarningPercent) {
+        this.workloadWarningPercent = workloadWarningPercent;
     }
 
     public String getUpdatedAt() {

@@ -12,6 +12,7 @@ import com.ta.model.NotificationRecord;
 import com.ta.model.User;
 import com.ta.service.admin.WorkloadOverloadAnnouncementService;
 import com.ta.util.AgentDebugLog;
+import com.ta.util.JobRecruitmentUtil;
 import com.ta.util.JsonUtility;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletResponse;
@@ -116,6 +117,16 @@ public class MoHiringService {
 
             List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
             Set<String> selected = new HashSet<>(hiredApplicationIds == null ? List.of() : hiredApplicationIds);
+            int newHires = (int) applications.stream()
+                    .filter(app -> app.isActive() && jobId.equals(app.getJobId()))
+                    .filter(app -> "shortlisted".equalsIgnoreCase(app.getStatus()))
+                    .filter(app -> selected.contains(app.getId()))
+                    .count();
+            JobRecruitmentUtil.assertCanHire(
+                    job,
+                    JobRecruitmentUtil.countHired(context, jobId),
+                    newHires);
+
             List<String> hiredNames = new ArrayList<>();
             List<String> hiredIds = new ArrayList<>();
             List<NotificationRecord> notifications = JsonUtility.loadNotifications(context);

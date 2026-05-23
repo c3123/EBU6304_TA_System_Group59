@@ -35,10 +35,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const panels = Array.from(document.querySelectorAll("[data-admin-panel]"));
   const workloadPanel = panels.find((p) => p.getAttribute("data-admin-panel") === "workload") || null;
   const noticeEl = byId("adminNotice");
-  const adminOutcomeJobSince = byId("adminOutcomeJobSince");
-  const adminOutcomeJobUntil = byId("adminOutcomeJobUntil");
-  const adminOutcomeApplyRangeBtn = byId("adminOutcomeApplyRangeBtn");
-  const adminOutcomeClearRangeBtn = byId("adminOutcomeClearRangeBtn");
   const adminOutcomeExportCsvBtn = byId("adminOutcomeExportCsvBtn");
   const adminOutcomeBackBtn = byId("adminOutcomeBackBtn");
 
@@ -57,9 +53,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   const userSearchClearBtn = byId("adminUserSearchClearBtn");
   const userSearchMeta = byId("adminUserSearchMeta");
 
+  const WORKLOAD_NORMAL_PERCENT = 50;
+  const WORKLOAD_WARNING_PERCENT = 75;
+
   const thresholdForm = byId("adminThresholdForm");
   const thresholdHoursEl = byId("adminThresholdHours");
-  const thresholdUpdatedAtEl = byId("adminThresholdUpdatedAt");
   const thresholdSaveBtn = byId("adminThresholdSaveBtn");
   const notifyOverloadBtn = byId("adminNotifyOverloadBtn");
   const exportWorkloadCsvBtn = byId("adminExportWorkloadCsvBtn");
@@ -109,7 +107,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     search: ""
   };
   const RECRUITMENT_VACANCY_TOP = 10;
-  const outcomeJobDateRange = { since: "", until: "" };
   const JOB_STATUS_CHART_COLORS = {
     Pending: "#f59e0b",
     Reject: "#ef4444",
@@ -117,23 +114,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     Overdue: "#dc2626"
   };
 
-  function toApiDate(displayValue) {
-    const raw = (displayValue || "").trim();
-    if (!raw) {
-      return "";
-    }
-    const normalized = raw.replace(/\//g, "-");
-    return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : "";
-  }
-
-  function toDisplayDate(apiValue) {
-    const raw = (apiValue || "").trim();
-    if (!raw) {
-      return "";
-    }
-    const part = raw.length >= 10 ? raw.substring(0, 10) : raw;
-    return /^\d{4}-\d{2}-\d{2}$/.test(part) ? part.replace(/-/g, "/") : raw.replace(/-/g, "/");
-  }
   const jobApplicationFilters = {
     status: "all"
   };
@@ -393,12 +373,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   function buildRecruitmentOutcomeQueryParams() {
     const params = new URLSearchParams();
     params.set("vacancyTop", String(RECRUITMENT_VACANCY_TOP));
-    if (outcomeJobDateRange.since) {
-      params.set("jobSince", outcomeJobDateRange.since);
-    }
-    if (outcomeJobDateRange.until) {
-      params.set("jobUntil", outcomeJobDateRange.until);
-    }
     return params;
   }
 
@@ -455,18 +429,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     const chart = byId("adminOutcomeMixChart");
     if (!chart) return;
     const slots = Math.max(Number(data.totalPositionSlots) || 0, 0);
-    const hired = Math.max(Number(data.totalHired) || 0, 0);
     const vacancies = Math.max(Number(data.totalVacancies) || 0, 0);
+    const hired = Math.max(slots - vacancies, 0);
     if (slots === 0 && hired === 0 && vacancies === 0) {
       chart.innerHTML = `<p class="desc">No recruitment result data yet.</p>`;
       return;
     }
-    const total = Math.max(slots, hired + vacancies, 1);
+    const total = Math.max(slots, 1);
     const hiredDeg = Math.min(360, Math.round((hired / total) * 360));
     const vacancyDeg = Math.min(360 - hiredDeg, Math.round((vacancies / total) * 360));
-    const spareDeg = Math.max(0, 360 - hiredDeg - vacancyDeg);
     chart.innerHTML = `
-      <div class="admin-donut" style="--hired-deg:${hiredDeg}deg;--vacancy-deg:${vacancyDeg}deg;--spare-deg:${spareDeg}deg;" role="img" aria-label="Hired ${hired}, vacancies ${vacancies}, total slots ${slots}">
+      <div class="admin-donut" style="--hired-deg:${hiredDeg}deg;--vacancy-deg:${vacancyDeg}deg;--spare-deg:0deg;" role="img" aria-label="Hired ${hired}, vacancies ${vacancies}, total slots ${slots}">
         <div class="admin-donut-hole">
           <strong>${escapeHtml(String(slots))}</strong>
           <span>slots</span>
@@ -519,26 +492,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       const data = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/recruitment-outcome?${buildRecruitmentOutcomeQueryParams().toString()}`, {
         method: "GET"
       });
-      outcomeJobDateRange.since = data.jobSince || "";
-      outcomeJobDateRange.until = data.jobUntil || "";
-      if (adminOutcomeJobSince) {
-        adminOutcomeJobSince.value = toDisplayDate(outcomeJobDateRange.since);
-      }
-      if (adminOutcomeJobUntil) {
-        adminOutcomeJobUntil.value = toDisplayDate(outcomeJobDateRange.until);
-      }
       const slots = byId("adminOutcomeTotalSlots");
-      const closed = byId("adminOutcomeClosedJobs");
-      const recruiting = byId("adminOutcomeRecruitingJobs");
-      const apps = byId("adminOutcomeTotalApplications");
       const hired = byId("adminOutcomeTotalHired");
       const vac = byId("adminOutcomeTotalVacancies");
+      const openJobs = byId("adminOutcomeOpenJobs");
+      const apps = byId("adminOutcomeTotalApplications");
       if (slots) slots.textContent = data.totalPositionSlots ?? 0;
-      if (closed) closed.textContent = data.closedJobs ?? 0;
-      if (recruiting) recruiting.textContent = data.recruitingJobs ?? 0;
-      if (apps) apps.textContent = data.totalApplications ?? 0;
       if (hired) hired.textContent = data.totalHired ?? 0;
       if (vac) vac.textContent = data.totalVacancies ?? 0;
+      if (openJobs) openJobs.textContent = data.recruitingJobs ?? 0;
+      if (apps) apps.textContent = data.totalApplications ?? 0;
       const genEl = byId("adminOutcomeGeneratedAt");
       if (genEl && data.generatedAt) {
         genEl.setAttribute("datetime", data.generatedAt);
@@ -622,7 +585,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       method: "GET"
     });
     thresholdHoursEl.value = settings.workloadThresholdHours;
-    thresholdUpdatedAtEl.value = settings.updatedAt || "";
+  }
+
+  function workloadHoursAtPercent(threshold, percent) {
+    const t = Number(threshold);
+    const p = Number(percent);
+    if (!Number.isFinite(t) || t <= 0 || !Number.isFinite(p)) return 0;
+    return Math.max(1, Math.ceil(t * p / 100));
   }
 
   function renderOverview(data) {
@@ -935,13 +904,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function workloadLegendHtml() {
     const threshold = Number(thresholdHoursEl.value || 20);
-    const warningText = threshold > 15 ? `Warning (15-${threshold - 1}h)` : "Warning (15h+ below overload threshold)";
+    const normalPercent = WORKLOAD_NORMAL_PERCENT;
+    const warningPercent = WORKLOAD_WARNING_PERCENT;
+    const normalHours = workloadHoursAtPercent(threshold, normalPercent);
+    const warningHours = workloadHoursAtPercent(threshold, warningPercent);
+    const warningMax = Math.max(warningHours, threshold - 1);
     return `
       <strong>Legend:</strong>
-      <span><i class="legend-dot legend-overload"></i> Overload (&gt;=${escapeHtml(String(threshold))}h)</span>
-      <span><i class="legend-dot legend-warning"></i> ${escapeHtml(warningText)}</span>
-      <span><i class="legend-dot legend-normal"></i> Normal (10-14h)</span>
-      <span><i class="legend-dot legend-low"></i> Low (&lt;10h)</span>
+      <span><i class="legend-dot legend-overload"></i> Overload (&gt;=${escapeHtml(String(threshold))}h, 100%)</span>
+      <span><i class="legend-dot legend-warning"></i> Warning (${escapeHtml(String(warningHours))}-${escapeHtml(String(warningMax))}h, ${escapeHtml(String(warningPercent))}%+)</span>
+      <span><i class="legend-dot legend-normal"></i> Normal (${escapeHtml(String(normalHours))}-${escapeHtml(String(Math.max(normalHours, warningHours - 1)))}h, ${escapeHtml(String(normalPercent))}%+)</span>
+      <span><i class="legend-dot legend-low"></i> Low (&lt;${escapeHtml(String(normalHours))}h, below ${escapeHtml(String(normalPercent))}%)</span>
     `;
   }
 
@@ -1444,7 +1417,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         body: JSON.stringify({ workloadThresholdHours: thresholdValue })
       });
       thresholdHoursEl.value = saved.workloadThresholdHours;
-      thresholdUpdatedAtEl.value = saved.updatedAt || "";
       setNotice("Workload threshold saved.", false);
       await loadAdminDashboard();
       activateTab("workload");
@@ -2005,22 +1977,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (jobApplicationsCloseBtn) jobApplicationsCloseBtn.addEventListener("click", closeJobApplications);
   if (jobApplicationsCsvBtn) jobApplicationsCsvBtn.addEventListener("click", () => downloadJobApplications("csv"));
   if (jobApplicationsTxtBtn) jobApplicationsTxtBtn.addEventListener("click", () => downloadJobApplications("txt"));
-  if (adminOutcomeApplyRangeBtn) {
-    adminOutcomeApplyRangeBtn.addEventListener("click", () => {
-      outcomeJobDateRange.since = toApiDate(adminOutcomeJobSince && adminOutcomeJobSince.value);
-      outcomeJobDateRange.until = toApiDate(adminOutcomeJobUntil && adminOutcomeJobUntil.value);
-      void loadRecruitmentOutcome();
-    });
-  }
-  if (adminOutcomeClearRangeBtn) {
-    adminOutcomeClearRangeBtn.addEventListener("click", () => {
-      outcomeJobDateRange.since = "";
-      outcomeJobDateRange.until = "";
-      if (adminOutcomeJobSince) adminOutcomeJobSince.value = "";
-      if (adminOutcomeJobUntil) adminOutcomeJobUntil.value = "";
-      void loadRecruitmentOutcome();
-    });
-  }
   if (adminOutcomeExportCsvBtn) {
     adminOutcomeExportCsvBtn.addEventListener("click", () => void downloadRecruitmentOutcomeCsv());
   }

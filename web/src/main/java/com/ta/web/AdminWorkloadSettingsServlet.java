@@ -35,9 +35,9 @@ public class AdminWorkloadSettingsServlet extends AdminBaseServlet {
                 return;
             }
             AdminWorkloadSettingsRequest request = readJson(req, AdminWorkloadSettingsRequest.class);
-            writeSuccess(resp, adminWorkloadSettingsService.saveThreshold(
+            writeSuccess(resp, adminWorkloadSettingsService.saveSettings(
                     getServletContext(),
-                    request == null ? null : request.getWorkloadThresholdHours()
+                    request
             ));
         } catch (AdminBusinessException ex) {
             writeError(resp, ex.getHttpStatus(), ex.getCode(), ex.getMessage());

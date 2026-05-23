@@ -1,0 +1,16 @@
+{
+  "name": "ta-recruitment-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "e2e:prepare": "node e2e/scripts/prepare-data.mjs",
+    "e2e:tomcat": "mvn -f web/pom.xml -DskipTests -Dcargo.servlet.port=18080 package cargo:run",
+    "e2e": "npm run e2e:prepare && playwright test",
+    "e2e:against-running": "playwright test",
+    "e2e:headed": "npm run e2e:prepare && playwright test --headed",
+    "e2e:ui": "npm run e2e:prepare && playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1"
+  }
+}

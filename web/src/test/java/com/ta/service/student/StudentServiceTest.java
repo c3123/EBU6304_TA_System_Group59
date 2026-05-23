@@ -93,6 +93,34 @@ class StudentServiceTest extends MoTestSupport {
     }
 
     @Test
+    void getProfile_missingProfileUsesUserFallback() throws Exception {
+        writeStudents(new ArrayList<>());
+
+        StudentProfileResponse response = service.getMyProfile(servletContext, STUDENT_ID);
+
+        assertEquals(STUDENT_ID, response.getUserId());
+        assertEquals("Demo Student", response.getName());
+        assertEquals("student@demo.test", response.getEmail());
+        assertEquals("S1001", response.getStudentId());
+    }
+
+    @Test
+    void updateProfile_missingProfileCreatesProfile() throws Exception {
+        writeStudents(new ArrayList<>());
+        StudentProfileUpdateRequest request = new StudentProfileUpdateRequest();
+        request.setName("Created Profile");
+        request.setPhone("07700900002");
+        request.setSkills("Java");
+        request.setExperience("Created by update");
+
+        service.updateMyProfile(servletContext, STUDENT_ID, request);
+
+        assertEquals(1, readStudents().size());
+        assertEquals(STUDENT_ID, readStudents().get(0).getUserId());
+        assertEquals("Created Profile", readStudents().get(0).getName());
+    }
+
+    @Test
     void uploadAndDeleteAttachment_persistsMetadataAndFile() throws Exception {
         Attachment uploaded = service.uploadAttachment(
                 servletContext,
@@ -119,6 +147,76 @@ class StudentServiceTest extends MoTestSupport {
                 .resolve(uploaded.getId())));
         assertTrue(readStudents().get(0).getAttachments().stream()
                 .noneMatch(a -> uploaded.getId().equals(a.getId())));
+    }
+
+    @Test
+    void uploadAttachment_invalidExtension_throws400() {
+        StudentBusinessException ex = assertThrows(
+                StudentBusinessException.class,
+                () -> service.uploadAttachment(
+                        servletContext,
+                        STUDENT_ID,
+                        new ByteArrayInputStream("bad".getBytes()),
+                        3,
+                        "script.exe",
+                        "Executable")
+        );
+        assertEquals(ErrorCodes.VALIDATION_ERROR, ex.getCode());
+        assertEquals(HttpServletResponse.SC_BAD_REQUEST, ex.getHttpStatus());
+    }
+
+    @Test
+    void deleteAttachment_missingId_throws404() {
+        StudentBusinessException ex = assertThrows(
+                StudentBusinessException.class,
+                () -> service.deleteAttachment(servletContext, STUDENT_ID, "missing")
+        );
+        assertEquals(ErrorCodes.VALIDATION_ERROR, ex.getCode());
+        assertEquals(HttpServletResponse.SC_NOT_FOUND, ex.getHttpStatus());
+    }
+
+    @Test
+    void listJobs_returnsOnlyRecommendableOpenJobsWithMatchContext() throws Exception {
+        JobPosting strong = openJob("job_strong");
+        strong.setTitle("A Strong Match");
+        strong.setRequirements("Java, Python");
+        JobPosting weak = openJob("job_weak");
+        weak.setTitle("B Weak Match");
+        weak.setRequirements("Research");
+        JobPosting draft = openJob("job_draft");
+        draft.setStatus("draft");
+        JobPosting rejected = openJob("job_rejected");
+        rejected.setApprovalStatus("rejected");
+        writeJobs(List.of(weak, rejected, draft, strong));
+
+        var response = service.listJobs(servletContext, STUDENT_ID);
+
+        assertEquals(2, response.getItems().size());
+        assertEquals("job_strong", response.getItems().get(0).getId());
+        assertEquals(1.0, response.getItems().get(0).getMatchScore());
+        assertEquals(List.of("Java", "Python"), response.getItems().get(0).getMatchedSkills());
+        assertEquals("job_weak", response.getItems().get(1).getId());
+    }
+
+    @Test
+    void listMyApplications_mapsStatusesAndSkipsInactiveRows() throws Exception {
+        ApplicationRecord viewed = application("app_viewed_student", "job_open", "viewed", true);
+        viewed.setStudentId(STUDENT_ID);
+        viewed.setAppliedAt("2026-05-11T10:00:00Z");
+        ApplicationRecord hired = application("app_hired_student", "missing_job", "hired", true);
+        hired.setStudentId(STUDENT_ID);
+        hired.setAppliedAt("2026-05-12T10:00:00Z");
+        ApplicationRecord inactive = application("app_inactive_student", "job_open", "pending", false);
+        inactive.setStudentId(STUDENT_ID);
+        writeApplications(List.of(viewed, hired, inactive));
+
+        var response = service.listMyApplications(servletContext, STUDENT_ID);
+
+        assertEquals(2, response.getItems().size());
+        assertEquals("app_hired_student", response.getItems().get(0).getId());
+        assertEquals("Unknown Job", response.getItems().get(0).getJobTitle());
+        assertEquals("hired", response.getItems().get(0).getStatus());
+        assertEquals("pending", response.getItems().get(1).getStatus());
     }
 
     @Test
@@ -156,6 +254,64 @@ class StudentServiceTest extends MoTestSupport {
     }
 
     @Test
+    void apply_missingAttachmentSelection_throws400() {
+        StudentApplicationCreateRequest request = new StudentApplicationCreateRequest();
+        request.setJobId("job_open");
+
+        StudentBusinessException ex = assertThrows(
+                StudentBusinessException.class,
+                () -> service.applyForJob(servletContext, STUDENT_ID, request)
+        );
+        assertEquals(ErrorCodes.VALIDATION_ERROR, ex.getCode());
+        assertEquals(HttpServletResponse.SC_BAD_REQUEST, ex.getHttpStatus());
+    }
+
+    @Test
+    void apply_unknownSelectedAttachment_throws400() {
+        StudentApplicationCreateRequest request = new StudentApplicationCreateRequest();
+        request.setJobId("job_open");
+        request.setSelectedAttachmentIds(List.of("missing"));
+
+        StudentBusinessException ex = assertThrows(
+                StudentBusinessException.class,
+                () -> service.applyForJob(servletContext, STUDENT_ID, request)
+        );
+        assertEquals(ErrorCodes.VALIDATION_ERROR, ex.getCode());
+        assertEquals(HttpServletResponse.SC_BAD_REQUEST, ex.getHttpStatus());
+    }
+
+    @Test
+    void apply_closedJob_throws400() throws Exception {
+        JobPosting closed = openJob("job_closed");
+        closed.setStatus("closed");
+        writeJobs(List.of(openJob("job_open"), closed));
+        StudentApplicationCreateRequest request = new StudentApplicationCreateRequest();
+        request.setJobId("job_closed");
+        request.setSelectedAttachmentIds(List.of("att_resume.pdf"));
+
+        StudentBusinessException ex = assertThrows(
+                StudentBusinessException.class,
+                () -> service.applyForJob(servletContext, STUDENT_ID, request)
+        );
+        assertEquals(ErrorCodes.VALIDATION_ERROR, ex.getCode());
+        assertEquals(HttpServletResponse.SC_BAD_REQUEST, ex.getHttpStatus());
+    }
+
+    @Test
+    void apply_missingStudent_throws401() {
+        StudentApplicationCreateRequest request = new StudentApplicationCreateRequest();
+        request.setJobId("job_open");
+        request.setSelectedAttachmentIds(List.of("att_resume.pdf"));
+
+        StudentBusinessException ex = assertThrows(
+                StudentBusinessException.class,
+                () -> service.applyForJob(servletContext, "missing_student", request)
+        );
+        assertEquals(ErrorCodes.UNAUTHORIZED, ex.getCode());
+        assertEquals(HttpServletResponse.SC_UNAUTHORIZED, ex.getHttpStatus());
+    }
+
+    @Test
     void assignedJobs_returnsOnlyActiveHiredJobsWithScheduleDetails() throws Exception {
         ApplicationRecord hired = application("app_hired_student", "job_hired", "hired", true);
         hired.setStudentId(STUDENT_ID);
@@ -172,6 +328,34 @@ class StudentServiceTest extends MoTestSupport {
         assertEquals("Mon 10:00-12:00", item.getSchedule());
         assertEquals("Room 101", item.getLocation());
         assertEquals("2026-05-24", item.getDeadline());
+    }
+
+    @Test
+    void withdraw_hiredApplication_throws400() throws Exception {
+        ApplicationRecord hired = application("app_hired_student", "job_hired", "hired", true);
+        hired.setStudentId(STUDENT_ID);
+        writeApplications(List.of(hired));
+
+        StudentBusinessException ex = assertThrows(
+                StudentBusinessException.class,
+                () -> service.withdrawApplication(servletContext, STUDENT_ID, "app_hired_student")
+        );
+        assertEquals(ErrorCodes.VALIDATION_ERROR, ex.getCode());
+        assertEquals(HttpServletResponse.SC_BAD_REQUEST, ex.getHttpStatus());
+    }
+
+    @Test
+    void withdraw_otherStudentApplication_throws404() throws Exception {
+        ApplicationRecord pending = application("app_other_student", "job_open", "pending", true);
+        pending.setStudentId("other_student");
+        writeApplications(List.of(pending));
+
+        StudentBusinessException ex = assertThrows(
+                StudentBusinessException.class,
+                () -> service.withdrawApplication(servletContext, STUDENT_ID, "app_other_student")
+        );
+        assertEquals(ErrorCodes.VALIDATION_ERROR, ex.getCode());
+        assertEquals(HttpServletResponse.SC_NOT_FOUND, ex.getHttpStatus());
     }
 
     @Test

@@ -53,7 +53,7 @@ public class AiAdvisorService {
         try {
             StudentProfile profile = loadStudentProfile(context, studentUserId);
             List<JobPosting> jobs = JsonUtility.loadJobs(context);
-            List<JobMatchResult> recommendations = jobMatchingService.getRecommendedJobs(profile, jobs);
+            List<JobMatchResult> recommendations = jobMatchingService.getRecommendedJobs(context, profile, jobs);
             List<String> studentSkills = skillExtractionService.extractSkillsFromStudent(profile);
             String userPayload = buildUserPayload(question, studentSkills, recommendations);
 
