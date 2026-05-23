@@ -16,6 +16,7 @@ import com.ta.model.SystemSettings;
 import com.ta.model.User;
 import com.ta.util.JobHoursUtil;
 import com.ta.util.JsonUtility;
+import com.ta.util.WorkloadLevelUtil;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -49,7 +50,7 @@ public class AdminDashboardService {
             String normalizedStatus = normalizeStatusFilter(statusFilter);
             String normalizedDepartment = normalizeDepartmentFilter(jobs, departmentFilter);
             List<JobPosting> filteredJobs = filterJobs(jobs, normalizedStatus, normalizedDepartment);
-            List<AdminDashboardWorkloadItemResponse> workload = toWorkload(applications, jobs, settings.getWorkloadThresholdHours(), hiringHistory);
+            List<AdminDashboardWorkloadItemResponse> workload = toWorkload(applications, jobs, settings, hiringHistory);
             AdminDashboardResponse data = new AdminDashboardResponse();
             data.setTotalUsers(users.size());
             data.setTotalJobs(jobs.size());
@@ -287,9 +288,9 @@ public class AdminDashboardService {
 
     private List<AdminDashboardWorkloadItemResponse> toWorkload(List<ApplicationRecord> applications,
                                                                 List<JobPosting> jobs,
-                                                                Integer thresholdHours,
+                                                                SystemSettings settings,
                                                                 List<HiringHistoryRecord> hiringHistory) {
-        int threshold = thresholdHours;
+        int threshold = WorkloadLevelUtil.resolveThresholdHours(settings.getWorkloadThresholdHours());
         Map<String, String> hiredAtByApplicationId = latestHiredSubmittedAtByApplicationId(hiringHistory);
         Map<String, Integer> jobHoursById = new LinkedHashMap<>();
         Map<String, JobPosting> jobById = new LinkedHashMap<>();
@@ -318,7 +319,7 @@ public class AdminDashboardService {
                 created.setWeeklyHours(0);
                 created.setThresholdHours(threshold);
                 created.setWarning(false);
-                applyWorkloadLevel(created, threshold);
+                applyWorkloadLevel(created, settings);
                 return created;
             });
 
@@ -331,7 +332,7 @@ public class AdminDashboardService {
             } else if (app.getJobId() != null && !app.getJobId().isBlank()) {
                 item.getAssignedJobs().add(toWorkloadJobMissing(app, hiredAtByApplicationId));
             }
-            applyWorkloadLevel(item, threshold);
+            applyWorkloadLevel(item, settings);
         }
 
         List<AdminDashboardWorkloadItemResponse> items = new ArrayList<>(workloadByStudent.values());
@@ -473,29 +474,16 @@ public class AdminDashboardService {
         return trimToEmpty(app.getAppliedAt());
     }
 
-    private void applyWorkloadLevel(AdminDashboardWorkloadItemResponse item, int threshold) {
-        int hours = item.getWeeklyHours();
-        if (hours >= threshold) {
-            item.setWorkloadLevel("overload");
-            item.setWorkloadLabel("Overload");
-            item.setWarning(true);
-            return;
-        }
-        if (hours >= 15) {
-            item.setWorkloadLevel("warning");
-            item.setWorkloadLabel("Warning");
-            item.setWarning(true);
-            return;
-        }
-        if (hours >= 10) {
-            item.setWorkloadLevel("normal");
-            item.setWorkloadLabel("Normal");
-            item.setWarning(false);
-            return;
-        }
-        item.setWorkloadLevel("low");
-        item.setWorkloadLabel("Low");
-        item.setWarning(false);
+    private void applyWorkloadLevel(AdminDashboardWorkloadItemResponse item, SystemSettings settings) {
+        WorkloadLevelUtil.WorkloadLevel level = WorkloadLevelUtil.classify(
+                item.getWeeklyHours(),
+                settings.getWorkloadThresholdHours(),
+                settings.getWorkloadNormalPercent(),
+                settings.getWorkloadWarningPercent()
+        );
+        item.setWorkloadLevel(level.getKey());
+        item.setWorkloadLabel(level.getLabel());
+        item.setWarning(level.isWarning());
     }
 
     private List<AdminDashboardAlertResponse> buildAlerts(List<JobPosting> jobs,

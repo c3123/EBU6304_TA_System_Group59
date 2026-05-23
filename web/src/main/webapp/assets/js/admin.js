@@ -59,6 +59,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const thresholdForm = byId("adminThresholdForm");
   const thresholdHoursEl = byId("adminThresholdHours");
+  const thresholdNormalPercentEl = byId("adminThresholdNormalPercent");
+  const thresholdWarningPercentEl = byId("adminThresholdWarningPercent");
   const thresholdUpdatedAtEl = byId("adminThresholdUpdatedAt");
   const thresholdSaveBtn = byId("adminThresholdSaveBtn");
   const notifyOverloadBtn = byId("adminNotifyOverloadBtn");
@@ -619,7 +621,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       method: "GET"
     });
     thresholdHoursEl.value = settings.workloadThresholdHours;
+    if (thresholdNormalPercentEl) thresholdNormalPercentEl.value = settings.workloadNormalPercent ?? 50;
+    if (thresholdWarningPercentEl) thresholdWarningPercentEl.value = settings.workloadWarningPercent ?? 75;
     thresholdUpdatedAtEl.value = settings.updatedAt || "";
+  }
+
+  function workloadHoursAtPercent(threshold, percent) {
+    const t = Number(threshold);
+    const p = Number(percent);
+    if (!Number.isFinite(t) || t <= 0 || !Number.isFinite(p)) return 0;
+    return Math.max(1, Math.ceil(t * p / 100));
   }
 
   function renderOverview(data) {
@@ -932,13 +943,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function workloadLegendHtml() {
     const threshold = Number(thresholdHoursEl.value || 20);
-    const warningText = threshold > 15 ? `Warning (15-${threshold - 1}h)` : "Warning (15h+ below overload threshold)";
+    const normalPercent = Number(thresholdNormalPercentEl && thresholdNormalPercentEl.value || 50);
+    const warningPercent = Number(thresholdWarningPercentEl && thresholdWarningPercentEl.value || 75);
+    const normalHours = workloadHoursAtPercent(threshold, normalPercent);
+    const warningHours = workloadHoursAtPercent(threshold, warningPercent);
+    const warningMax = Math.max(warningHours, threshold - 1);
     return `
       <strong>Legend:</strong>
-      <span><i class="legend-dot legend-overload"></i> Overload (&gt;=${escapeHtml(String(threshold))}h)</span>
-      <span><i class="legend-dot legend-warning"></i> ${escapeHtml(warningText)}</span>
-      <span><i class="legend-dot legend-normal"></i> Normal (10-14h)</span>
-      <span><i class="legend-dot legend-low"></i> Low (&lt;10h)</span>
+      <span><i class="legend-dot legend-overload"></i> Overload (&gt;=${escapeHtml(String(threshold))}h, 100%)</span>
+      <span><i class="legend-dot legend-warning"></i> Warning (${escapeHtml(String(warningHours))}-${escapeHtml(String(warningMax))}h, ${escapeHtml(String(warningPercent))}%+)</span>
+      <span><i class="legend-dot legend-normal"></i> Normal (${escapeHtml(String(normalHours))}-${escapeHtml(String(Math.max(normalHours, warningHours - 1)))}h, ${escapeHtml(String(normalPercent))}%+)</span>
+      <span><i class="legend-dot legend-low"></i> Low (&lt;${escapeHtml(String(normalHours))}h, below ${escapeHtml(String(normalPercent))}%)</span>
     `;
   }
 
@@ -1427,8 +1442,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function saveThreshold(event) {
     event.preventDefault();
     const thresholdValue = Number(thresholdHoursEl.value);
+    const normalPercent = Number(thresholdNormalPercentEl && thresholdNormalPercentEl.value);
+    const warningPercent = Number(thresholdWarningPercentEl && thresholdWarningPercentEl.value);
     if (!Number.isInteger(thresholdValue) || thresholdValue <= 0) {
       setNotice("Threshold must be a positive integer.", true);
+      activateTab("workload");
+      return;
+    }
+    if (!Number.isInteger(normalPercent) || normalPercent < 1 || normalPercent > 98) {
+      setNotice("Normal percent must be an integer between 1 and 98.", true);
+      activateTab("workload");
+      return;
+    }
+    if (!Number.isInteger(warningPercent) || warningPercent < 2 || warningPercent > 99) {
+      setNotice("Warning percent must be an integer between 2 and 99.", true);
+      activateTab("workload");
+      return;
+    }
+    if (warningPercent <= normalPercent) {
+      setNotice("Warning percent must be greater than Normal percent.", true);
       activateTab("workload");
       return;
     }
@@ -1438,11 +1470,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       const saved = await requestJson(`${window.location.origin}${getContextPath()}/api/admin/settings/workload-threshold`, {
         method: "POST",
         headers: { "Content-Type": "application/json;charset=UTF-8" },
-        body: JSON.stringify({ workloadThresholdHours: thresholdValue })
+        body: JSON.stringify({
+          workloadThresholdHours: thresholdValue,
+          workloadNormalPercent: normalPercent,
+          workloadWarningPercent: warningPercent
+        })
       });
       thresholdHoursEl.value = saved.workloadThresholdHours;
+      if (thresholdNormalPercentEl) thresholdNormalPercentEl.value = saved.workloadNormalPercent ?? normalPercent;
+      if (thresholdWarningPercentEl) thresholdWarningPercentEl.value = saved.workloadWarningPercent ?? warningPercent;
       thresholdUpdatedAtEl.value = saved.updatedAt || "";
-      setNotice("Workload threshold saved.", false);
+      setNotice("Workload threshold settings saved.", false);
       await loadAdminDashboard();
       activateTab("workload");
     } catch (err) {

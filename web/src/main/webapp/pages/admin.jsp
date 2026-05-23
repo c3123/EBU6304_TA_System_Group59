@@ -182,11 +182,20 @@
       </div>
       <div class="card" style="margin-bottom:16px;">
         <h3 class="admin-subtitle">Workload Threshold</h3>
+        <p class="desc">Overload uses the hour threshold. Normal and Warning levels are calculated as percentages of that threshold (Low is below Normal).</p>
         <form id="adminThresholdForm">
           <div class="admin-form-grid">
             <div class="field">
-              <label for="adminThresholdHours">Threshold Hours</label>
+              <label for="adminThresholdHours">Threshold Hours (Overload)</label>
               <input id="adminThresholdHours" type="number" min="1" required />
+            </div>
+            <div class="field">
+              <label for="adminThresholdNormalPercent">Normal from (% of threshold)</label>
+              <input id="adminThresholdNormalPercent" type="number" min="1" max="98" required />
+            </div>
+            <div class="field">
+              <label for="adminThresholdWarningPercent">Warning from (% of threshold)</label>
+              <input id="adminThresholdWarningPercent" type="number" min="2" max="99" required />
             </div>
             <div class="field">
               <label for="adminThresholdUpdatedAt">Last Updated</label>
