@@ -55,6 +55,7 @@ const state = {
   aiRecommendations: {},
   sortMode: "applied",
   highMatchOnly: false,
+  applicantSearchQuery: "",
   selectedJobId: null,
   expandedDetailIds: new Set(),
   detailCache: {}
@@ -264,13 +265,50 @@ function sortGroupItems(groupItems, items, sortMode) {
   return copy;
 }
 
+function sortModeLabel(mode) {
+  if (mode === "match") return "Best match";
+  if (mode === "workload") return "Workload risk";
+  return "Applied date";
+}
+
+function syncToolbarControls() {
+  const sortEl = byId("sortMode");
+  if (sortEl && sortEl.value !== state.sortMode) sortEl.value = state.sortMode;
+  const highMatchEl = byId("filterHighMatch");
+  if (highMatchEl) highMatchEl.checked = !!state.highMatchOnly;
+  const searchEl = byId("applicantSearchInput");
+  if (searchEl && searchEl.value !== state.applicantSearchQuery) searchEl.value = state.applicantSearchQuery;
+}
+
+function applicantMatchesSearch(item, query) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return true;
+  const haystack = [
+    item.studentName,
+    item.studentNo,
+    item.studentId,
+    item.applicationId,
+    item.programme,
+    item.skills
+  ]
+    .map(v => String(v || "").toLowerCase())
+    .join(" ");
+  return haystack.includes(q);
+}
+
 function filterItemsForDisplay(items) {
-  if (!state.highMatchOnly) return items;
-  return items.filter(it => {
-    const req = normalizeSkillList(it.requiredSkills);
-    if (!req.length) return false;
-    return matchPercent(it) >= 60;
-  });
+  let list = Array.isArray(items) ? items : [];
+  if (state.highMatchOnly) {
+    list = list.filter(it => {
+      const req = normalizeSkillList(it.requiredSkills);
+      if (!req.length) return false;
+      return matchPercent(it) >= 60;
+    });
+  }
+  if (state.applicantSearchQuery.trim()) {
+    list = list.filter(it => applicantMatchesSearch(it, state.applicantSearchQuery));
+  }
+  return list;
 }
 
 function jobStatusCounts(groupItems) {
@@ -810,11 +848,13 @@ function renderApplicantDashboardFeed(items) {
     groups.get(j).push(item);
   }
   const keys = Array.from(groups.keys()).sort();
-  if (!state.selectedJobId || !groups.has(state.selectedJobId)) {
-    state.selectedJobId = keys[0];
+  const firstJobWithApplicants = keys.find(k => (groups.get(k) || []).length);
+  if (!state.selectedJobId || !groups.has(state.selectedJobId) || !(groups.get(state.selectedJobId) || []).length) {
+    state.selectedJobId = firstJobWithApplicants || keys[0];
   }
   const selectedJobId = state.selectedJobId;
   const selectedItems = sortGroupItems(groups.get(selectedJobId) || [], items, state.sortMode);
+  const sortLabel = sortModeLabel(state.sortMode);
   const label = state.jobTitles[selectedJobId] || (selectedJobId ? `Job ${selectedJobId}` : "Unknown job");
   const posHrs = jobWeeklyHours(selectedJobId);
   const closed = jobClosed(selectedJobId);
@@ -822,7 +862,9 @@ function renderApplicantDashboardFeed(items) {
   const shortlistedCount = selectedItems.filter(x => String(x.status || "").toLowerCase() === "shortlisted").length;
   const jEsc = escapeHtml(selectedJobId);
   const jobList = keys.map(jobId => renderJobReviewItem(jobId, groups.get(jobId), items || [], jobId === selectedJobId)).join("");
-  const cards = selectedItems.map(item => renderApplicantCardDashboard(item, closed)).join("");
+  const cards = selectedItems.length
+    ? selectedItems.map(item => renderApplicantCardDashboard(item, closed)).join("")
+    : `<p class="notice">No applicants match the current search or filters for this job. Try another position or clear filters.</p>`;
   feed.innerHTML = `
     <div class="review-workspace">
       <aside class="job-review-list" aria-label="Job position list">
@@ -834,7 +876,7 @@ function renderApplicantDashboardFeed(items) {
           <div class="review-panel-head">
             <div>
               <h3>${escapeHtml(label)}</h3>
-              <p>${selectedItems.length} applicant${selectedItems.length === 1 ? "" : "s"} · This position: <strong>${posHrs || "-"}</strong> hours/week</p>
+              <p>${selectedItems.length} applicant${selectedItems.length === 1 ? "" : "s"} · This position: <strong>${posHrs || "-"}</strong> hours/week · Sorted by <strong>${escapeHtml(sortLabel)}</strong></p>
             </div>
             <div class="review-panel-actions">
               <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#475569;"><input type="checkbox" data-select-all-job="${jEsc}" ${closed ? "disabled" : ""}/> Select all</label>
@@ -851,6 +893,7 @@ function renderApplicantDashboardFeed(items) {
     </div>`;
   syncSelectAllMasters();
   restoreExpandedDetails();
+  syncToolbarControls();
 }
 
 function renderApplicantFeed(items) {
@@ -1177,18 +1220,34 @@ document.addEventListener("DOMContentLoaded", async () => {
   ["filterPending", "filterShortlisted", "filterRejected", "filterHired"].forEach(fid => {
     byId(fid).addEventListener("change", () => {
       clearTimeout(filterDeb);
-      filterDeb = setTimeout(() => queryWithFeedback(), 200);
+      filterDeb = setTimeout(async () => {
+        await queryWithFeedback();
+        setNotice("Applicant list updated by status filter.", false);
+      }, 200);
     });
   });
 
   byId("sortMode").addEventListener("change", e => {
     state.sortMode = e.target.value || "applied";
     renderApplicantFeed(state.items);
+    setNotice(`Applicants sorted by ${sortModeLabel(state.sortMode)}.`, false);
   });
 
   byId("filterHighMatch").addEventListener("change", e => {
     state.highMatchOnly = e.target.checked;
     renderApplicantFeed(state.items);
+    setNotice(state.highMatchOnly ? "Showing high match applicants only (≥60%)." : "Showing all match levels.", false);
+  });
+
+  let searchDeb;
+  byId("applicantSearchInput").addEventListener("input", e => {
+    state.applicantSearchQuery = e.target.value || "";
+    clearTimeout(searchDeb);
+    searchDeb = setTimeout(() => {
+      renderApplicantFeed(state.items);
+      const q = state.applicantSearchQuery.trim();
+      setNotice(q ? `Filtered by search: "${q}"` : "Search cleared.", false);
+    }, 200);
   });
 
   feed.addEventListener("change", async e => {
@@ -1387,6 +1446,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     state.sortMode = "applied";
     byId("filterHighMatch").checked = false;
     state.highMatchOnly = false;
+    byId("applicantSearchInput").value = "";
+    state.applicantSearchQuery = "";
     await queryWithFeedback();
   });
   byId("exportCsvBtn").addEventListener("click", exportCsv);

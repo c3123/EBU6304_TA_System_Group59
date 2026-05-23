@@ -327,6 +327,22 @@
       border-radius: 8px;
       border: 1px solid #cbd5e1;
       background: #fff;
+      cursor: pointer;
+    }
+    .filter-applicant-search {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      color: #334155;
+    }
+    .mo-search-input {
+      font-size: 13px;
+      padding: 4px 10px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      min-width: 200px;
     }
     .mo-match-badge {
       display: inline-block;
@@ -1121,6 +1137,10 @@
         </select>
       </label>
       <label><input type="checkbox" id="filterHighMatch" /> High match only (≥60%)</label>
+      <label class="filter-applicant-search">
+        <span style="font-weight:600;">Search applicant:</span>
+        <input id="applicantSearchInput" type="search" class="mo-search-input" placeholder="Name, student no., skills…" autocomplete="off" />
+      </label>
     </div>
     <div class="row mo-filter-row" style="align-items:flex-end;">
       <div class="field" style="min-width:220px;">
@@ -1181,6 +1201,6 @@
 </div>
 </div>
 <script src="../assets/js/common.js?v=teacher-student-style"></script>
-<script src="../assets/js/mo-applications.js?v=teacher-ai-rec"></script>
+<script src="../assets/js/mo-applications.js?v=mo-applicant-filters"></script>
 </body>
 </html>
