@@ -16,6 +16,7 @@ import com.ta.service.student.JobMatchingService;
 import com.ta.service.student.SkillRelationHint;
 import com.ta.util.AgentDebugLog;
 import com.ta.util.JsonUtility;
+import com.ta.util.StudentWorkloadUtil;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -117,7 +118,9 @@ public class MoApplicationService {
                 MoApplicationListItemResponse item = toListItem(a);
                 StudentProfile profile = profileByUserId.get(a.getStudentId());
                 enrichFromProfile(item, profile);
-                enrichWithSkillMatch(item, profile, jobById.get(a.getJobId()));
+                JobPosting itemJob = jobById.get(a.getJobId());
+                enrichWithSkillMatch(item, profile, itemJob);
+                enrichWithWorkload(item, a, applications, jobById);
                 items.add(item);
             }
 
@@ -157,7 +160,9 @@ public class MoApplicationService {
                 MoApplicationListItemResponse item = toListItem(a);
                 StudentProfile profile = profileByUserId.get(a.getStudentId());
                 enrichFromProfile(item, profile);
-                enrichWithSkillMatch(item, profile, jobById.get(a.getJobId()));
+                JobPosting itemJob = jobById.get(a.getJobId());
+                enrichWithSkillMatch(item, profile, itemJob);
+                enrichWithWorkload(item, a, applications, jobById);
                 items.add(item);
             }
             items.sort(Comparator.comparing(MoApplicationListItemResponse::getAppliedAt, Comparator.nullsLast(String::compareTo)).reversed());
@@ -763,6 +768,26 @@ public class MoApplicationService {
         item.setRequiredSkills(new ArrayList<>(match.getRequiredSkills()));
         item.setDetectedStudentSkills(new ArrayList<>(match.getStudentSkills()));
         item.setRelatedMatches(toRelatedLabels(match.getRelatedMatches()));
+    }
+
+    private void enrichWithWorkload(MoApplicationListItemResponse item,
+                                    ApplicationRecord application,
+                                    List<ApplicationRecord> applications,
+                                    Map<String, JobPosting> jobById) {
+        if (item == null || application == null) {
+            return;
+        }
+        int currentElsewhere = StudentWorkloadUtil.currentHiredHoursElsewhere(
+                application.getStudentId(),
+                application.getId(),
+                applications,
+                jobById
+        );
+        item.setCurrentHiredHours(currentElsewhere);
+        item.setProjectedIfHiredHours(StudentWorkloadUtil.projectedIfHired(
+                currentElsewhere,
+                jobById.get(application.getJobId())
+        ));
     }
 
     private static List<String> toRelatedLabels(List<SkillRelationHint> hints) {

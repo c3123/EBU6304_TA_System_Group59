@@ -30,6 +30,10 @@ public class MoApplicationListItemResponse {
     private List<String> detectedStudentSkills = new ArrayList<>();
     /** Partial credit links e.g. "MATLAB → Statistics (80%)" */
     private List<String> relatedMatches = new ArrayList<>();
+    /** Hired hours on other jobs for this student (excludes this application) */
+    private int currentHiredHours;
+    /** currentHiredHours + this job weekly hours if hired here */
+    private int projectedIfHiredHours;
 
     public String getApplicationId() {
         return applicationId;
@@ -181,5 +185,21 @@ public class MoApplicationListItemResponse {
 
     public void setRelatedMatches(List<String> relatedMatches) {
         this.relatedMatches = relatedMatches != null ? relatedMatches : new ArrayList<>();
+    }
+
+    public int getCurrentHiredHours() {
+        return currentHiredHours;
+    }
+
+    public void setCurrentHiredHours(int currentHiredHours) {
+        this.currentHiredHours = currentHiredHours;
+    }
+
+    public int getProjectedIfHiredHours() {
+        return projectedIfHiredHours;
+    }
+
+    public void setProjectedIfHiredHours(int projectedIfHiredHours) {
+        this.projectedIfHiredHours = projectedIfHiredHours;
     }
 }

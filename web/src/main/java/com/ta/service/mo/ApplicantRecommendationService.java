@@ -10,21 +10,22 @@ import com.ta.model.ApplicationRecord;
 import com.ta.model.HiringHistoryRecord;
 import com.ta.model.JobPosting;
 import com.ta.model.StudentProfile;
+import com.ta.service.student.JobMatchResult;
+import com.ta.service.student.JobMatchingService;
 import com.ta.service.student.SkillExtractionService;
 import com.ta.service.student.ai.AiAdvisorClient;
 import com.ta.service.student.ai.AiAdvisorClient.AiAdvisorResult;
 import com.ta.util.JobHoursUtil;
 import com.ta.util.JsonUtility;
+import com.ta.util.StudentWorkloadUtil;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -38,17 +39,24 @@ public class ApplicantRecommendationService {
                     + "Do not override the recommendation level.";
 
     private final SkillExtractionService skillExtractionService;
+    private final JobMatchingService jobMatchingService;
     private final AiAdvisorClient aiAdvisorClient;
     private final Gson gson = new Gson();
 
     public ApplicantRecommendationService() {
-        this(new SkillExtractionService(), new AiAdvisorClient());
+        this(new SkillExtractionService(), new JobMatchingService(), new AiAdvisorClient());
     }
 
     public ApplicantRecommendationService(SkillExtractionService skillExtractionService,
+                                          JobMatchingService jobMatchingService,
                                           AiAdvisorClient aiAdvisorClient) {
         this.skillExtractionService = skillExtractionService != null ? skillExtractionService : new SkillExtractionService();
+        this.jobMatchingService = jobMatchingService != null ? jobMatchingService : new JobMatchingService();
         this.aiAdvisorClient = aiAdvisorClient != null ? aiAdvisorClient : new AiAdvisorClient();
+    }
+
+    ApplicantRecommendationService(SkillExtractionService skillExtractionService, AiAdvisorClient aiAdvisorClient) {
+        this(skillExtractionService, new JobMatchingService(), aiAdvisorClient);
     }
 
     public MoApplicantAiRecommendationResponse recommend(ServletContext context,
@@ -144,32 +152,31 @@ public class ApplicantRecommendationService {
                                                                         List<JobPosting> jobs,
                                                                         List<ApplicationRecord> applications,
                                                                         List<HiringHistoryRecord> history) {
-        List<String> requiredSkills = skillExtractionService.extractSkillsFromJob(job);
-        List<String> applicantSkills = skillExtractionService.extractSkillsFromStudent(profile);
-        Set<String> applicantSkillSet = new HashSet<>(applicantSkills);
+        Map<String, JobPosting> jobById = jobs.stream()
+                .filter(j -> j.getId() != null)
+                .collect(Collectors.toMap(JobPosting::getId, Function.identity(), (a, b) -> a));
 
-        List<String> matched = new ArrayList<>();
-        List<String> missing = new ArrayList<>();
-        for (String required : requiredSkills) {
-            if (applicantSkillSet.contains(required)) {
-                matched.add(required);
-            } else {
-                missing.add(required);
-            }
-        }
+        JobMatchResult match = profile == null || job == null
+                ? null
+                : jobMatchingService.match(profile, job);
+        List<String> requiredSkills = match != null
+                ? new ArrayList<>(match.getRequiredSkills())
+                : skillExtractionService.extractSkillsFromJob(job);
+        List<String> matched = match != null ? new ArrayList<>(match.getMatchedSkills()) : new ArrayList<>();
+        List<String> missing = match != null ? new ArrayList<>(match.getMissingSkills()) : new ArrayList<>();
+        double skillMatchScore = match != null
+                ? roundToTwoDecimals(match.getMatchScore())
+                : 0.0;
 
-        double skillMatchScore = requiredSkills.isEmpty()
-                ? 0.0
-                : roundToTwoDecimals((double) matched.size() / requiredSkills.size());
-        int currentWorkload = calculateCurrentWorkload(
+        int currentWorkload = StudentWorkloadUtil.currentHiredHoursElsewhere(
                 application.getStudentId(),
                 application.getId(),
-                jobs,
                 applications,
+                jobById,
                 history
         );
         int jobHours = JobHoursUtil.resolveWeeklyHours(job);
-        int projected = currentWorkload + jobHours;
+        int projected = StudentWorkloadUtil.projectedIfHired(currentWorkload, job);
         String workloadStatus = workloadStatus(projected);
         String recommendationLevel = recommendationLevel(skillMatchScore, workloadStatus);
 
@@ -187,44 +194,6 @@ public class ApplicantRecommendationService {
         response.setAiExplanation(fallbackExplanation(response));
         response.setFallback(true);
         return response;
-    }
-
-    private int calculateCurrentWorkload(String studentId,
-                                         String currentApplicationId,
-                                         List<JobPosting> jobs,
-                                         List<ApplicationRecord> applications,
-                                         List<HiringHistoryRecord> history) {
-        if (isBlank(studentId)) {
-            return 0;
-        }
-        Map<String, JobPosting> jobById = jobs.stream()
-                .filter(j -> j.getId() != null)
-                .collect(Collectors.toMap(JobPosting::getId, Function.identity(), (a, b) -> a));
-        Set<String> historyHiredIds = new HashSet<>();
-        if (history != null) {
-            for (HiringHistoryRecord record : history) {
-                if (record != null && record.getHiredApplicationIds() != null) {
-                    historyHiredIds.addAll(record.getHiredApplicationIds());
-                }
-            }
-        }
-
-        int total = 0;
-        Set<String> countedApplicationIds = new HashSet<>();
-        for (ApplicationRecord app : applications) {
-            if (app == null || !studentId.equals(app.getStudentId())) {
-                continue;
-            }
-            if (!isBlank(currentApplicationId) && currentApplicationId.equals(app.getId())) {
-                continue;
-            }
-            boolean hired = "hired".equalsIgnoreCase(app.getStatus()) || historyHiredIds.contains(app.getId());
-            if (!hired || !countedApplicationIds.add(app.getId())) {
-                continue;
-            }
-            total += JobHoursUtil.resolveWeeklyHours(jobById.get(app.getJobId()));
-        }
-        return total;
     }
 
     private String buildAiPayload(JobPosting job, StudentProfile profile, MoApplicantAiRecommendationResponse response) {

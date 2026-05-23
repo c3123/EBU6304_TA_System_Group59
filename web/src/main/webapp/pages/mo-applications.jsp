@@ -955,23 +955,6 @@
       gap: 6px;
       margin-top: 8px;
     }
-    .applicant-detail-drawer {
-      margin-top: 10px;
-      border-radius: 8px;
-      background: #fbfdff;
-      border: 1px solid #edf2f7;
-      padding: 0;
-    }
-    .applicant-detail-drawer summary {
-      cursor: pointer;
-      padding: 10px 12px;
-      font-size: 13px;
-      font-weight: 800;
-      color: #2563eb;
-    }
-    .applicant-detail-body {
-      padding: 0 12px 12px;
-    }
     .mo-app-expand {
       margin-top: 10px;
     }

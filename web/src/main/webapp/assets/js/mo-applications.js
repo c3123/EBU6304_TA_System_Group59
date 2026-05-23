@@ -55,7 +55,9 @@ const state = {
   aiRecommendations: {},
   sortMode: "applied",
   highMatchOnly: false,
-  selectedJobId: null
+  selectedJobId: null,
+  expandedDetailIds: new Set(),
+  detailCache: {}
 };
 
 function normalizeSkillList(value) {
@@ -243,6 +245,8 @@ function renderSkillFitCompact(item) {
 }
 
 function ifHiredTotalForItem(item, items) {
+  const projected = Number(item && item.projectedIfHiredHours);
+  if (Number.isFinite(projected) && projected >= 0) return projected;
   const positionHrs = jobWeeklyHours(item.jobId);
   const currentOther = currentHiredHoursElsewhere(items, item.studentId, item.applicationId);
   return currentOther + positionHrs;
@@ -409,6 +413,11 @@ function jobWeeklyHours(jobId) {
 }
 
 function currentHiredHoursElsewhere(items, studentId, excludeApplicationId) {
+  const item = (items || []).find(
+    it => it.studentId === studentId && it.applicationId === excludeApplicationId
+  );
+  const fromApi = Number(item && item.currentHiredHours);
+  if (Number.isFinite(fromApi) && fromApi >= 0) return fromApi;
   let sum = 0;
   for (const it of items) {
     if (it.studentId !== studentId || it.applicationId === excludeApplicationId) continue;
@@ -475,6 +484,7 @@ async function loadList() {
   const data = await getJson(url);
   state.items = data && Array.isArray(data.items) ? data.items : [];
   pruneSelectionToItems();
+  pruneExpandedDetails();
   renderSummaryCards(state.items);
   renderApplicantFeed(state.items);
   updateBatchBar();
@@ -719,6 +729,9 @@ function renderApplicantCardDashboard(item, closed) {
   const chk = closed
     ? ""
     : `<label style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><input type="checkbox" data-app-select="${id}" ${state.selectedIds.has(rawId) ? "checked" : ""} /></label>`;
+  const isExpanded = state.expandedDetailIds.has(String(rawId));
+  const detailBtnLabel = isExpanded ? "Hide details" : "View details";
+  const expandClass = isExpanded ? "mo-app-expand mo-open" : "mo-app-expand";
   return `
     <article class="mo-app-card-proto ${borderClass}" data-application-id="${id}">
       <div class="applicant-card-top">
@@ -731,33 +744,25 @@ function renderApplicantCardDashboard(item, closed) {
         <span>Applied: ${escapeHtml(safeText(item.appliedAt))}</span>
         ${renderWorkloadBadge(tier, ifHiredTotal)}
       </div>
+      ${workloadBlock}
       ${renderSkillFitCompact(item)}
       ${renderAiRecommendationBlock(item)}
-      ${actionsBlock}
-      <details class="applicant-detail-drawer">
-        <summary>Details, workload and feedback</summary>
-        <div class="applicant-detail-body">
-          ${renderSkillFitBlock(item)}
-          ${workloadBlock}
-          ${renderNotesAndFeedback(item, closed)}
-          <div class="mo-app-grid">
-            <div><span class="mo-app-lbl">Student No</span><div>${escapeHtml(safeText(item.studentNo))}</div></div>
-            <div><span class="mo-app-lbl">Programme</span><div>${escapeHtml(safeText(item.programme))}</div></div>
-          </div>
-          <div style="margin-bottom:12px;"><span class="mo-app-lbl">Skills</span><div>${escapeHtml(safeText(item.skills))}</div></div>
-          <div style="margin-bottom:12px;"><span class="mo-app-lbl">Experience / Statement</span><div style="font-size:14px;color:#334155;">${escapeHtml(safeText(item.experience))}</div></div>
-        </div>
-      </details>
-      <div class="mo-app-expand">
+      ${actionsBlock.replace(/View details/g, detailBtnLabel)}
+      <div class="${expandClass}">
         <p class="mo-app-meta" style="margin-bottom:10px">Attachments and full record (opening details marks <strong>pending</strong> as <strong>viewed</strong> on the server).</p>
+        ${renderNotesAndFeedback(item, closed)}
+        <div class="mo-app-grid">
+          <div><span class="mo-app-lbl">Student No</span><div>${escapeHtml(safeText(item.studentNo))}</div></div>
+          <div><span class="mo-app-lbl">Programme</span><div>${escapeHtml(safeText(item.programme))}</div></div>
+        </div>
+        <div style="margin-bottom:12px;"><span class="mo-app-lbl">Skills</span><div>${escapeHtml(safeText(item.skills))}</div></div>
+        <div style="margin-bottom:12px;"><span class="mo-app-lbl">Experience / Statement</span><div style="font-size:14px;color:#334155;">${escapeHtml(safeText(item.experience))}</div></div>
         <div class="mo-app-expand-grid">
           <div><span class="mo-app-lbl">Application ID</span><div data-field="applicationId"></div></div>
           <div><span class="mo-app-lbl">Job ID</span><div data-field="jobId"></div></div>
           <div><span class="mo-app-lbl">Course grade</span><div data-field="courseGrade"></div></div>
           <div><span class="mo-app-lbl">Applied at</span><div data-field="appliedAt"></div></div>
           <div><span class="mo-app-lbl">Status</span><div data-field="status"></div></div>
-          <div><span class="mo-app-lbl">Evaluation notes</span><div data-field="evaluationNotes"></div></div>
-          <div><span class="mo-app-lbl">Decision feedback</span><div data-field="decisionFeedback"></div></div>
           <div><span class="mo-app-lbl">Updated at</span><div data-field="updatedAt"></div></div>
           <div style="grid-column:1/-1;"><span class="mo-app-lbl">Attachments</span><div data-field="attachments"></div></div>
         </div>
@@ -845,6 +850,7 @@ function renderApplicantDashboardFeed(items) {
       </section>
     </div>`;
   syncSelectAllMasters();
+  restoreExpandedDetails();
 }
 
 function renderApplicantFeed(items) {
@@ -914,6 +920,32 @@ function encodeAttachmentUrl(url) {
   return parts.map((part, index) => index === 0 ? part : encodeURIComponent(part)).join("/");
 }
 
+function pruneExpandedDetails() {
+  const ids = new Set(state.items.map(i => String(i.applicationId)));
+  for (const id of state.expandedDetailIds) {
+    if (!ids.has(id)) {
+      state.expandedDetailIds.delete(id);
+      delete state.detailCache[id];
+    }
+  }
+}
+
+function restoreExpandedDetails() {
+  const feed = byId("applicationsFeed");
+  if (!feed) return;
+  for (const appId of state.expandedDetailIds) {
+    const card = feed.querySelector(`[data-application-id="${CSS.escape(appId)}"]`);
+    if (!card) continue;
+    const expand = card.querySelector(".mo-app-expand");
+    const btn = card.querySelector(".mo-app-detail-btn");
+    if (!expand) continue;
+    expand.classList.add("mo-open");
+    if (btn) btn.textContent = "Hide details";
+    const cached = state.detailCache[appId];
+    if (cached) fillDetailFields(expand, cached);
+  }
+}
+
 function fillDetailFields(expandEl, detail) {
   expandEl.querySelectorAll("[data-field]").forEach(el => {
     const k = el.getAttribute("data-field");
@@ -943,9 +975,14 @@ async function openCardDetail(card, btn) {
   if (!rawId || !expand || !btn) return;
   btn.disabled = true;
   try {
-    const detail = await getJson(`${apiBase()}/applications/detail/${encodeURIComponent(rawId)}`);
+    let detail = state.detailCache[rawId];
+    if (!detail) {
+      detail = await getJson(`${apiBase()}/applications/detail/${encodeURIComponent(rawId)}`);
+      state.detailCache[rawId] = detail;
+    }
     fillDetailFields(expand, detail);
     expand.classList.add("mo-open");
+    state.expandedDetailIds.add(String(rawId));
     const it = state.items.find(i => i.applicationId === rawId);
     if (it) {
       it.status = detail.status;
@@ -1306,8 +1343,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!btn) return;
     const card = btn.closest(".mo-app-card-proto");
     const expand = card.querySelector(".mo-app-expand");
+    const rawId = card.getAttribute("data-application-id");
     if (expand.classList.contains("mo-open")) {
       expand.classList.remove("mo-open");
+      state.expandedDetailIds.delete(String(rawId));
       btn.textContent = "View details";
       return;
     }
