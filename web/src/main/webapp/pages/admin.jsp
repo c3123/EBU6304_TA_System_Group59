@@ -437,20 +437,8 @@
         </div>
         <button type="button" id="adminOutcomeBackBtn" class="btn btn-outline admin-outcome-back-btn">Back to Overview</button>
       </div>
-      <div class="admin-outcome-toolbar" role="group" aria-label="Recruitment outcome filters">
-        <div class="admin-outcome-toolbar-dates">
-          <div class="field">
-            <label for="adminOutcomeJobSince">Job reference from</label>
-            <input id="adminOutcomeJobSince" type="text" class="admin-date-input" placeholder="yyyy/mm/dd" inputmode="numeric" lang="en" autocomplete="off" />
-          </div>
-          <div class="field">
-            <label for="adminOutcomeJobUntil">Job reference to</label>
-            <input id="adminOutcomeJobUntil" type="text" class="admin-date-input" placeholder="yyyy/mm/dd" inputmode="numeric" lang="en" autocomplete="off" />
-          </div>
-        </div>
+      <div class="admin-outcome-toolbar" role="group" aria-label="Recruitment outcome actions">
         <div class="admin-outcome-toolbar-actions">
-          <button type="button" id="adminOutcomeApplyRangeBtn" class="btn btn-primary">Apply range</button>
-          <button type="button" id="adminOutcomeClearRangeBtn" class="btn btn-outline">All jobs</button>
           <button type="button" id="adminOutcomeExportCsvBtn" class="btn btn-outline">Export CSV</button>
         </div>
       </div>
