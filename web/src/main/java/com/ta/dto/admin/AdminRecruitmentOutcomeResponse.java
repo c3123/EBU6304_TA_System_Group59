@@ -16,7 +16,7 @@ public class AdminRecruitmentOutcomeResponse {
     private int recruitingJobs;
     /** Active application records across all jobs. */
     private int totalApplications;
-    /** Active applications with status hired. */
+    /** Filled position slots (totalPositionSlots minus totalVacancies). */
     private int totalHired;
     /** Sum over non-withdrawn jobs of max(0, positions - hiredCount). */
     private int totalVacancies;
