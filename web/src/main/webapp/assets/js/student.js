@@ -85,6 +85,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const detailDeadlineEl = byId("detailDeadline");
   const detailStatusEl = byId("detailStatus");
   const detailRequirementsEl = byId("detailRequirements");
+  const detailMatchBreakdownEl = byId("detailMatchBreakdown");
   const detailProfileSnapshotEl = byId("detailProfileSnapshot");
   const detailAttachmentsListEl = byId("detailAttachmentsList");
   const detailAttachmentHintEl = byId("detailAttachmentHint");
@@ -135,6 +136,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   function formatSkillList(value, emptyText) {
     const skills = normalizeSkillList(value);
     return skills.length ? skills.map(escapeHtml).join(", ") : emptyText;
+  }
+
+  function formatPartialMatches(value) {
+    const matches = normalizeSkillList(value);
+    if (!matches.length) return "";
+    return matches.map(escapeHtml).join(", ");
   }
 
   function matchPercent(job) {
@@ -306,6 +313,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const applied = hasApplied(job.id);
       const percent = matchPercent(job);
       const tone = matchTone(percent);
+      const partialMatches = formatPartialMatches(job.relatedMatches);
       const detailBtn = `<button class="btn btn-outline open-detail-btn" data-job-id="${escapeHtml(job.id)}">View Details</button>`;
       const applyBtn = applied
         ? '<button class="btn btn-outline" disabled>Already Applied</button>'
@@ -328,6 +336,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               <strong>${escapeHtml(percent)}%</strong>
             </div>
             <p><span>Matched Skills:</span> ${formatSkillList(job.matchedSkills, "No matching skills detected.")}</p>
+            ${partialMatches ? `<p class="job-partial-match"><span>Partial Matches:</span> ${partialMatches}</p>` : ""}
             <p><span>Missing Skills:</span> ${formatSkillList(job.missingSkills, "No major missing skills.")}</p>
           </div>
           <div class="job-actions">${detailBtn}${applyBtn}</div>
@@ -642,6 +651,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (detailStatusEl) detailStatusEl.textContent = `${job.status || "-"} | Schedule: ${job.schedule || "-"} | Location: ${job.location || "-"}`;
     if (detailRequirementsEl) {
       detailRequirementsEl.textContent = job.requirements || "No detailed requirements provided yet.";
+    }
+    if (detailMatchBreakdownEl) {
+      const percent = matchPercent(job);
+      const partialMatches = formatPartialMatches(job.relatedMatches);
+      detailMatchBreakdownEl.innerHTML = `
+        <div><strong>${escapeHtml(percent)}%</strong> overall match</div>
+        <div>Required skills: ${formatSkillList(job.requiredSkills, "No skill requirements detected.")}</div>
+        <div>Matched skills: ${formatSkillList(job.matchedSkills, "No exact matches detected.")}</div>
+        ${partialMatches ? `<div>Partial matches: ${partialMatches}</div>` : ""}
+        <div>Missing skills: ${formatSkillList(job.missingSkills, "No major missing skills.")}</div>
+      `;
     }
     if (detailProfileSnapshotEl) {
       const snapshot = [
