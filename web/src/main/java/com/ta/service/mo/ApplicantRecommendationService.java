@@ -7,6 +7,7 @@ import com.ta.constant.ErrorCodes;
 import com.ta.dto.mo.MoApplicantAiRecommendationRequest;
 import com.ta.dto.mo.MoApplicantAiRecommendationResponse;
 import com.ta.model.ApplicationRecord;
+import com.ta.model.HiringHistoryRecord;
 import com.ta.model.JobPosting;
 import com.ta.model.StudentProfile;
 import com.ta.service.student.JobMatchResult;
@@ -108,7 +109,8 @@ public class ApplicantRecommendationService {
                     application,
                     profile,
                     jobs,
-                    applications
+                    applications,
+                    JsonUtility.loadHiringHistory(context)
             );
 
             AiAdvisorResult ai = aiAdvisorClient.ask(context, SYSTEM_PROMPT, buildAiPayload(job, profile, response));
@@ -148,7 +150,8 @@ public class ApplicantRecommendationService {
                                                                         ApplicationRecord application,
                                                                         StudentProfile profile,
                                                                         List<JobPosting> jobs,
-                                                                        List<ApplicationRecord> applications) {
+                                                                        List<ApplicationRecord> applications,
+                                                                        List<HiringHistoryRecord> history) {
         Map<String, JobPosting> jobById = jobs.stream()
                 .filter(j -> j.getId() != null)
                 .collect(Collectors.toMap(JobPosting::getId, Function.identity(), (a, b) -> a));
@@ -169,7 +172,8 @@ public class ApplicantRecommendationService {
                 application.getStudentId(),
                 application.getId(),
                 applications,
-                jobById
+                jobById,
+                history
         );
         int jobHours = JobHoursUtil.resolveWeeklyHours(job);
         int projected = StudentWorkloadUtil.projectedIfHired(currentWorkload, job);

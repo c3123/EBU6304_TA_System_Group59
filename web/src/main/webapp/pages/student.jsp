@@ -1,4 +1,4 @@
-﻿<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -867,10 +867,9 @@
 
     .student-topbar {
       min-height: 82px;
-      display: grid;
-      grid-template-columns: minmax(260px, 430px) minmax(0, 1fr) auto;
+      display: flex;
       align-items: center;
-      gap: 20px;
+      justify-content: flex-end;
       padding: 18px 44px;
       background: rgba(255, 255, 255, 0.88);
       border-bottom: 1px solid #e7edf7;
@@ -878,34 +877,7 @@
       -webkit-backdrop-filter: blur(12px);
     }
 
-    .student-top-search {
-      position: relative;
-    }
-
-    .student-top-search input {
-      height: 44px;
-      border: 1px solid #dfe7f3;
-      border-radius: 8px;
-      padding: 0 44px 0 18px;
-      font-size: 14px;
-      color: #334155;
-      background: #fff;
-      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
-    }
-
-    .student-top-search svg {
-      position: absolute;
-      right: 15px;
-      top: 50%;
-      width: 18px;
-      height: 18px;
-      transform: translateY(-50%);
-      color: #64748b;
-      pointer-events: none;
-    }
-
     .student-top-actions {
-      justify-self: end;
       display: flex;
       align-items: center;
       gap: 16px;
@@ -1325,7 +1297,6 @@
       }
 
       .student-topbar {
-        grid-template-columns: 1fr;
         padding: 16px 18px;
       }
 
@@ -1436,14 +1407,6 @@
 
   <div class="student-main">
     <header class="student-topbar">
-      <div class="student-top-search">
-        <input id="globalStudentSearch" type="text" placeholder="Search jobs, skills, or opportunities..." />
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <circle cx="11" cy="11" r="8"></circle>
-          <path d="m21 21-4.35-4.35"></path>
-        </svg>
-      </div>
-      <div></div>
       <div class="student-top-actions">
         <button id="studentNotificationBtn" class="student-notification-icon" type="button" aria-label="Notifications">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -1474,7 +1437,7 @@
     <div class="module-frame">
       <div class="card student-filter-card">
         <div class="student-search">
-          <input id="jobSearchInput" type="text" placeholder="Search by module code or title" />
+          <input id="jobSearchInput" type="text" placeholder="Search by module, title, teacher, or requirements" />
           <select id="jobStatusFilter">
             <option value="all">All Status</option>
             <option value="open">Open</option>
@@ -1484,6 +1447,9 @@
             <option value="all">All Hours</option>
             <option value="<=10">&lt;=10h</option>
             <option value=">10">&gt;10h</option>
+          </select>
+          <select id="jobScheduleFilter">
+            <option value="all">All Schedules</option>
           </select>
         </div>
       </div>
@@ -1831,7 +1797,7 @@
   </div>
 </div>
   <script src="<%= request.getContextPath() %>/assets/js/common.js?v=student4"></script>
-  <script src="<%= request.getContextPath() %>/assets/js/student.js?v=student5"></script>
+  <script src="<%= request.getContextPath() %>/assets/js/student.js?v=student6"></script>
 </body>
 </html>
 
