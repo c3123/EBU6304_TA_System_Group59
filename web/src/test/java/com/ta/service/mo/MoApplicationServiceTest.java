@@ -161,6 +161,24 @@ class MoApplicationServiceTest extends MoTestSupport {
     }
 
     @Test
+    void updateApplicationStatus_hiredReachesPositions_closesJob() throws Exception {
+        List<JobPosting> jobs = defaultJobs();
+        jobs.get(0).setPositions(2);
+        writeJobs(jobs);
+
+        service.updateApplicationStatus(servletContext, MO_ID, "app_shortlisted", "hired");
+
+        JobPosting saved = JsonUtility.loadJobs(servletContext).stream()
+                .filter(j -> JOB_ID.equals(j.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertTrue(Boolean.TRUE.equals(saved.getRecruitmentClosed()));
+        assertEquals("closed", saved.getStatus());
+        assertFalse(Boolean.TRUE.equals(saved.getPublished()));
+        assertNotNull(saved.getClosedAt());
+    }
+
+    @Test
     void updateApplicationStatus_shortlistedToHired_appendsHistory() throws Exception {
         service.updateApplicationStatus(servletContext, MO_ID, "app_shortlisted", "hired");
         List<HiringHistoryRecord> history = JsonUtility.loadHiringHistory(servletContext);
