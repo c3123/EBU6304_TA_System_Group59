@@ -15,6 +15,7 @@ import com.ta.service.student.JobMatchResult;
 import com.ta.service.student.JobMatchingService;
 import com.ta.service.student.SkillRelationHint;
 import com.ta.util.AgentDebugLog;
+import com.ta.util.JobRecruitmentUtil;
 import com.ta.util.JsonUtility;
 import com.ta.util.StudentWorkloadUtil;
 import jakarta.servlet.ServletContext;
@@ -295,6 +296,10 @@ public class MoApplicationService {
                 weeklyHoursBefore = workloadOverloadAnnouncementService.calculateWeeklyHours(context, record.getStudentId());
             }
 
+            if ("hired".equals(normalized) && !"hired".equalsIgnoreCase(normalizeStatus(record.getStatus()))) {
+                JobRecruitmentUtil.assertCanHire(context, job, 1);
+            }
+
             applyMoApplicationStatusTransition(record, job, normalized);
             // #region agent log
             try {
@@ -313,6 +318,9 @@ public class MoApplicationService {
                 appendManualHireHistory(context, moId, record);
             }
             JsonUtility.saveApplications(context, applications);
+            if ("hired".equals(normalized)) {
+                JobRecruitmentUtil.closeRecruitmentIfFull(context, jobs, job);
+            }
             if ("hired".equals(normalized)) {
                 workloadOverloadAnnouncementService.notifyIfNewlyOverloaded(context, record.getStudentId(), weeklyHoursBefore);
             }
@@ -417,6 +425,26 @@ public class MoApplicationService {
                         );
                     }
                 }
+
+                Map<String, Integer> newHiresByJobId = new LinkedHashMap<>();
+                for (ApplicationRecord record : targets) {
+                    if ("hired".equalsIgnoreCase(normalizeStatus(record.getStatus()))) {
+                        continue;
+                    }
+                    String jid = record.getJobId();
+                    if (jid != null) {
+                        newHiresByJobId.merge(jid, 1, Integer::sum);
+                    }
+                }
+                for (Map.Entry<String, Integer> entry : newHiresByJobId.entrySet()) {
+                    JobPosting job = jobById.get(entry.getKey());
+                    if (job != null) {
+                        JobRecruitmentUtil.assertCanHire(
+                                job,
+                                JobRecruitmentUtil.countHired(context, job.getId()),
+                                entry.getValue());
+                    }
+                }
             }
 
             for (int i = 0; i < targets.size(); i++) {
@@ -443,6 +471,18 @@ public class MoApplicationService {
 
             JsonUtility.saveApplications(context, applications);
             if ("hired".equals(normalized)) {
+                Set<String> affectedJobIds = new LinkedHashSet<>();
+                for (ApplicationRecord record : targets) {
+                    if (record.getJobId() != null) {
+                        affectedJobIds.add(record.getJobId());
+                    }
+                }
+                for (String jid : affectedJobIds) {
+                    JobPosting job = jobById.get(jid);
+                    if (job != null) {
+                        JobRecruitmentUtil.closeRecruitmentIfFull(context, jobs, job);
+                    }
+                }
                 for (Map.Entry<String, Integer> entry : weeklyHoursBeforeByStudent.entrySet()) {
                     workloadOverloadAnnouncementService.notifyIfNewlyOverloaded(
                             context, entry.getKey(), entry.getValue());
@@ -634,7 +674,7 @@ public class MoApplicationService {
                     ErrorCodes.VALIDATION_ERROR,
                     "Undo reject (viewed) or set to pending before changing status.",
                     HttpServletResponse.SC_BAD_REQUEST
-            );
+                );
         }
 
         record.setStatus(normalized);

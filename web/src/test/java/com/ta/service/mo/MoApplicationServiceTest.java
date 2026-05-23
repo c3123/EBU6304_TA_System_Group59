@@ -288,4 +288,78 @@ class MoApplicationServiceTest extends MoTestSupport {
     private static ApplicationRecord findApp(List<ApplicationRecord> apps, String id) {
         return apps.stream().filter(a -> id.equals(a.getId())).findFirst().orElseThrow();
     }
+
+    @Test
+    void updateApplicationStatus_secondHire_throwsWhenAtPositionLimit() throws Exception {
+        List<JobPosting> jobs = defaultJobs();
+        jobs.get(0).setPositions(1);
+        writeJobs(jobs);
+
+        assertMoBusinessException(
+                () -> service.updateApplicationStatus(servletContext, MO_ID, "app_shortlisted", "hired"),
+                ErrorCodes.JOB_RECRUITMENT_CLOSED,
+                HttpServletResponse.SC_BAD_REQUEST
+        );
+    }
+
+    @Test
+    void updateApplicationStatus_firstHire_closesJobWhenFull() throws Exception {
+        List<JobPosting> jobs = defaultJobs();
+        jobs.get(0).setPositions(1);
+        writeJobs(jobs);
+
+        List<ApplicationRecord> apps = new ArrayList<>(defaultApplications());
+        apps.removeIf(a -> "app_hired".equals(a.getId()));
+        writeApplications(apps);
+
+        service.updateApplicationStatus(servletContext, MO_ID, "app_shortlisted", "hired");
+
+        JobPosting job = readJobs().stream()
+                .filter(j -> JOB_ID.equals(j.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertTrue(Boolean.TRUE.equals(job.getRecruitmentClosed()));
+        assertEquals("closed", job.getStatus());
+        assertFalse(Boolean.TRUE.equals(job.getPublished()));
+    }
+
+    @Test
+    void batchUpdateApplicationStatus_twoHiresExceedsLimit_rollsBackAll() throws Exception {
+        List<JobPosting> jobs = defaultJobs();
+        jobs.get(0).setPositions(1);
+        writeJobs(jobs);
+
+        List<ApplicationRecord> apps = new ArrayList<>(defaultApplications());
+        apps.removeIf(a -> "app_hired".equals(a.getId()));
+        writeApplications(apps);
+        String before = GSON.toJson(readApplications());
+
+        assertMoBusinessException(
+                () -> service.batchUpdateApplicationStatus(
+                        servletContext, MO_ID, List.of("app_pending", "app_shortlisted"), "hired"),
+                ErrorCodes.JOB_RECRUITMENT_CLOSED,
+                HttpServletResponse.SC_BAD_REQUEST
+        );
+        assertEquals(before, GSON.toJson(readApplications()));
+    }
+
+    @Test
+    void batchUpdateApplicationStatus_singleHire_closesJobWhenFull() throws Exception {
+        List<JobPosting> jobs = defaultJobs();
+        jobs.get(0).setPositions(1);
+        writeJobs(jobs);
+
+        List<ApplicationRecord> apps = new ArrayList<>(defaultApplications());
+        apps.removeIf(a -> "app_hired".equals(a.getId()));
+        writeApplications(apps);
+
+        service.batchUpdateApplicationStatus(servletContext, MO_ID, List.of("app_shortlisted"), "hired");
+
+        JobPosting job = readJobs().stream()
+                .filter(j -> JOB_ID.equals(j.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertTrue(Boolean.TRUE.equals(job.getRecruitmentClosed()));
+        assertEquals("hired", findApp(readApplications(), "app_shortlisted").getStatus());
+    }
 }

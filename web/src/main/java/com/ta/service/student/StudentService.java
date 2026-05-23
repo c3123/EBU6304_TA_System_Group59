@@ -16,9 +16,10 @@ import com.ta.model.JobPosting;
 import com.ta.model.NotificationRecord;
 import com.ta.model.StudentProfile;
 import com.ta.model.User;
-import com.ta.util.JsonUtility;
 import com.ta.util.FileStorageUtil;
 import com.ta.util.JobHoursUtil;
+import com.ta.util.JobRecruitmentUtil;
+import com.ta.util.JsonUtility;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -53,7 +54,7 @@ public class StudentService {
         try {
             List<JobPosting> jobs = JsonUtility.loadJobs(context);
             StudentProfile profile = loadStudentProfile(context, studentUserId);
-            List<JobMatchResult> matches = jobMatchingService.getRecommendedJobs(profile, jobs);
+            List<JobMatchResult> matches = jobMatchingService.getRecommendedJobs(context, profile, jobs);
             List<StudentJobItemResponse> items = new ArrayList<>();
             for (JobMatchResult match : matches) {
                 items.add(toJobItem(match));
@@ -198,6 +199,14 @@ public class StudentService {
                 throw new StudentBusinessException(
                         ErrorCodes.VALIDATION_ERROR,
                         "Only open jobs can be applied.",
+                        HttpServletResponse.SC_BAD_REQUEST
+                );
+            }
+            if (Boolean.TRUE.equals(job.getRecruitmentClosed())
+                    || JobRecruitmentUtil.isRecruitmentFull(context, job)) {
+                throw new StudentBusinessException(
+                        ErrorCodes.VALIDATION_ERROR,
+                        "Recruitment is closed for this position.",
                         HttpServletResponse.SC_BAD_REQUEST
                 );
             }

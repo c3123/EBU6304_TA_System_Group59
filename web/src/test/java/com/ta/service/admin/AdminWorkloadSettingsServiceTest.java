@@ -26,11 +26,8 @@ class AdminWorkloadSettingsServiceTest extends AdminServiceTestSupport {
     }
 
     @Test
-    void saveThreshold_persistsPositiveValue() {
-        var request = new AdminWorkloadSettingsRequest();
-        request.setWorkloadThresholdHours(16);
-
-        var response = service.saveSettings(servletContext, request);
+    void saveSettings_persistsPositiveValue() {
+        var response = service.saveSettings(servletContext, request(16));
 
         assertEquals(16, response.getWorkloadThresholdHours());
         assertTrue(response.isSaved());
@@ -38,14 +35,17 @@ class AdminWorkloadSettingsServiceTest extends AdminServiceTestSupport {
     }
 
     @Test
-    void saveThreshold_nonPositive_throws400() {
-        var request = new AdminWorkloadSettingsRequest();
-        request.setWorkloadThresholdHours(0);
-
+    void saveSettings_nonPositive_throws400() {
         assertAdminBusinessException(
-                () -> service.saveSettings(servletContext, request),
+                () -> service.saveSettings(servletContext, request(0)),
                 ErrorCodes.VALIDATION_ERROR,
                 HttpServletResponse.SC_BAD_REQUEST
         );
+    }
+
+    private static AdminWorkloadSettingsRequest request(int hours) {
+        AdminWorkloadSettingsRequest request = new AdminWorkloadSettingsRequest();
+        request.setWorkloadThresholdHours(hours);
+        return request;
     }
 }

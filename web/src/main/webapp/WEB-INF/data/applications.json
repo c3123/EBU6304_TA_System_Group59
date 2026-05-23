@@ -943,9 +943,10 @@
     "studentNo": "20100040",
     "courseGrade": "B+",
     "appliedAt": "2026-05-03T10:00:00.000Z",
-    "status": "hired",
+    "status": "rejected",
     "active": true,
-    "selectedAttachmentIds": []
+    "selectedAttachmentIds": [],
+    "decisionFeedback": "Position has been filled."
   },
   {
     "id": "app0080",
