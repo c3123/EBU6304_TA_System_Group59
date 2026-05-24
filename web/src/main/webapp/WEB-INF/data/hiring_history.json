@@ -1,1 +1,288 @@
-[]
+[
+  {
+    "id": "hist_e3acb43e228b5d328a8bce5c5a76e625",
+    "jobId": "106",
+    "moId": "tch002",
+    "action": "manual_hire",
+    "submittedAt": "2026-04-28T19:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0001"
+    ],
+    "hiredStudentNames": [
+      "Alex Chen"
+    ]
+  },
+  {
+    "id": "hist_54c3ce6ea43b54c385e01358e02e7721",
+    "jobId": "143",
+    "moId": "tch014",
+    "action": "manual_hire",
+    "submittedAt": "2026-05-02T00:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0007"
+    ],
+    "hiredStudentNames": [
+      "Amelia Wang"
+    ]
+  },
+  {
+    "id": "hist_7deeb48a957159c19d29318dab5de5a1",
+    "jobId": "113",
+    "moId": "tch004",
+    "action": "manual_hire",
+    "submittedAt": "2026-04-29T01:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0014"
+    ],
+    "hiredStudentNames": [
+      "Omar Miller"
+    ]
+  },
+  {
+    "id": "hist_28d5528401ad56358e8894c5d665059f",
+    "jobId": "126",
+    "moId": "tch007",
+    "action": "manual_hire",
+    "submittedAt": "2026-05-22T01:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0016"
+    ],
+    "hiredStudentNames": [
+      "Ethan Brown"
+    ]
+  },
+  {
+    "id": "hist_48d6b2108a925172ac5e5f2d2008f173",
+    "jobId": "160",
+    "moId": "tch019",
+    "action": "manual_hire",
+    "submittedAt": "2026-05-14T19:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0036"
+    ],
+    "hiredStudentNames": [
+      "Taylor Wang"
+    ]
+  },
+  {
+    "id": "hist_eae09e730add557c8ff4588727db0fdb",
+    "jobId": "118",
+    "moId": "tch005",
+    "action": "manual_hire",
+    "submittedAt": "2026-05-14T17:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0040"
+    ],
+    "hiredStudentNames": [
+      "Emma Chen"
+    ]
+  },
+  {
+    "id": "hist_1a4a787e09bf5c3e937dad63ed446fa4",
+    "jobId": "160",
+    "moId": "tch019",
+    "action": "manual_hire",
+    "submittedAt": "2026-05-02T14:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0042"
+    ],
+    "hiredStudentNames": [
+      "Emma Chen"
+    ]
+  },
+  {
+    "id": "hist_d39e042ad91b5c37939434a5afb5a1f2",
+    "jobId": "127",
+    "moId": "tch007",
+    "action": "manual_hire",
+    "submittedAt": "2026-05-13T19:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0044"
+    ],
+    "hiredStudentNames": [
+      "Skyler Wilson"
+    ]
+  },
+  {
+    "id": "hist_9696b080b9e65d82b9bd4d05682f8343",
+    "jobId": "101",
+    "moId": "mo001",
+    "action": "manual_hire",
+    "submittedAt": "2026-05-18T16:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0052"
+    ],
+    "hiredStudentNames": [
+      "Liam White"
+    ]
+  },
+  {
+    "id": "hist_fe6efa7597105dd38c481ca5485bf8c5",
+    "jobId": "143",
+    "moId": "tch014",
+    "action": "manual_hire",
+    "submittedAt": "2026-05-17T17:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0054"
+    ],
+    "hiredStudentNames": [
+      "Henry Brown"
+    ]
+  },
+  {
+    "id": "hist_de93395c9f9854ba9c87f52745000b16",
+    "jobId": "160",
+    "moId": "tch019",
+    "action": "manual_hire",
+    "submittedAt": "2026-05-15T15:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0056"
+    ],
+    "hiredStudentNames": [
+      "Olivia Garcia"
+    ]
+  },
+  {
+    "id": "hist_41f8edcf53b55ba69161d98c8b5847fc",
+    "jobId": "156",
+    "moId": "tch018",
+    "action": "manual_hire",
+    "submittedAt": "2026-05-11T23:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0060"
+    ],
+    "hiredStudentNames": [
+      "Sara Li"
+    ]
+  },
+  {
+    "id": "hist_b7b7e37ebbf55a90a166b380d0435e15",
+    "jobId": "122",
+    "moId": "tch006",
+    "action": "manual_hire",
+    "submittedAt": "2026-05-06T11:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0063"
+    ],
+    "hiredStudentNames": [
+      "Sophia Taylor"
+    ]
+  },
+  {
+    "id": "hist_4145a46a5cd15345909dcf74724e4303",
+    "jobId": "137",
+    "moId": "tch013",
+    "action": "manual_hire",
+    "submittedAt": "2026-05-08T00:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0064"
+    ],
+    "hiredStudentNames": [
+      "Sophia Taylor"
+    ]
+  },
+  {
+    "id": "hist_a207664a01bb55a4838467798bcf8dcd",
+    "jobId": "133",
+    "moId": "tch010",
+    "action": "manual_hire",
+    "submittedAt": "2026-05-01T15:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0065"
+    ],
+    "hiredStudentNames": [
+      "Liam White"
+    ]
+  },
+  {
+    "id": "hist_2c2fd63117f1523eb38cad40e9d4ca2b",
+    "jobId": "151",
+    "moId": "tch016",
+    "action": "manual_hire",
+    "submittedAt": "2026-04-26T18:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0069"
+    ],
+    "hiredStudentNames": [
+      "Henry Smith"
+    ]
+  },
+  {
+    "id": "hist_973e3c35b72f5c278a124708244b244f",
+    "jobId": "132",
+    "moId": "tch009",
+    "action": "manual_hire",
+    "submittedAt": "2026-04-25T10:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0071"
+    ],
+    "hiredStudentNames": [
+      "Sophia Miller"
+    ]
+  },
+  {
+    "id": "hist_e54c0014e0905364ae598d95f24f5324",
+    "jobId": "105",
+    "moId": "mo001",
+    "action": "manual_hire",
+    "submittedAt": "2026-05-03T16:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0077"
+    ],
+    "hiredStudentNames": [
+      "Alex Jackson"
+    ]
+  },
+  {
+    "id": "hist_c7c038a7f03c59758f0135119bf75202",
+    "jobId": "118",
+    "moId": "tch005",
+    "action": "manual_hire",
+    "submittedAt": "2026-05-06T20:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0083"
+    ],
+    "hiredStudentNames": [
+      "Taylor Wang"
+    ]
+  },
+  {
+    "id": "hist_e050dcb9d42353308cee9e0da51d6370",
+    "jobId": "153",
+    "moId": "tch017",
+    "action": "manual_hire",
+    "submittedAt": "2026-04-28T11:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0094"
+    ],
+    "hiredStudentNames": [
+      "Hana Wilson"
+    ]
+  },
+  {
+    "id": "hist_4174c16d5ea55a2fadadc5fdcb6c9954",
+    "jobId": "142",
+    "moId": "tch014",
+    "action": "manual_hire",
+    "submittedAt": "2026-05-15T17:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0096"
+    ],
+    "hiredStudentNames": [
+      "Ethan Zhang"
+    ]
+  },
+  {
+    "id": "hist_bd7d06e8cef05f78888e2a9a763156b9",
+    "jobId": "133",
+    "moId": "tch010",
+    "action": "manual_hire",
+    "submittedAt": "2026-05-16T20:00:00.000Z",
+    "hiredApplicationIds": [
+      "app0098"
+    ],
+    "hiredStudentNames": [
+      "Ethan Zhang"
+    ]
+  }
+]
