@@ -1,44 +1,76 @@
-# 系统用户手册框架
-## 目录
-1. 引言
-   - 项目名称
-   - 版本与日期
-   - 目标读者
-   - 主要功能概览
-2. 系统概述
-   - 运行环境要求
-   - 访问地址
-   - 演示账号
-3. 学生端使用手册
-   - 概述
-   - 登录与进入系统
-   - 学生首页与导航
-   - 我的岗位（My Jobs）
-   - 个人资料与附件管理
-   - AI 工作建议器
-   - 通知中心
-   - 常见操作步骤
-   - 常见问题
-4. 教学组织者端使用手册
-   - 概述
-   - 登录与角色入口
-   - 我的招聘需求
-   - 申请审核与录用
-   - 发布与管理岗位
-   - 导出与报告
-   - 常见问题
-5. 管理员端使用手册
-   - 概述
-   - 登录与后台入口
-   - 用户管理
-   - 任务与工作量设置
-   - 系统设置
-   - 报表导出
-   - 常见问题
-6. 附录
-   - 术语说明
-   - 系统约束
+# Teaching Assistant Recruitment System User Manual
 
+## Table of Contents
+
+- [Teaching Assistant Recruitment System User Manual](#teaching-assistant-recruitment-system-user-manual)
+  - [Table of Contents](#table-of-contents)
+  - [1. Introduction](#1-introduction)
+    - [1.1 Project name](#11-project-name)
+    - [1.2 Target audience](#12-target-audience)
+    - [1.3 Key features](#13-key-features)
+  - [2. System Overview](#2-system-overview)
+    - [2.1 System Requirements](#21-system-requirements)
+    - [2.2 Access URL](#22-access-url)
+    - [2.3 Login and Account Access](#23-login-and-account-access)
+    - [2.4 Demo Accounts](#24-demo-accounts)
+  - [3 Student User Guide](#3-student-user-guide)
+    - [3.1 Overview](#31-overview)
+    - [3.2 Available Jobs](#32-available-jobs)
+      - [3.2.1 Available Filters](#321-available-filters)
+      - [3.2.2 Viewing Job Details](#322-viewing-job-details)
+      - [3.2.3 Skill Matching](#323-skill-matching)
+      - [3.2.4 AI Job Advisor](#324-ai-job-advisor)
+      - [3.2.5 Applying for a Job](#325-applying-for-a-job)
+    - [3.3 My Applications](#33-my-applications)
+      - [3.3.1 Withdrawing an Application](#331-withdrawing-an-application)
+        - [Steps](#steps)
+    - [3.4 My Jobs](#34-my-jobs)
+      - [3.4.1 Resigning from a Position](#341-resigning-from-a-position)
+    - [3.5 Profile Management](#35-profile-management)
+      - [3.5.1 Resume and Attachment Upload](#351-resume-and-attachment-upload)
+        - [3.5.1.1 Structured Information](#3511-structured-information)
+        - [3.5.1.2 File Upload](#3512-file-upload)
+      - [3.5.2 Changing Password](#352-changing-password)
+        - [Steps](#steps-1)
+  - [4. Teacher (Module Organiser) User Manual](#4-teacher-module-organiser-user-manual)
+    - [4.1 Overview](#41-overview)
+    - [4.2 Portal Navigation](#42-portal-navigation)
+    - [4.3 My Jobs](#43-my-jobs)
+      - [4.3.1 Submit a New Demand](#431-submit-a-new-demand)
+      - [4.3.2 Demand Status](#432-demand-status)
+      - [4.3.3 Publish a Job](#433-publish-a-job)
+      - [4.3.4 Edit, Delete, or Withdraw a Demand](#434-edit-delete-or-withdraw-a-demand)
+      - [4.3.5 Job History](#435-job-history)
+    - [4.4 Applicants](#44-applicants)
+      - [4.4.1 Applicant Information](#441-applicant-information)
+      - [4.4.2 Application Status Management](#442-application-status-management)
+      - [4.4.3 Final Hiring](#443-final-hiring)
+      - [4.4.4 Export Applicant Data](#444-export-applicant-data)
+      - [4.4.5 Reject Applications](#445-reject-applications)
+      - [4.4.6 AI-Assisted Recommendation](#446-ai-assisted-recommendation)
+    - [4.5 Hired Students](#45-hired-students)
+      - [4.5.1 Dismissing a Student](#451-dismissing-a-student)
+    - [4.6 Notifications](#46-notifications)
+    - [4.7 Profile](#47-profile)
+  - [5. Administrator Portal User Manual](#5-administrator-portal-user-manual)
+    - [5.1 Overview](#51-overview)
+    - [5.2 Administrator Homepage and Navigation](#52-administrator-homepage-and-navigation)
+    - [5.3 User Management](#53-user-management)
+    - [5.4 Workload Management](#54-workload-management)
+    - [5.5 Demand Review](#55-demand-review)
+    - [5.6 Job Management and Recruitment Results](#56-job-management-and-recruitment-results)
+    - [5.7 System Announcements](#57-system-announcements)
+    - [5.8 My Account](#58-my-account)
+    - [5.9 Report Export](#59-report-export)
+  - [6. Frequently Asked Questions](#6-frequently-asked-questions)
+  - [7. Troubleshooting](#7-troubleshooting)
+    - [7.1 Cannot access the login page](#71-cannot-access-the-login-page)
+    - [7.2 Login fails with "Invalid credentials"](#72-login-fails-with-invalid-credentials)
+    - [7.3 Uploads fail or files rejected](#73-uploads-fail-or-files-rejected)
+    - [7.4 Application submission errors](#74-application-submission-errors)
+    - [7.5 Email notifications not received](#75-email-notifications-not-received)
+    - [7.6 Performance issues (slow pages)](#76-performance-issues-slow-pages)
+    - [7.7 Where to find logs](#77-where-to-find-logs)
 ---
 
 ## 1. Introduction
@@ -52,7 +84,7 @@ Teaching Assistant Recruitment System.
 - This manual is intended for end users of the system: students (applicants), teaching organisers (MO), and system administrators.
 - It can also be used by developers and operations personnel as a quick reference for usage and demo accounts.
 
-### 1.3 Key features 
+### 1.3 Key features
 
 - Student: browse and filter available jobs, submit/withdraw applications, manage profile and attachments, view hired job schedules, use the AI Job Advisor.
 - Teaching Organiser (MO): post job demands, manage recruitment and review applications, export job and application reports.
@@ -212,6 +244,15 @@ Each application includes a status indicator:
 - `Under Review`
 - `Hired`
 - `Rejected`
+- `Overdue`
+- `Resigned`
+- `Dismissed`
+
+Applications marked as `Overdue` indicate that the recruitment deadline has passed before a final decision was made.
+
+`Resigned` indicates that the student voluntarily left the hired position.
+
+`Dismissed` indicates that the student was removed from the position by the Module Organiser.
 
 Students may also view:
 
@@ -251,6 +292,27 @@ A calendar view is provided to help students manage work schedules more efficien
 Highlighted dates indicate assigned TA activities or planned work sessions.
 
 ![Myjob Page](./web/images/student_myjob.png)
+
+#### 3.4.1 Resigning from a Position
+
+Students may resign from an active TA position if they are unable to continue their assigned work.
+
+Operation steps:
+
+1. Open the **My Jobs** page.
+2. Locate the target hired position.
+3. Click the **Resign** button.
+4. Enter the resignation reason if required.
+5. Confirm the resignation request.
+
+After resignation:
+
+- The job is removed from the student's active workload.
+- The application status becomes `Resigned`.
+- The corresponding Module Organiser receives a notification.
+- The position may reopen for recruitment if vacancies become available before the deadline.
+
+![Resign Page](./web/images/student_resign.png)
 
 ### 3.5 Profile Management
 
@@ -319,8 +381,6 @@ MO users can:
 - Receive recruitment notifications
 - Change their own password
 
----
-
 ### 4.2 Portal Navigation
 
 The MO portal contains three main sections:
@@ -330,8 +390,6 @@ The MO portal contains three main sections:
 - **Profile**: View account information and change password
 
 The current page is highlighted in the left navigation bar.
-
----
 
 ### 4.3 My Jobs
 
@@ -393,7 +451,8 @@ MO users can manage demands according to their current status.
 
 - Unpublished demands can be edited or deleted.
 - Published jobs must be taken offline before editing.
-- Closed jobs cannot be edited directly.
+- Recruitment-closed jobs may still be edited by the MO for schedule, workload, and task arrangement updates.
+- Closed status only prevents new student applications.
 - Edited demands must be reviewed by Admin again.
 
 ![alt text](web/images/jobedit.png)
@@ -415,8 +474,6 @@ It may include:
 MO users can view job details, reuse old job information, and export applicant data.
 
 ![alt text](web/images/jobhistory.png)
-
----
 
 ### 4.4 Applicants
 
@@ -442,6 +499,7 @@ Each applicant card usually shows:
 - Major
 - Application time
 - Skill match score
+- Profile
 - Matched and missing skills
 - Current workload level
 - Application status
@@ -452,6 +510,7 @@ The skill match score helps MO users compare applicant skills with job requireme
 
 ![alt text](web/images/applicantdetails.png)
 ![alt text](web/images/applicantfilter.png)
+![alt text](web/images/mo_download.png)
 
 #### 4.4.2 Application Status Management
 
@@ -485,7 +544,8 @@ After final hiring:
 
 - Selected applicants become **Hired**.
 - Other shortlisted applicants become **Rejected**.
-- The job is marked as closed.
+- The job stops accepting new applications when all vacancies are filled.
+- The MO may still update workload or schedule information for hired students.
 - Hired students receive notifications.
 - Admin receives recruitment completion information.
 
@@ -510,9 +570,47 @@ MO users can reject applications that are not matching and give feedback to stud
 
 ![alt text](web/images/applicantrejectfeedback.png)
 
----
+#### 4.4.6 AI-Assisted Recommendation
 
-### 4.5 Notifications
+The **View AI Suggestion** button on each applicant card provides an AI-assisted recommendation based on skill match and estimated workload. The system assigns a recommendation level (e.g., **Highly Recommended**, **Recommended**) with a brief explanation for reference only and does not replace the final hiring decision. If the AI service is unavailable, a system-generated explanation will be shown automatically.
+
+![alt text](web/images/teacher_aiassist.png)
+
+### 4.5 Hired Students
+
+The **Hired Students** page allows Module Organisers to manage students who have already been hired for TA positions.
+
+MO users can:
+
+- View active hired students
+- Check assigned workload and schedules
+- Monitor recruitment fulfilment
+- Dismiss hired students if necessary
+- View resigned or dismissed records
+
+![Hired Students Page](./web/images/teacher_hiredstudents.png)
+
+#### 4.5.1 Dismissing a Student
+
+MO users may dismiss a hired TA from a position when necessary.
+
+Operation steps:
+
+1. Open the **Hired Students** page.
+2. Locate the target student.
+3. Click the **Dismiss** button.
+4. Confirm the dismissal operation.
+
+After dismissal:
+
+- The student's status becomes `Dismissed`.
+- The student no longer contributes to active workload calculations.
+- The student receives a notification.
+- The vacancy may reopen for recruitment if the application deadline has not passed.
+
+![Dismiss Page](./web/images/teacher_dismiss.png)
+
+### 4.6 Notifications
 
 MO users can open the notification panel to view recruitment-related messages.
 
@@ -527,9 +625,7 @@ Unread notifications are marked with a red dot. Clicking a notification marks it
 
 ![alt text](web/images/teacher_notification.png)
 
----
-
-### 4.6 Profile
+### 4.7 Profile
 
 The **Profile** page shows the MO user's account information, including name, email, and role.
 
@@ -544,14 +640,6 @@ Operation steps:
 5. Click **Change Password**.
 
 ![alt text](web/images/teacher_account.png)
-
-### 4.7 AI-Assisted Recommendation
-
-The **View AI Suggestion** button on each applicant card provides an AI-assisted recommendation based on skill match and estimated workload. The system assigns a recommendation level (e.g., **Highly Recommended**, **Recommended**) with a brief explanation for reference only and does not replace the final hiring decision. If the AI service is unavailable, a system-generated explanation will be shown automatically.
-
-![alt text](web/images/teacher_aiassist.png)
-
----
 
 ## 5. Administrator Portal User Manual
 
@@ -722,12 +810,112 @@ Operation steps:
 
 ![Page](./web/images/admin_export.png)
 
-## 9. 附录：术语说明
+## 6. Frequently Asked Questions
 
-- **岗位**：系统发布的助教职位。
-- **已申请**：学生已提交申请但尚未录用。
-- **已录用**：学生已被录取并分配岗位。
-- **附件**：上传的简历或证明材料。
-- **AI 建议器**：系统中的智能建议模块。
-- **通知中心**：接收系统消息和岗位通知的模块。
+This FAQ section answers common user questions for the Teaching Assistant Recruitment System.
+
+Q1: How do I reset my password if I forget it?
+
+- A: On the login page click the **Forgot password** link, provide your registered email, and follow the instructions sent by email to reset your password. If email delivery fails, contact an administrator.
+
+Q2: How do I upload attachments (resume/transcript) to my profile?
+
+- A: Go to `Profile` → `Supporting Documents` and use the upload widget to add files. Accepted file types and size limits are displayed on the upload dialog. After upload, select a document type (e.g., Resume) and save your profile.
+
+Q3: Can I apply to a job without attaching a resume?
+
+- A: The system requires at least one attachment when submitting certain applications (configurable). The Apply dialog will warn you if no attachment is selected. Upload a resume or choose an existing attachment before submitting.
+
+Q4: How do I withdraw an application?
+
+- A: Open `My Applications`, locate the application with status `Under Review`, and click **Withdraw**. Confirm the action in the dialog. Withdrawn applications are marked accordingly and the Module Organiser is notified.
+
+Q5: What if I don't see a job I expect to be published?
+
+- A: Check the job filters (status, schedule, hours) and search terms. If still absent, the job may be pending Admin approval or already closed. Contact the Module Organiser or Admin for clarification.
+
+Q6: How does the AI Job Advisor use my profile?
+
+- A: The AI Job Advisor analyzes your profile (skills, experience, uploaded documents) and job requirement metadata to produce suggestions and explanations. Its recommendations are advisory and should be used together with human judgement.
+
+Q7: Who can create MO or Administrator accounts?
+
+- A: Module Organiser (MO) and Administrator accounts are generally created or approved by existing administrators. Some deployments allow MO requests via self-registration but will keep the account in a pending state until verified.
+
+Q8: How do I export data (applications, workload)?
+
+- A: Use the export functions on the corresponding management pages (`Applicants`, `Job History`, `Workload`, `Recruitment Results`). Apply filters as needed, then click **Export** to download CSV/TXT.
+
+Q9: Where can I get further help or report a bug?
+
+- A: Contact your local system administrator or the support address provided by your institution. For deployment-specific issues, include screenshots, user ID, and reproduction steps.
+
+Q10: Is my personal data and uploaded documents secure?
+
+- A: The system stores personal data and attachments according to the deployment security policies. Administrators should enable HTTPS, strong passwords, and access controls. For sensitive concerns, contact your institution's IT/security team.
+
+## 7. Troubleshooting
+
+This section provides troubleshooting tips and common fixes for problems users may encounter when using the Teaching Assistant Recruitment System.
+
+### 7.1 Cannot access the login page
+
+- Symptoms: Browser shows a connection error, blank page, or cannot reach `http://localhost:8080/web/`.
+- Quick checks:
+  - Verify the application server (e.g., Tomcat) is running on the host machine.
+  - Check the server logs for startup errors (see `logs/catalina.out` or application-specific logs).
+  - Confirm the correct port and context path are used.
+
+### 7.2 Login fails with "Invalid credentials"
+
+- Symptoms: Login attempts return authentication errors.
+- Quick checks:
+  - Confirm you are using the correct demo credentials (e.g., `student@demo.com / demo123`).
+  - Ensure Caps Lock is off and no leading/trailing spaces are present.
+  - If using LDAP or single sign-on, verify those services are available.
+  - Use the **Forgot password** flow to reset your password if necessary.
+
+### 7.3 Uploads fail or files rejected
+
+- Symptoms: File upload returns errors, or uploaded documents do not appear.
+- Quick checks:
+  - Verify allowed file types and size limits shown on the upload widget.
+  - Check server-side storage permissions (WEB-INF/uploads or configured storage path).
+  - Inspect server logs for file handling exceptions.
+
+### 7.4 Application submission errors
+
+- Symptoms: Error during the application submission or missing required attachments.
+- Quick checks:
+  - Ensure at least one attachment is selected if required by the job.
+  - Validate required form fields (e.g., consent checkbox, selected document type).
+  - Inspect browser console for JavaScript errors and network requests failing in the developer tools.
+
+### 7.5 Email notifications not received
+
+- Symptoms: Users do not receive verification or notification emails.
+- Quick checks:
+  - Verify SMTP settings in the deployment configuration and test sending an email from the server.
+  - Check spam/junk folders and email delivery logs.
+  - Confirm the system's outgoing mail server is reachable from the host.
+
+### 7.6 Performance issues (slow pages)
+
+- Symptoms: Pages load slowly or time out.
+- Quick checks:
+  - Monitor server CPU, memory, and disk I/O.
+  - Check database performance and slow queries.
+  - Review application logs for repetitive errors or timeouts.
+
+### 7.7 Where to find logs
+
+- Application logs are typically stored under the deployment's `logs` or application-specific directory. Consult your server configuration for exact paths. Provide log excerpts when reporting issues to administrators.
+
+If you cannot resolve an issue using these steps, gather the following information and contact your system administrator or support:
+
+- Your user id (email)
+- Description of the problem and steps to reproduce
+- Screenshots (if applicable)
+- Relevant log excerpts and timestamps
+
 
