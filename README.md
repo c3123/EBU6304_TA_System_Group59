@@ -20,7 +20,7 @@ International School Teaching Assistant Recruitment System - a Java Servlet/JSP 
 - JDK 21 (`web/pom.xml` compiles with `--release 21`)
 - Maven 3.8+
 - Apache Tomcat 10.1+ (Jakarta Servlet 6)
-- Node.js 20+ and npm, for Playwright browser E2E tests
+- Optional: Node.js 20+ and npm, only for Playwright browser E2E tests
 
 ### Project Layout
 
@@ -67,6 +67,168 @@ Optional exploded deployment for local development:
 
 ```powershell
 .\scripts\dev-deploy.ps1 -TomcatWebappsPath "C:\path\to\tomcat\webapps"
+```
+
+---
+
+## Setup, Configuration, And Running
+
+These are the required steps for setting up, configuring, and running the software on a new machine.
+
+### 1. Install Required Software
+
+Install the following:
+
+- JDK 21 or newer
+- Maven 3.8 or newer
+- Apache Tomcat 10.1 or newer
+
+Check the installed versions:
+
+```powershell
+java -version
+mvn -version
+```
+
+Tomcat 9 is not supported because this project uses Jakarta Servlet 6 APIs.
+
+### 2. Get The Source Code
+
+Clone the repository, or download and extract the submitted source code package:
+
+```powershell
+git clone https://github.com/c3123/EBU6304_TA_System_Group59.git
+cd EBU6304_TA_System_Group59
+```
+
+### 3. Configure Runtime Data
+
+The application uses JSON files instead of a database. The default runtime data is stored in:
+
+```text
+web/src/main/webapp/WEB-INF/data/
+```
+
+Required files include:
+
+```text
+users.json
+students.json
+jobs.json
+applications.json
+notifications.json
+hiring_history.json
+system_settings.json
+```
+
+No database server or SQL setup is required.
+
+For a normal Tomcat deployment, the application reads and writes the JSON files inside the deployed web application under `WEB-INF/data`. For an isolated local run, start Tomcat with a JVM property that points to a separate data directory:
+
+```powershell
+-Dta.data.dir="D:\path\to\data"
+```
+
+If a JSON file is missing, the application creates a default empty file automatically. To reset demo data, restore the JSON files from `web/src/main/webapp/WEB-INF/data/` or run:
+
+```powershell
+python scripts/generate_seed_data.py
+```
+
+### 4. Configure AI Assistance
+
+AI assistance is configured in:
+
+```text
+web/src/main/webapp/WEB-INF/config/ai.properties
+```
+
+Important properties:
+
+```properties
+ai.enabled=true
+ai.api.url=https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+ai.api.key=PUT_YOUR_DASHSCOPE_KEY_HERE
+ai.model=qwen-plus
+ai.timeout.ms=15000
+```
+
+If no valid API key is configured, the system still runs normally and uses deterministic fallback messages for AI-assisted features. For offline demos, set:
+
+```properties
+ai.enabled=false
+```
+
+### 5. Build The WAR File
+
+From the repository root:
+
+```powershell
+mvn -f web/pom.xml clean package
+```
+
+The generated deployable file is:
+
+```text
+web/target/web.war
+```
+
+### 6. Run On Tomcat
+
+Copy the generated WAR file to Tomcat:
+
+```powershell
+Copy-Item web\target\web.war "C:\path\to\apache-tomcat-10.1.x\webapps\web.war"
+```
+
+Start Tomcat:
+
+```powershell
+C:\path\to\apache-tomcat-10.1.x\bin\startup.bat
+```
+
+Open the application:
+
+```text
+http://localhost:8080/web/
+```
+
+If Tomcat uses a different port, replace `8080` with that port.
+
+### 7. Local Development Deployment
+
+For faster local updates, use the provided deployment script. It builds an exploded web app and syncs it to Tomcat while preserving runtime `WEB-INF/data` and `WEB-INF/uploads`:
+
+```powershell
+.\scripts\dev-deploy.ps1 -TomcatWebappsPath "C:\path\to\apache-tomcat-10.1.x\webapps"
+```
+
+After only JSP, CSS, or JavaScript changes, you can skip the Maven build:
+
+```powershell
+.\scripts\dev-deploy.ps1 -TomcatWebappsPath "C:\path\to\apache-tomcat-10.1.x\webapps" -SkipBuild
+```
+
+### 8. Stop The Application
+
+Stop Tomcat with:
+
+```powershell
+C:\path\to\apache-tomcat-10.1.x\bin\shutdown.bat
+```
+
+### 9. Optional Verification
+
+Run the Java test suite:
+
+```powershell
+mvn -f web/pom.xml test
+```
+
+Playwright E2E tests are optional and are not required for normal setup or running. They only run when explicitly started with:
+
+```powershell
+npm run e2e
 ```
 
 ---
@@ -248,7 +410,7 @@ JUnit 5 tests use isolated temporary JSON data directories through `System.setPr
 mvn -f web/pom.xml test
 ```
 
-The automated suite currently contains **165** JUnit 5 tests covering Admin, MO, Student, shared account behavior, and servlet access control. The Maven build is configured for Java 21 bytecode. The Surefire configuration also enables Byte Buddy's experimental mode so the suite can still run on newer local JDKs when necessary.
+The automated suite currently contains **171** JUnit 5 tests covering Admin, MO, Student, shared account behavior, and servlet access control. The Maven build is configured for Java 21 bytecode. The Surefire configuration also enables Byte Buddy's experimental mode so the suite can still run on newer local JDKs when necessary.
 
 | Area | Test class | Coverage |
 | --- | --- |
@@ -266,6 +428,7 @@ The automated suite currently contains **165** JUnit 5 tests covering Admin, MO,
 | MO | `MoApplicationServiceTest` | List/detail, status update, batch update, notes, decision feedback, hiring rules |
 | MO | `MoApplicationExportServiceTest` | Applicant export, scope filtering, validation |
 | MO | `MoDemandServiceTest` | Demand creation, pending approval, duplicate blocking, validation |
+| MO | `MoHiringServiceTest` | Final hiring limits and recruitment closure behavior |
 | MO | `MoJobServiceTest` | Publish, edit, offline, withdraw, reuse, delete lifecycle constraints |
 | MO | `MoJobHistoryServiceTest` | Posted-job history rows and ownership filtering |
 | MO | `MoNotificationServiceTest` | Notification list, backfill, announcements, mark-read |
