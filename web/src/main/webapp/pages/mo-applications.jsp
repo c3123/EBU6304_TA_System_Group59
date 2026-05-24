@@ -45,6 +45,17 @@
       color: #991b1b;
       border: 1px solid #fca5a5;
     }
+    .status-overdue {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+    }
+    .status-resigned,
+    .status-dismissed {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+    }
     .mo-filter-row .field {
       margin-bottom: 0;
     }
@@ -1020,49 +1031,69 @@
 </head>
 <body class="mo-portal mo-applicants-figma teacher-portal-page">
 <div class="teacher-shell">
-<header class="mo-portal-header">
+<aside class="mo-portal-header" aria-label="Teacher navigation">
   <div class="mo-portal-header-inner">
     <div class="mo-portal-brand">
       <div class="mo-portal-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 7h16" />
+          <path d="M6 7v12h12V7" />
+          <path d="M9 11h6" />
+          <path d="M9 15h6" />
         </svg>
       </div>
       <div>
-        <h1>Module Organiser Portal</h1>
+        <h1>Module Organiser</h1>
         <p>Applicant Management</p>
       </div>
     </div>
-    <nav class="mo-tabs" aria-label="MO portal sections">
-      <a class="mo-tab" href="teacher.jsp">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+
+    <nav class="mo-tabs" aria-label="Teacher modules">
+      <a class="mo-tab" href="<%= request.getContextPath() %>/pages/teacher.jsp">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 10.5L12 4l8 6.5" />
+          <path d="M6 9.5V20h12V9.5" />
+          <path d="M10 20v-6h4v6" />
         </svg>
-        My Jobs
+        <span>My Jobs</span>
       </a>
-      <span class="mo-tab active" aria-current="page">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-          <circle cx="9" cy="7" r="4"></circle>
-          <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+      <a class="mo-tab active" href="<%= request.getContextPath() %>/pages/mo-applications.jsp">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 7h10" />
+          <path d="M7 12h10" />
+          <path d="M7 17h6" />
+          <path d="M5 5h14v14H5z" />
         </svg>
-        Applicants
-      </span>
-      <a class="mo-tab" href="teacher-profile.jsp">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <path d="M20 21a8 8 0 0 0-16 0"></path>
-          <circle cx="12" cy="7" r="4"></circle>
+        <span>Applications</span>
+      </a>
+      <a class="mo-tab" href="<%= request.getContextPath() %>/pages/teacher-hired.jsp">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19h16" />
+          <path d="M7 19V10" />
+          <path d="M12 19V5" />
+          <path d="M17 19v-8" />
         </svg>
-        Profile
+        <span>Hired TAs</span>
+      </a>
+      <a class="mo-tab" href="<%= request.getContextPath() %>/pages/teacher-profile.jsp">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4z" />
+          <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
+        </svg>
+        <span>Profile</span>
       </a>
     </nav>
-    <a class="mo-btn-logout" href="<%= request.getContextPath() %>/logout">Logout</a>
-  </div>
-</header>
 
+    <a class="mo-btn-logout" href="<%= request.getContextPath() %>/logout">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;">
+        <path d="M10 17l5-5-5-5" />
+        <path d="M15 12H4" />
+        <path d="M20 4v16" />
+      </svg>
+      <span>Logout</span>
+    </a>
+  </div>
+</aside>
 <div class="teacher-main">
 <header class="teacher-topbar">
   <div>
@@ -1112,9 +1143,9 @@
     <h3>Workload Status Legend</h3>
     <div class="mo-legend-row">
       <span><span class="mo-legend-dot" style="background:#3b82f6"></span> Low (&lt;10h/week)</span>
-      <span><span class="mo-legend-dot" style="background:#22c55e"></span> Normal (10–14h/week)</span>
-      <span><span class="mo-legend-dot" style="background:#eab308"></span> Warning (15–19h/week)</span>
-      <span><span class="mo-legend-dot" style="background:#ef4444"></span> Overload (≥20h/week)</span>
+      <span><span class="mo-legend-dot" style="background:#22c55e"></span> Normal (10-14h/week)</span>
+      <span><span class="mo-legend-dot" style="background:#eab308"></span> Warning (15-19h/week)</span>
+      <span><span class="mo-legend-dot" style="background:#ef4444"></span> Overload (&gt;=20h/week)</span>
     </div>
   </div>
 
@@ -1126,6 +1157,7 @@
       <label><input type="checkbox" id="filterShortlisted" checked /> Shortlisted</label>
       <label><input type="checkbox" id="filterRejected" checked /> Rejected</label>
       <label><input type="checkbox" id="filterHired" checked /> Hired</label>
+      <label><input type="checkbox" id="filterOverdue" checked /> Overdue</label>
     </div>
     <div class="mo-toolbar-extra">
       <label>
@@ -1136,10 +1168,10 @@
           <option value="workload">Workload risk</option>
         </select>
       </label>
-      <label><input type="checkbox" id="filterHighMatch" /> High match only (≥60%)</label>
+      <label><input type="checkbox" id="filterHighMatch" /> High match only (&gt;=80%)</label>
       <label class="filter-applicant-search">
         <span style="font-weight:600;">Search applicant:</span>
-        <input id="applicantSearchInput" type="search" class="mo-search-input" placeholder="Name, student no., skills…" autocomplete="off" />
+        <input id="applicantSearchInput" type="search" class="mo-search-input" placeholder="Name, student no., skills" autocomplete="off" />
       </label>
     </div>
     <div class="row mo-filter-row" style="align-items:flex-end;">
@@ -1152,6 +1184,7 @@
     </div>
     <p id="pageNotice" class="notice"></p>
   </div>
+
 
   <div id="batchBar" class="mo-batch-bar" aria-live="polite">
     <span id="batchBarLabel" style="font-weight:600;color:#0f172a"></span>

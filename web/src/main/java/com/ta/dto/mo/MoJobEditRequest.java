@@ -7,6 +7,9 @@ public class MoJobEditRequest {
     private Integer hourMin;
     private Integer hourMax;
     private String requirements;
+    private String schedule;
+    private String location;
+    private String deadline;
 
     public String getCourseName() {
         return courseName;
@@ -54,5 +57,29 @@ public class MoJobEditRequest {
 
     public void setRequirements(String requirements) {
         this.requirements = requirements;
+    }
+
+    public String getSchedule() {
+        return schedule;
+    }
+
+    public void setSchedule(String schedule) {
+        this.schedule = schedule;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    public String getDeadline() {
+        return deadline;
+    }
+
+    public void setDeadline(String deadline) {
+        this.deadline = deadline;
     }
 }

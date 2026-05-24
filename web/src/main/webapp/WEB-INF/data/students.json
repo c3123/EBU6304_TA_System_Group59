@@ -6,16 +6,16 @@
     "email": "student@demo.com",
     "phone": "07700904567",
     "programme": "MSc Computer Science",
-    "skills": "Java,Python,C",
+    "skills": "Java,Python,C,SQL",
     "experience": "",
     "attachments": [
       {
-        "id": "062b7a3c-5e7a-4039-8d07-3db3855965a8.pdf",
-        "fileName": "Report_group59.pdf",
+        "id": "38760b74-a0ee-4947-8214-78b6c7d88001.pdf",
+        "fileName": "profile.pdf",
         "fileType": "pdf",
         "label": "Resume",
         "fileSize": 480948,
-        "uploadedAt": "2026-05-20T02:19:00.435183600Z"
+        "uploadedAt": "2026-05-24T01:02:02.756356800Z"
       }
     ]
   },
@@ -28,7 +28,16 @@
     "programme": "MSc Computer Science",
     "skills": "Java,Python",
     "experience": "Previous TA for labs",
-    "attachments": []
+    "attachments": [
+      {
+        "id": "ef861b78-591c-43dc-94f8-525a7ad100be.pdf",
+        "fileName": "profile.pdf",
+        "fileType": "pdf",
+        "label": "Resume",
+        "fileSize": 480948,
+        "uploadedAt": "2026-05-24T00:41:02.639544600Z"
+      }
+    ]
   },
   {
     "userId": "stu003",

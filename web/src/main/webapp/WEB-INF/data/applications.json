@@ -12,18 +12,6 @@
     "selectedAttachmentIds": []
   },
   {
-    "id": "app0002",
-    "jobId": "130",
-    "studentId": "stu001",
-    "studentName": "Alex Chen",
-    "studentNo": "201234567",
-    "courseGrade": "B",
-    "appliedAt": "2026-04-25T08:00:00.000Z",
-    "status": "viewed",
-    "active": true,
-    "selectedAttachmentIds": []
-  },
-  {
     "id": "app0003",
     "jobId": "145",
     "studentId": "stu002",
@@ -283,7 +271,7 @@
     "studentNo": "20100014",
     "courseGrade": "A-",
     "appliedAt": "2026-05-05T17:00:00.000Z",
-    "status": "viewed",
+    "status": "overdue",
     "active": true,
     "selectedAttachmentIds": []
   },
@@ -403,7 +391,7 @@
     "studentNo": "20100019",
     "courseGrade": "B",
     "appliedAt": "2026-05-13T08:00:00.000Z",
-    "status": "viewed",
+    "status": "overdue",
     "active": true,
     "selectedAttachmentIds": []
   },
@@ -439,7 +427,7 @@
     "studentNo": "20100021",
     "courseGrade": "B+",
     "appliedAt": "2026-05-15T15:00:00.000Z",
-    "status": "pending",
+    "status": "overdue",
     "active": true,
     "selectedAttachmentIds": []
   },
@@ -451,7 +439,7 @@
     "studentNo": "20100021",
     "courseGrade": "A-",
     "appliedAt": "2026-05-13T16:00:00.000Z",
-    "status": "pending",
+    "status": "overdue",
     "active": true,
     "selectedAttachmentIds": []
   },
@@ -547,7 +535,7 @@
     "studentNo": "20100026",
     "courseGrade": "A",
     "appliedAt": "2026-04-28T16:00:00.000Z",
-    "status": "viewed",
+    "status": "overdue",
     "active": true,
     "selectedAttachmentIds": []
   },
@@ -607,7 +595,7 @@
     "studentNo": "20100028",
     "courseGrade": "B+",
     "appliedAt": "2026-05-16T08:00:00.000Z",
-    "status": "viewed",
+    "status": "overdue",
     "active": true,
     "selectedAttachmentIds": []
   },
@@ -739,7 +727,7 @@
     "studentNo": "20100034",
     "courseGrade": "B",
     "appliedAt": "2026-05-02T13:00:00.000Z",
-    "status": "viewed",
+    "status": "overdue",
     "active": true,
     "selectedAttachmentIds": []
   },
@@ -811,7 +799,7 @@
     "studentNo": "20100036",
     "courseGrade": "B",
     "appliedAt": "2026-05-06T13:00:00.000Z",
-    "status": "pending",
+    "status": "overdue",
     "active": true,
     "selectedAttachmentIds": []
   },
@@ -907,7 +895,7 @@
     "studentNo": "20100039",
     "courseGrade": "A-",
     "appliedAt": "2026-05-05T10:00:00.000Z",
-    "status": "pending",
+    "status": "overdue",
     "active": true,
     "selectedAttachmentIds": []
   },
@@ -1112,7 +1100,7 @@
     "studentNo": "20100045",
     "courseGrade": "B+",
     "appliedAt": "2026-05-02T17:00:00.000Z",
-    "status": "pending",
+    "status": "overdue",
     "active": true,
     "selectedAttachmentIds": []
   },
@@ -1232,7 +1220,7 @@
     "studentNo": "20100050",
     "courseGrade": "B",
     "appliedAt": "2026-05-14T15:00:00.000Z",
-    "status": "viewed",
+    "status": "overdue",
     "active": true,
     "selectedAttachmentIds": []
   },
@@ -1249,5 +1237,34 @@
     "selectedAttachmentIds": [
       "062b7a3c-5e7a-4039-8d07-3db3855965a8.pdf"
     ]
+  },
+  {
+    "id": "app_1779583275326",
+    "jobId": "job_8085294e9c794385a9a65e936e06f2dc",
+    "studentId": "stu002",
+    "studentName": "Henry Garcia",
+    "studentNo": "20100002",
+    "courseGrade": "",
+    "appliedAt": "2026-05-24T00:41:15.326349300Z",
+    "status": "rejected",
+    "active": true,
+    "selectedAttachmentIds": [
+      "ef861b78-591c-43dc-94f8-525a7ad100be.pdf"
+    ]
+  },
+  {
+    "id": "app_1779584532035",
+    "jobId": "job_8085294e9c794385a9a65e936e06f2dc",
+    "studentId": "stu001",
+    "studentName": "Alex Chen",
+    "studentNo": "201234567",
+    "courseGrade": "",
+    "appliedAt": "2026-05-24T01:02:12.035213100Z",
+    "status": "resigned",
+    "active": true,
+    "selectedAttachmentIds": [
+      "38760b74-a0ee-4947-8214-78b6c7d88001.pdf"
+    ],
+    "decisionFeedback": "Resignation reason: Due to personal schedule conflicts, I am unable to continue this TA position."
   }
 ]

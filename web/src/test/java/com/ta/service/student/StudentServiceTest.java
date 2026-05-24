@@ -6,6 +6,7 @@ import com.ta.dto.student.StudentApplicationCreateRequest;
 import com.ta.dto.student.StudentAssignedJobItemResponse;
 import com.ta.dto.student.StudentProfileResponse;
 import com.ta.dto.student.StudentProfileUpdateRequest;
+import com.ta.dto.student.StudentResignationRequest;
 import com.ta.model.ApplicationRecord;
 import com.ta.model.Attachment;
 import com.ta.model.JobPosting;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
 import java.nio.file.Files;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -254,6 +256,111 @@ class StudentServiceTest extends MoTestSupport {
     }
 
     @Test
+    void apply_futureDeadline_createsApplication() throws Exception {
+        JobPosting future = openJob("job_future_deadline");
+        future.setDeadline(LocalDate.now().plusDays(2).toString());
+        writeJobs(List.of(future));
+        StudentApplicationCreateRequest request = new StudentApplicationCreateRequest();
+        request.setJobId("job_future_deadline");
+        request.setSelectedAttachmentIds(List.of("att_resume.pdf"));
+
+        var response = service.applyForJob(servletContext, STUDENT_ID, request);
+
+        assertEquals("pending", response.getStatus());
+        assertEquals(1, readApplications().size());
+    }
+
+    @Test
+    void apply_expiredDeadline_throws400() throws Exception {
+        JobPosting expired = openJob("job_expired_deadline");
+        expired.setDeadline(LocalDate.now().minusDays(1).toString());
+        writeJobs(List.of(expired));
+        StudentApplicationCreateRequest request = new StudentApplicationCreateRequest();
+        request.setJobId("job_expired_deadline");
+        request.setSelectedAttachmentIds(List.of("att_resume.pdf"));
+
+        StudentBusinessException ex = assertThrows(
+                StudentBusinessException.class,
+                () -> service.applyForJob(servletContext, STUDENT_ID, request)
+        );
+        assertEquals(ErrorCodes.VALIDATION_ERROR, ex.getCode());
+        assertEquals(HttpServletResponse.SC_BAD_REQUEST, ex.getHttpStatus());
+    }
+
+    @Test
+    void listMyApplications_expiredPendingBecomesOverdueButFinalStatusesRemain() throws Exception {
+        JobPosting expired = openJob("job_expired_deadline");
+        expired.setDeadline(LocalDate.now().minusDays(1).toString());
+        writeJobs(List.of(expired));
+
+        ApplicationRecord pending = application("app_pending_student", "job_expired_deadline", "pending", true);
+        pending.setStudentId(STUDENT_ID);
+        pending.setAppliedAt("2026-05-10T10:00:00Z");
+        ApplicationRecord hired = application("app_hired_student", "job_expired_deadline", "hired", true);
+        hired.setStudentId(STUDENT_ID);
+        hired.setAppliedAt("2026-05-11T10:00:00Z");
+        ApplicationRecord rejected = application("app_rejected_student", "job_expired_deadline", "rejected", true);
+        rejected.setStudentId(STUDENT_ID);
+        rejected.setAppliedAt("2026-05-12T10:00:00Z");
+        writeApplications(List.of(pending, hired, rejected));
+
+        var response = service.listMyApplications(servletContext, STUDENT_ID);
+
+        assertTrue(response.getItems().stream().anyMatch(item ->
+                "app_pending_student".equals(item.getId())
+                        && "overdue".equals(item.getStatus())
+                        && !item.isWithdrawable()));
+        assertEquals("overdue", readApplications().stream()
+                .filter(app -> "app_pending_student".equals(app.getId()))
+                .findFirst()
+                .orElseThrow()
+                .getStatus());
+        assertEquals("hired", readApplications().stream()
+                .filter(app -> "app_hired_student".equals(app.getId()))
+                .findFirst()
+                .orElseThrow()
+                .getStatus());
+        assertEquals("rejected", readApplications().stream()
+                .filter(app -> "app_rejected_student".equals(app.getId()))
+                .findFirst()
+                .orElseThrow()
+                .getStatus());
+    }
+
+    @Test
+    void withdraw_overdueApplication_throws400() throws Exception {
+        JobPosting expired = openJob("job_expired_deadline");
+        expired.setDeadline(LocalDate.now().minusDays(1).toString());
+        writeJobs(List.of(expired));
+        ApplicationRecord pending = application("app_pending_student", "job_expired_deadline", "pending", true);
+        pending.setStudentId(STUDENT_ID);
+        writeApplications(List.of(pending));
+
+        StudentBusinessException ex = assertThrows(
+                StudentBusinessException.class,
+                () -> service.withdrawApplication(servletContext, STUDENT_ID, "app_pending_student")
+        );
+        assertEquals(ErrorCodes.VALIDATION_ERROR, ex.getCode());
+        assertEquals(HttpServletResponse.SC_BAD_REQUEST, ex.getHttpStatus());
+        assertEquals("overdue", readApplications().get(0).getStatus());
+    }
+
+    @Test
+    void listJobs_expiredJobReturnedAsClosedAndNotAcceptingApplications() throws Exception {
+        JobPosting expired = openJob("job_expired_deadline");
+        expired.setDeadline(LocalDate.now().minusDays(1).toString());
+        writeJobs(List.of(expired));
+
+        var item = service.listJobs(servletContext, STUDENT_ID).getItems().get(0);
+
+        assertEquals("job_expired_deadline", item.getId());
+        assertTrue(item.isExpired());
+        assertFalse(item.isAcceptingApplications());
+        assertEquals("closed", item.getStatus());
+        assertEquals("Deadline Passed", item.getClosedReason());
+    }
+
+    @Test
     void apply_missingAttachmentSelection_throws400() {
         StudentApplicationCreateRequest request = new StudentApplicationCreateRequest();
         request.setJobId("job_open");
@@ -287,6 +394,26 @@ class StudentServiceTest extends MoTestSupport {
         writeJobs(List.of(openJob("job_open"), closed));
         StudentApplicationCreateRequest request = new StudentApplicationCreateRequest();
         request.setJobId("job_closed");
+        request.setSelectedAttachmentIds(List.of("att_resume.pdf"));
+
+        StudentBusinessException ex = assertThrows(
+                StudentBusinessException.class,
+                () -> service.applyForJob(servletContext, STUDENT_ID, request)
+        );
+        assertEquals(ErrorCodes.VALIDATION_ERROR, ex.getCode());
+        assertEquals(HttpServletResponse.SC_BAD_REQUEST, ex.getHttpStatus());
+    }
+
+    @Test
+    void apply_fullyStaffedJob_throws400() throws Exception {
+        JobPosting full = openJob("job_full");
+        full.setPositions(1);
+        writeJobs(List.of(full));
+        ApplicationRecord hired = application("app_hired_student", "job_full", "hired", true);
+        hired.setStudentId("other_student");
+        writeApplications(List.of(hired));
+        StudentApplicationCreateRequest request = new StudentApplicationCreateRequest();
+        request.setJobId("job_full");
         request.setSelectedAttachmentIds(List.of("att_resume.pdf"));
 
         StudentBusinessException ex = assertThrows(
@@ -342,6 +469,54 @@ class StudentServiceTest extends MoTestSupport {
         );
         assertEquals(ErrorCodes.VALIDATION_ERROR, ex.getCode());
         assertEquals(HttpServletResponse.SC_BAD_REQUEST, ex.getHttpStatus());
+    }
+
+    @Test
+    void resign_hiredApplication_marksResignedReopensJobAndNotifiesTeacher() throws Exception {
+        JobPosting job = openJob("job_hired");
+        job.setPositions(1);
+        job.setRecruitmentClosed(true);
+        job.setDeadline(LocalDate.now().plusDays(5).toString());
+        writeJobs(List.of(job));
+        ApplicationRecord hired = application("app_hired_student", "job_hired", "hired", true);
+        hired.setStudentId(STUDENT_ID);
+        writeApplications(List.of(hired));
+        StudentResignationRequest request = new StudentResignationRequest();
+        request.setApplicationId("app_hired_student");
+        request.setReason("Too many commitments");
+
+        var result = service.resignFromAssignedJob(servletContext, STUDENT_ID, request);
+
+        assertEquals("resigned", result.get("status"));
+        assertEquals("Too many commitments", result.get("reason"));
+        ApplicationRecord resigned = readApplications().get(0);
+        assertEquals("resigned", resigned.getStatus());
+        assertTrue(resigned.getDecisionFeedback().contains("Too many commitments"));
+        assertFalse(Boolean.TRUE.equals(readJobs().get(0).getRecruitmentClosed()));
+        assertTrue(readNotifications().stream().anyMatch(n ->
+                "mo".equals(n.getRecipientRole())
+                        && TEACHER_ID.equals(n.getRecipientId())
+                        && n.getMessage().contains("resigned")
+                        && n.getMessage().contains("Too many commitments")));
+        assertTrue(service.listMyAssignedJobs(servletContext, STUDENT_ID).getItems().isEmpty());
+    }
+
+    @Test
+    void resign_hiredApplication_doesNotReopenExpiredJob() throws Exception {
+        JobPosting job = openJob("job_hired");
+        job.setRecruitmentClosed(true);
+        job.setDeadline(LocalDate.now().minusDays(1).toString());
+        writeJobs(List.of(job));
+        ApplicationRecord hired = application("app_hired_student", "job_hired", "hired", true);
+        hired.setStudentId(STUDENT_ID);
+        writeApplications(List.of(hired));
+        StudentResignationRequest request = new StudentResignationRequest();
+        request.setApplicationId("app_hired_student");
+
+        service.resignFromAssignedJob(servletContext, STUDENT_ID, request);
+
+        assertEquals("resigned", readApplications().get(0).getStatus());
+        assertTrue(Boolean.TRUE.equals(readJobs().get(0).getRecruitmentClosed()));
     }
 
     @Test

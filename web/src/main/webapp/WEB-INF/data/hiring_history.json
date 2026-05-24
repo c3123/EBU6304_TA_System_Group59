@@ -284,5 +284,31 @@
     "hiredStudentNames": [
       "Ethan Zhang"
     ]
+  },
+  {
+    "id": "hist_d8feb8925523471980103812c75328dd",
+    "jobId": "job_8085294e9c794385a9a65e936e06f2dc",
+    "moId": "mo001",
+    "action": "manual_hire",
+    "submittedAt": "2026-05-24T01:02:53.836446200Z",
+    "hiredApplicationIds": [
+      "app_1779584532035"
+    ],
+    "hiredStudentNames": [
+      "Alex Chen"
+    ]
+  },
+  {
+    "id": "hist_0542ddef01914dc2897af4e34d31ca57",
+    "jobId": "job_8085294e9c794385a9a65e936e06f2dc",
+    "moId": "mo001",
+    "action": "resigned",
+    "submittedAt": "2026-05-24T02:25:13.403707900Z",
+    "hiredApplicationIds": [
+      "app_1779584532035"
+    ],
+    "hiredStudentNames": [
+      "Alex Chen"
+    ]
   }
 ]

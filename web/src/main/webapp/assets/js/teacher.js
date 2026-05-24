@@ -240,7 +240,7 @@ function renderTeacherJobCard(item) {
   const canPublish = String(item.approvalStatus || "").toLowerCase() === "approved" && !isPublished && !isClosed;
   const publishLocked = isPublished ? "Published" : "Publish job";
   const publishDisabled = canPublish ? "" : "disabled";
-  const canEdit = !isClosed && !isPublished;
+  const canEdit = item.withdrawn !== true;
   const canDelete = !isClosed && !isPublished;
   const canTakeOffline = isPublished && !isClosed;
 
@@ -318,6 +318,24 @@ function renderTeacherJobCard(item) {
           <textarea name="requirements" placeholder="Example: Java, SQL, Git, Communication Skills" required>${teacherEscapeHtml(teacherSafeText(item.requirements))}</textarea>
           <p class="field-help">Enter required skills or qualifications for this TA role.</p>
         </div>
+        <div class="mo-publish-grid">
+          <div class="field">
+            <label>Schedule</label>
+            <input name="schedule" type="text" value="${teacherEscapeHtml(teacherSafeText(item.schedule))}" />
+          </div>
+          <div class="field">
+            <label>Location</label>
+            <select name="location">
+              <option value="">Keep current</option>
+              <option value="offline" ${String(item.location || "").toLowerCase() === "offline" ? "selected" : ""}>Offline</option>
+              <option value="online" ${String(item.location || "").toLowerCase() === "online" ? "selected" : ""}>Online</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Deadline</label>
+            <input name="deadline" type="text" class="admin-date-input" value="${teacherEscapeHtml(teacherSafeText(item.deadline))}" />
+          </div>
+        </div>
         <div class="row">
           <button type="submit" class="btn btn-primary">Save edit</button>
           <button type="button" class="btn btn-outline" data-cancel-edit="${teacherEscapeHtml(item.jobId)}">Cancel</button>
@@ -336,7 +354,7 @@ function renderTeacherJobCard(item) {
           ${teacherApprovalBadge(item.approvalStatus)}
           ${teacherJobStateBadge(item)}
           ${teacherBooleanBadge("published", item.published, "published")}
-          ${teacherBooleanBadge("withdrawn", item.withdrawn === true || item.recruitmentClosed === true, "withdrawn")}
+          ${teacherBooleanBadge("withdrawn", item.withdrawn === true, "withdrawn")}
         </div>
       </div>
 
@@ -491,14 +509,17 @@ async function submitEditForm(form) {
       plannedCount: Number(form.plannedCount.value),
       hourMin: Number(form.hourMin.value),
       hourMax: Number(form.hourMax.value),
-      requirements: form.requirements.value.trim()
+      requirements: form.requirements.value.trim(),
+      schedule: form.schedule.value.trim(),
+      location: form.location.value.trim(),
+      deadline: form.deadline.value.trim().replace(/\//g, "-")
     };
     await teacherRequest(`${teacherApiBase()}/jobs/edit/${encodeURIComponent(jobId)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json; charset=UTF-8" },
       body: JSON.stringify(payload)
     });
-    teacherSetNotice("jobsNotice", `Job ${jobId} updated successfully. Please publish it again to make the changes live.`, false);
+    teacherSetNotice("jobsNotice", `Job ${jobId} updated successfully.`, false);
     await loadTeacherJobs();
   } catch (err) {
     teacherSetNotice("jobsNotice", `${err.code || "REQUEST_ERROR"}: ${err.message}`, true);

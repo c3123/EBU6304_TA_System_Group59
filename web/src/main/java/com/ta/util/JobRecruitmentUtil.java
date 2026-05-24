@@ -31,6 +31,17 @@ public final class JobRecruitmentUtil {
                 .count();
     }
 
+    public static int countActiveHired(List<ApplicationRecord> applications, String jobId) {
+        if (jobId == null || jobId.isBlank() || applications == null) {
+            return 0;
+        }
+        return (int) applications.stream()
+                .filter(ApplicationRecord::isActive)
+                .filter(a -> jobId.equals(a.getJobId()))
+                .filter(a -> "hired".equalsIgnoreCase(normalizeStatus(a.getStatus())))
+                .count();
+    }
+
     public static boolean isRecruitmentFull(JobPosting job, int hiredCount) {
         if (job == null) {
             return false;
@@ -43,22 +54,12 @@ public final class JobRecruitmentUtil {
         if (job == null || job.getId() == null) {
             return false;
         }
-        if (Boolean.TRUE.equals(job.getRecruitmentClosed())) {
-            return true;
-        }
         return isRecruitmentFull(job, countHired(context, job.getId()));
     }
 
     public static void assertCanHire(JobPosting job, int currentHired, int additionalHires) {
         if (job == null || additionalHires <= 0) {
             return;
-        }
-        if (Boolean.TRUE.equals(job.getRecruitmentClosed())) {
-            throw new MoBusinessException(
-                    ErrorCodes.JOB_RECRUITMENT_CLOSED,
-                    "Recruitment is closed for this job (read-only).",
-                    HttpServletResponse.SC_BAD_REQUEST
-            );
         }
         int positions = job.getPositions();
         if (positions <= 0) {
@@ -90,7 +91,7 @@ public final class JobRecruitmentUtil {
      */
     public static boolean closeRecruitmentIfFull(ServletContext context, List<JobPosting> jobs, JobPosting job)
             throws IOException {
-        if (job == null || Boolean.TRUE.equals(job.getRecruitmentClosed())) {
+        if (job == null) {
             return false;
         }
         int hiredCount = countHired(context, job.getId());
@@ -100,10 +101,32 @@ public final class JobRecruitmentUtil {
         String now = Instant.now().toString();
         job.setRecruitmentClosed(true);
         job.setClosedAt(now);
-        job.setStatus("closed");
-        job.setPublished(false);
+        if (!JobDeadlineUtil.isJobExpired(job)) {
+            job.setStatus("open");
+            job.setPublished(true);
+        }
         job.setUpdatedAt(now);
         JsonUtility.saveJobs(context, jobs);
+        return true;
+    }
+
+    public static boolean reopenRecruitmentIfCapacityAvailable(List<JobPosting> jobs,
+                                                               JobPosting job,
+                                                               List<ApplicationRecord> applications) {
+        if (job == null || JobDeadlineUtil.isJobExpired(job) || Boolean.TRUE.equals(job.getWithdrawn())) {
+            return false;
+        }
+        if (!Boolean.TRUE.equals(job.getRecruitmentClosed())) {
+            return false;
+        }
+        if (isRecruitmentFull(job, countActiveHired(applications, job.getId()))) {
+            return false;
+        }
+        job.setRecruitmentClosed(false);
+        job.setClosedAt(null);
+        job.setStatus("open");
+        job.setPublished(true);
+        job.setUpdatedAt(Instant.now().toString());
         return true;
     }
 

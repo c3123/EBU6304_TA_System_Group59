@@ -21,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -94,6 +95,26 @@ class MoApplicationServiceTest extends MoTestSupport {
         MoApplicationListResponse response = service.listApplications(
                 servletContext, MO_ID, null, MoApplicationService.STATUS_FILTER_NONE_SENTINEL);
         assertTrue(response.getItems().isEmpty());
+    }
+
+    @Test
+    void listApplications_expiredPendingBecomesOverdueAndCanBeFiltered() throws Exception {
+        List<JobPosting> jobs = defaultJobs();
+        jobs.get(0).setDeadline(LocalDate.now().minusDays(1).toString());
+        writeJobs(jobs);
+
+        MoApplicationListResponse response = service.listApplications(servletContext, MO_ID, null, "overdue");
+
+        List<String> ids = response.getItems().stream()
+                .map(MoApplicationListItemResponse::getApplicationId)
+                .collect(Collectors.toList());
+        assertTrue(ids.contains("app_pending"));
+        assertTrue(ids.contains("app_viewed"));
+        assertFalse(ids.contains("app_hired"));
+        assertFalse(ids.contains("app_rejected"));
+        assertEquals("overdue", findApp(readApplications(), "app_pending").getStatus());
+        assertEquals("hired", findApp(readApplications(), "app_hired").getStatus());
+        assertEquals("rejected", findApp(readApplications(), "app_rejected").getStatus());
     }
 
     @Test
@@ -303,7 +324,7 @@ class MoApplicationServiceTest extends MoTestSupport {
     }
 
     @Test
-    void updateApplicationStatus_firstHire_closesJobWhenFull() throws Exception {
+    void updateApplicationStatus_firstHire_marksRecruitmentClosedButKeepsJobPublished() throws Exception {
         List<JobPosting> jobs = defaultJobs();
         jobs.get(0).setPositions(1);
         writeJobs(jobs);
@@ -319,8 +340,93 @@ class MoApplicationServiceTest extends MoTestSupport {
                 .findFirst()
                 .orElseThrow();
         assertTrue(Boolean.TRUE.equals(job.getRecruitmentClosed()));
-        assertEquals("closed", job.getStatus());
-        assertFalse(Boolean.TRUE.equals(job.getPublished()));
+        assertEquals("open", job.getStatus());
+        assertTrue(Boolean.TRUE.equals(job.getPublished()));
+    }
+
+    @Test
+    void dismissHiredStudent_updatesStatusReopensJobAndNotifiesStudent() throws Exception {
+        List<JobPosting> jobs = defaultJobs();
+        jobs.get(0).setPositions(2);
+        jobs.get(0).setRecruitmentClosed(true);
+        jobs.get(0).setDeadline(LocalDate.now().plusDays(5).toString());
+        writeJobs(jobs);
+
+        var result = service.dismissHiredStudent(servletContext, MO_ID, "app_hired", "Low attendance");
+
+        assertEquals("dismissed", result.get("status"));
+        assertEquals("Low attendance", result.get("reason"));
+        ApplicationRecord dismissed = findApp(readApplications(), "app_hired");
+        assertEquals("dismissed", dismissed.getStatus());
+        assertTrue(dismissed.getDecisionFeedback().contains("Low attendance"));
+        JobPosting job = readJobs().stream().filter(j -> JOB_ID.equals(j.getId())).findFirst().orElseThrow();
+        assertFalse(Boolean.TRUE.equals(job.getRecruitmentClosed()));
+        assertTrue(readNotifications().stream().anyMatch(n ->
+                "student".equals(n.getRecipientRole())
+                        && STUDENT_USER_ID.equals(n.getRecipientId())
+                        && n.getMessage().contains("dismissed")
+                        && n.getMessage().contains("Low attendance")));
+    }
+
+    @Test
+    void dismissHiredStudent_doesNotReopenExpiredJob() throws Exception {
+        List<JobPosting> jobs = defaultJobs();
+        jobs.get(0).setRecruitmentClosed(true);
+        jobs.get(0).setDeadline(LocalDate.now().minusDays(1).toString());
+        writeJobs(jobs);
+
+        service.dismissHiredStudent(servletContext, MO_ID, "app_hired");
+
+        JobPosting job = readJobs().stream().filter(j -> JOB_ID.equals(j.getId())).findFirst().orElseThrow();
+        assertTrue(Boolean.TRUE.equals(job.getRecruitmentClosed()));
+    }
+
+    @Test
+    void listHiredStudents_defaultsToCurrentHiredAndCanIncludeHistory() throws Exception {
+        List<ApplicationRecord> apps = new ArrayList<>(defaultApplications());
+        ApplicationRecord resigned = application("app_resigned", JOB_ID, "resigned", true);
+        apps.add(resigned);
+        writeApplications(apps);
+
+        var current = service.listHiredStudents(servletContext, MO_ID, null);
+        List<String> currentIds = current.getItems().stream()
+                .map(item -> item.getApplicationId())
+                .collect(Collectors.toList());
+        assertTrue(currentIds.contains("app_hired"));
+        assertFalse(currentIds.contains("app_resigned"));
+
+        var history = service.listHiredStudents(servletContext, MO_ID, null, true);
+        List<String> historyIds = history.getItems().stream()
+                .map(item -> item.getApplicationId())
+                .collect(Collectors.toList());
+        assertTrue(historyIds.contains("app_hired"));
+        assertTrue(historyIds.contains("app_resigned"));
+    }
+
+    @Test
+    void hideFormerHiredStudent_removesOnlyFromHiredManagementHistory() throws Exception {
+        List<ApplicationRecord> apps = new ArrayList<>(defaultApplications());
+        ApplicationRecord resigned = application("app_resigned", JOB_ID, "resigned", true);
+        apps.add(resigned);
+        writeApplications(apps);
+
+        var result = service.hideFormerHiredStudent(servletContext, MO_ID, "app_resigned");
+
+        assertEquals("app_resigned", result.get("applicationId"));
+        ApplicationRecord saved = findApp(readApplications(), "app_resigned");
+        assertTrue(saved.isHiddenFromHiredManagement());
+        assertEquals("resigned", saved.getStatus());
+        assertFalse(service.listHiredStudents(servletContext, MO_ID, null, true).getItems().stream()
+                .anyMatch(item -> "app_resigned".equals(item.getApplicationId())));
+    }
+
+    @Test
+    void hideFormerHiredStudent_hiredRecordThrows400() {
+        assertMoBusinessException(
+                () -> service.hideFormerHiredStudent(servletContext, MO_ID, "app_hired"),
+                ErrorCodes.VALIDATION_ERROR,
+                HttpServletResponse.SC_BAD_REQUEST
+        );
     }
 
     @Test

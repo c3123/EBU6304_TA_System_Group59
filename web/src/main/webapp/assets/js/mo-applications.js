@@ -28,12 +28,16 @@ function statusPill(status) {
   if (normalized === "shortlisted") return '<span class="status-pill status-shortlisted">Shortlisted</span>';
   if (normalized === "hired") return '<span class="status-pill status-hired">Hired</span>';
   if (normalized === "rejected") return '<span class="status-pill status-rejected">Rejected</span>';
+  if (normalized === "overdue") return '<span class="status-pill status-overdue">Overdue</span>';
+  if (normalized === "resigned") return '<span class="status-pill status-resigned">Resigned</span>';
+  if (normalized === "dismissed") return '<span class="status-pill status-dismissed">Dismissed</span>';
   return `<span class="status-pill">${escapeHtml(safeText(status))}</span>`;
 }
 
 function statusSelectValue(st) {
   const s = String(st || "").toLowerCase();
   if (s === "viewed") return "pending";
+  if (s === "overdue") return "overdue";
   return s || "pending";
 }
 
@@ -375,7 +379,8 @@ function buildStatusQueryParam() {
   const s = byId("filterShortlisted").checked;
   const r = byId("filterRejected").checked;
   const h = byId("filterHired").checked;
-  if (p && s && r && h) {
+  const o = byId("filterOverdue").checked;
+  if (p && s && r && h && o) {
     return null;
   }
   const parts = [];
@@ -383,6 +388,7 @@ function buildStatusQueryParam() {
   if (s) parts.push("shortlisted");
   if (r) parts.push("rejected");
   if (h) parts.push("hired");
+  if (o) parts.push("overdue");
   if (parts.length === 0) {
     return "__none__";
   }
@@ -567,13 +573,14 @@ function renderStatusSelect(item, closed) {
   const st = String(item.status || "").toLowerCase();
   const id = escapeHtml(item.applicationId);
   const selVal = statusSelectValue(item.status);
-  const selDis = closed && st !== "hired" ? "disabled" : "";
+  const selDis = st === "overdue" || (closed && st !== "hired") ? "disabled" : "";
   const hiredOptDis = (closed || jobRecruitmentFull(item.jobId)) && st !== "hired" ? "disabled" : "";
   return `<select class="mo-status-select" data-mo-status data-app-id="${id}" data-prev="${escapeHtml(selVal)}" ${selDis}>
     <option value="pending" ${selVal === "pending" ? "selected" : ""}>Pending</option>
     <option value="shortlisted" ${selVal === "shortlisted" ? "selected" : ""}>Shortlisted</option>
     <option value="rejected" ${selVal === "rejected" ? "selected" : ""}>Rejected</option>
     <option value="hired" ${selVal === "hired" ? "selected" : ""} ${hiredOptDis}>Hired</option>
+    ${st === "overdue" ? '<option value="overdue" selected>Overdue</option>' : ""}
   </select>`;
 }
 
@@ -585,7 +592,7 @@ function renderNotesAndFeedback(item, closed) {
   const fbRaw = item.decisionFeedback || "";
   const fbVal = escapeHtml(fbRaw);
   const fbLen = String(fbRaw).length;
-  const notesDis = closed ? "disabled" : "";
+  const notesDis = closed || st === "overdue" ? "disabled" : "";
   const fbTemplateOpts = FEEDBACK_TEMPLATES.map(
     t => `<option value="${escapeHtml(t.value)}">${escapeHtml(t.label)}</option>`
   ).join("");
@@ -688,7 +695,8 @@ function renderAiRecommendationBlock(item) {
 
 function renderApplicantCard(item, closed) {
   const st = String(item.status || "").toLowerCase();
-  const recruitmentBlocked = closed || jobRecruitmentFull(item.jobId);
+  const overdue = st === "overdue";
+  const recruitmentBlocked = overdue || closed || jobRecruitmentFull(item.jobId);
   const id = escapeHtml(item.applicationId);
   const rawId = item.applicationId;
   const jobLabel = escapeHtml(safeText(state.jobTitles[item.jobId] || item.jobId || "—"));
@@ -716,7 +724,7 @@ function renderApplicantCard(item, closed) {
 
   let actionsBlock = "";
   if (recruitmentBlocked) {
-    const flag = closed ? "Recruitment Closed" : "Position limit reached";
+    const flag = overdue ? "Application Overdue" : closed ? "Recruitment Closed" : "Position limit reached";
     actionsBlock = `<div class="mo-wl-actions"><span class="mo-closed-flag">${flag}</span><button type="button" class="btn btn-primary mo-app-detail-btn">View details</button></div>`;
   } else if (st === "rejected") {
     actionsBlock = `<div class="mo-wl-actions"><button type="button" class="btn btn-outline" data-mo-action="viewed" data-app-id="${id}">Undo reject</button><button type="button" class="btn btn-primary mo-app-detail-btn">View details</button></div>`;
@@ -769,7 +777,8 @@ function renderApplicantCard(item, closed) {
 
 function renderApplicantCardDashboard(item, closed) {
   const st = String(item.status || "").toLowerCase();
-  const recruitmentBlocked = closed || jobRecruitmentFull(item.jobId);
+  const overdue = st === "overdue";
+  const recruitmentBlocked = overdue || closed || jobRecruitmentFull(item.jobId);
   const id = escapeHtml(item.applicationId);
   const rawId = item.applicationId;
   const jobLabel = escapeHtml(safeText(state.jobTitles[item.jobId] || item.jobId || "-"));
@@ -795,7 +804,7 @@ function renderApplicantCardDashboard(item, closed) {
     </div>` : "";
   let actionsBlock = "";
   if (recruitmentBlocked) {
-    const flag = closed ? "Recruitment Closed" : "Position limit reached";
+    const flag = overdue ? "Application Overdue" : closed ? "Recruitment Closed" : "Position limit reached";
     actionsBlock = `<div class="mo-wl-actions"><span class="mo-closed-flag">${flag}</span><button type="button" class="btn btn-primary mo-app-detail-btn">View details</button></div>`;
   } else if (st === "rejected") {
     actionsBlock = `<div class="mo-wl-actions"><button type="button" class="btn btn-outline" data-mo-action="viewed" data-app-id="${id}">Undo reject</button><button type="button" class="btn btn-primary mo-app-detail-btn">View details</button></div>`;
@@ -1307,7 +1316,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const feed = byId("applicationsFeed");
 
   let filterDeb;
-  ["filterPending", "filterShortlisted", "filterRejected", "filterHired"].forEach(fid => {
+  ["filterPending", "filterShortlisted", "filterRejected", "filterHired", "filterOverdue"].forEach(fid => {
     byId(fid).addEventListener("change", () => {
       clearTimeout(filterDeb);
       filterDeb = setTimeout(async () => {
@@ -1508,6 +1517,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   byId("batchRejectBtn").addEventListener("click", () => runBatchStatus("rejected", "Rejected"));
   byId("batchPendingBtn").addEventListener("click", () => runBatchStatus("pending", "Pending"));
 
+
   byId("finalHiringCloseBtn").addEventListener("click", closeFinalHiringModal);
   byId("historyCloseBtn").addEventListener("click", closeHistoryModal);
   byId("finalHiringConfirmBtn").addEventListener("click", async () => {
@@ -1532,6 +1542,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     byId("filterShortlisted").checked = true;
     byId("filterRejected").checked = true;
     byId("filterHired").checked = true;
+    byId("filterOverdue").checked = true;
     byId("sortMode").value = "applied";
     state.sortMode = "applied";
     byId("filterHighMatch").checked = false;

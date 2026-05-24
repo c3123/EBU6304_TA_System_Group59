@@ -15,6 +15,9 @@ public class StudentJobItemResponse {
     private String requirements;
     private String schedule;
     private String location;
+    private boolean expired;
+    private boolean acceptingApplications;
+    private String closedReason;
     private double matchScore;
     private List<String> matchedSkills = new ArrayList<>();
     private List<String> missingSkills = new ArrayList<>();
@@ -107,6 +110,30 @@ public class StudentJobItemResponse {
 
     public void setLocation(String location) {
         this.location = location;
+    }
+
+    public boolean isExpired() {
+        return expired;
+    }
+
+    public void setExpired(boolean expired) {
+        this.expired = expired;
+    }
+
+    public boolean isAcceptingApplications() {
+        return acceptingApplications;
+    }
+
+    public void setAcceptingApplications(boolean acceptingApplications) {
+        this.acceptingApplications = acceptingApplications;
+    }
+
+    public String getClosedReason() {
+        return closedReason;
+    }
+
+    public void setClosedReason(String closedReason) {
+        this.closedReason = closedReason;
     }
 
     public double getMatchScore() {

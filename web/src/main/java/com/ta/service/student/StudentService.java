@@ -10,13 +10,16 @@ import com.ta.dto.student.StudentJobItemResponse;
 import com.ta.dto.student.StudentJobListResponse;
 import com.ta.dto.student.StudentProfileResponse;
 import com.ta.dto.student.StudentProfileUpdateRequest;
+import com.ta.dto.student.StudentResignationRequest;
 import com.ta.model.ApplicationRecord;
 import com.ta.model.Attachment;
+import com.ta.model.HiringHistoryRecord;
 import com.ta.model.JobPosting;
 import com.ta.model.NotificationRecord;
 import com.ta.model.StudentProfile;
 import com.ta.model.User;
 import com.ta.util.FileStorageUtil;
+import com.ta.util.JobDeadlineUtil;
 import com.ta.util.JobHoursUtil;
 import com.ta.util.JobRecruitmentUtil;
 import com.ta.util.JsonUtility;
@@ -34,8 +37,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 public class StudentService {
+    private static final int MAX_RESIGNATION_REASON_CHARS = 200;
     private final JobMatchingService jobMatchingService;
 
     public StudentService() {
@@ -53,11 +58,13 @@ public class StudentService {
     public StudentJobListResponse listJobs(ServletContext context, String studentUserId) {
         try {
             List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
             StudentProfile profile = loadStudentProfile(context, studentUserId);
             List<JobMatchResult> matches = jobMatchingService.getRecommendedJobs(context, profile, jobs);
             List<StudentJobItemResponse> items = new ArrayList<>();
             for (JobMatchResult match : matches) {
-                items.add(toJobItem(match));
+                int hiredCount = JobRecruitmentUtil.countActiveHired(applications, match.getJob().getId());
+                items.add(toJobItem(match, hiredCount));
             }
 
             StudentJobListResponse response = new StudentJobListResponse();
@@ -72,6 +79,9 @@ public class StudentService {
         try {
             List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
             List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            if (JobDeadlineUtil.syncOverdueApplications(applications, jobs)) {
+                JsonUtility.saveApplications(context, applications);
+            }
             Map<String, JobPosting> jobsById = new HashMap<>();
             for (JobPosting job : jobs) {
                 jobsById.put(job.getId(), job);
@@ -96,7 +106,10 @@ public class StudentService {
                 item.setHours(job != null ? job.getHours() : 0);
                 item.setAppliedAt(extractDate(record.getAppliedAt()));
                 item.setStatus(toStudentStatus(record.getStatus()));
-                item.setFeedback("");
+                item.setFeedback(JobDeadlineUtil.isOverdue(record.getStatus())
+                        ? "Application expired due to passed deadline."
+                        : "");
+                item.setWithdrawable(isStudentWithdrawable(record));
                 items.add(item);
             }
 
@@ -210,8 +223,18 @@ public class StudentService {
                         HttpServletResponse.SC_BAD_REQUEST
                 );
             }
+            if (JobDeadlineUtil.isJobExpired(job)) {
+                throw new StudentBusinessException(
+                        ErrorCodes.VALIDATION_ERROR,
+                        "This job is no longer accepting applications.",
+                        HttpServletResponse.SC_BAD_REQUEST
+                );
+            }
 
             List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            if (JobDeadlineUtil.syncOverdueApplications(applications, jobs)) {
+                JsonUtility.saveApplications(context, applications);
+            }
             boolean exists = applications.stream().anyMatch(a ->
                     studentUserId.equals(a.getStudentId())
                             && request.getJobId().equals(a.getJobId())
@@ -294,6 +317,7 @@ public class StudentService {
             response.setAppliedAt(extractDate(record.getAppliedAt()));
             response.setStatus("pending");
             response.setFeedback("");
+            response.setWithdrawable(true);
             return response;
         } catch (IOException e) {
             throw new RuntimeException("Failed to create application.", e);
@@ -394,11 +418,50 @@ public class StudentService {
         item.setRequirements(job.getRequirements());
         item.setSchedule(displayValue(job.getSchedule()));
         item.setLocation(displayValue(job.getLocation()));
+        boolean expired = JobDeadlineUtil.isJobExpired(job);
+        item.setExpired(expired);
+        item.setAcceptingApplications(JobDeadlineUtil.isAcceptingApplications(job));
+        if (expired) {
+            item.setStatus("closed");
+            item.setClosedReason("Deadline Passed");
+        } else if (Boolean.TRUE.equals(job.getRecruitmentClosed())) {
+            item.setClosedReason("Fully Staffed");
+        } else {
+            item.setClosedReason("");
+        }
+        return item;
+    }
+
+    private StudentJobItemResponse toJobItem(JobPosting job, int hiredCount) {
+        StudentJobItemResponse item = toJobItem(job);
+        boolean full = JobRecruitmentUtil.isRecruitmentFull(job, hiredCount);
+        if (!item.isExpired() && full) {
+            item.setAcceptingApplications(false);
+            item.setClosedReason("Fully Staffed");
+        }
         return item;
     }
 
     private StudentJobItemResponse toJobItem(JobMatchResult match) {
         StudentJobItemResponse item = toJobItem(match.getJob());
+        item.setMatchScore(roundToTwoDecimals(match.getMatchScore()));
+        item.setMatchedSkills(match.getMatchedSkills());
+        item.setMissingSkills(match.getMissingSkills());
+        item.setRequiredSkills(match.getRequiredSkills());
+        List<String> relatedLabels = new ArrayList<>();
+        if (match.getRelatedMatches() != null) {
+            for (SkillRelationHint hint : match.getRelatedMatches()) {
+                if (hint != null) {
+                    relatedLabels.add(hint.toDisplayLabel());
+                }
+            }
+        }
+        item.setRelatedMatches(relatedLabels);
+        return item;
+    }
+
+    private StudentJobItemResponse toJobItem(JobMatchResult match, int hiredCount) {
+        StudentJobItemResponse item = toJobItem(match.getJob(), hiredCount);
         item.setMatchScore(roundToTwoDecimals(match.getMatchScore()));
         item.setMatchedSkills(match.getMatchedSkills());
         item.setMissingSkills(match.getMissingSkills());
@@ -486,10 +549,25 @@ public class StudentService {
         if ("rejected".equalsIgnoreCase(status)) {
             return "rejected";
         }
+        if (JobDeadlineUtil.isOverdue(status)) {
+            return "overdue";
+        }
+        if ("resigned".equalsIgnoreCase(status)) {
+            return "resigned";
+        }
+        if ("dismissed".equalsIgnoreCase(status)) {
+            return "dismissed";
+        }
         if ("shortlisted".equalsIgnoreCase(status)) {
             return "shortlisted";
         }
         return "pending";
+    }
+
+    private boolean isStudentWithdrawable(ApplicationRecord record) {
+        String status = record == null ? "" : trimToEmpty(record.getStatus()).toLowerCase();
+        return !"hired".equals(status) && !"overdue".equals(status)
+                && !"resigned".equals(status) && !"dismissed".equals(status);
     }
 
     private String extractDate(String isoDateTime) {
@@ -682,6 +760,17 @@ public class StudentService {
             }
 
             List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            if (JobDeadlineUtil.syncOverdueApplications(applications, jobs)) {
+                JsonUtility.saveApplications(context, applications);
+            }
+            if (JobDeadlineUtil.isOverdue(record.getStatus())) {
+                throw new StudentBusinessException(
+                        ErrorCodes.VALIDATION_ERROR,
+                        "Application expired due to passed deadline.",
+                        HttpServletResponse.SC_BAD_REQUEST
+                );
+            }
+
             JobPosting job = jobs.stream()
                     .filter(j -> record.getJobId().equals(j.getId()))
                     .findFirst()
@@ -722,6 +811,108 @@ public class StudentService {
         } catch (Exception e) {
             throw new RuntimeException("Failed to withdraw application.", e);
         }
+    }
+
+    public Map<String, Object> resignFromAssignedJob(ServletContext context, String studentUserId, StudentResignationRequest request) {
+        if (request == null || isBlank(request.getApplicationId())) {
+            throw new StudentBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    "applicationId is required.",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+        try {
+            List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            ApplicationRecord record = applications.stream()
+                    .filter(a -> request.getApplicationId().equals(a.getId()) && studentUserId.equals(a.getStudentId()))
+                    .findFirst()
+                    .orElseThrow(() -> new StudentBusinessException(
+                            ErrorCodes.VALIDATION_ERROR,
+                            "Application not found.",
+                            HttpServletResponse.SC_NOT_FOUND
+                    ));
+            if (!record.isActive() || !"hired".equalsIgnoreCase(record.getStatus())) {
+                throw new StudentBusinessException(
+                        ErrorCodes.VALIDATION_ERROR,
+                        "Only hired TA positions can be resigned.",
+                        HttpServletResponse.SC_BAD_REQUEST
+                );
+            }
+
+            List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            JobPosting job = jobs.stream()
+                    .filter(j -> record.getJobId() != null && record.getJobId().equals(j.getId()))
+                    .findFirst()
+                    .orElseThrow(() -> new StudentBusinessException(
+                            ErrorCodes.JOB_NOT_FOUND,
+                            "Job not found.",
+                            HttpServletResponse.SC_NOT_FOUND
+                    ));
+
+            String normalizedReason = normalizeResignationReason(request.getReason());
+            record.setStatus("resigned");
+            record.setDecisionFeedback(normalizedReason.isEmpty()
+                    ? "Resignation reason: -"
+                    : "Resignation reason: " + normalizedReason);
+            boolean reopened = JobRecruitmentUtil.reopenRecruitmentIfCapacityAvailable(jobs, job, applications);
+            JsonUtility.saveApplications(context, applications);
+            if (reopened) {
+                JsonUtility.saveJobs(context, jobs);
+            }
+            appendResignationHistory(context, record, job);
+            notifyMoOfResignation(context, record, job, normalizedReason);
+            return Map.of(
+                    "applicationId", record.getId(),
+                    "status", "resigned",
+                    "jobReopened", reopened,
+                    "reason", normalizedReason,
+                    "message", "Resignation submitted successfully."
+            );
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to submit resignation.", e);
+        }
+    }
+
+    private void appendResignationHistory(ServletContext context, ApplicationRecord record, JobPosting job) throws IOException {
+        List<HiringHistoryRecord> history = JsonUtility.loadHiringHistory(context);
+        HiringHistoryRecord entry = new HiringHistoryRecord();
+        entry.setId("hist_" + UUID.randomUUID().toString().replace("-", ""));
+        entry.setAction("resigned");
+        entry.setJobId(record.getJobId());
+        entry.setMoId(job != null ? job.getTeacherId() : "");
+        entry.setSubmittedAt(Instant.now().toString());
+        entry.setHiredApplicationIds(List.of(record.getId()));
+        entry.setHiredStudentNames(List.of(record.getStudentName()));
+        history.add(entry);
+        JsonUtility.saveHiringHistory(context, history);
+    }
+
+    private void notifyMoOfResignation(ServletContext context, ApplicationRecord record, JobPosting job, String reason) throws IOException {
+        if (job == null || isBlank(job.getTeacherId())) {
+            return;
+        }
+        String now = Instant.now().toString();
+        List<NotificationRecord> notifications = JsonUtility.loadNotifications(context);
+        NotificationRecord notification = new NotificationRecord();
+        notification.setId("noti_resign_" + UUID.randomUUID().toString().replace("-", ""));
+        notification.setMoId(job.getTeacherId());
+        notification.setJobId(job.getId());
+        notification.setApplicationId(record.getId());
+        notification.setApplicantName(record.getStudentName());
+        notification.setApplicationTime(now);
+        notification.setCreatedAt(now);
+        notification.setRead(false);
+        notification.setRecipientId(job.getTeacherId());
+        notification.setRecipientRole("mo");
+        String reasonPart = reason == null || reason.isBlank() ? "" : " Reason: " + reason;
+        notification.setMessage(record.getStudentName() + " has resigned from " + job.getTitle() + "." + reasonPart);
+        notifications.add(notification);
+        JsonUtility.saveNotifications(context, notifications);
+    }
+
+    private String normalizeResignationReason(String reason) {
+        String value = reason == null ? "" : reason.trim();
+        return value.length() > MAX_RESIGNATION_REASON_CHARS ? value.substring(0, MAX_RESIGNATION_REASON_CHARS) : value;
     }
 
     private String getFileExtension(String fileName) {

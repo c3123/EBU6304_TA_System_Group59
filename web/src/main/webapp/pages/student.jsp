@@ -353,6 +353,30 @@
       border-left: 5px solid #16a34a;
     }
 
+    .hired-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .resign-job-btn {
+      border: 1px solid #fecaca;
+      background: #fff7f7;
+      color: #991b1b;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .resign-job-btn:hover {
+      background: #fee2e2;
+    }
+
     .job-actions {
       display: flex;
       flex-wrap: wrap;
@@ -405,6 +429,21 @@
 
     .app-item.status-rejected {
       border-left: 5px solid #dc2626;
+    }
+
+    .app-item.status-overdue {
+      border-left: 5px solid #64748b;
+    }
+
+    .app-item.status-resigned,
+    .app-item.status-dismissed {
+      border-left: 5px solid #64748b;
+    }
+
+    .tag.muted {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #cbd5e1;
     }
 
     .app-item {
@@ -1748,6 +1787,33 @@
   <p id="studentNotice" class="portal-notice" aria-live="polite"></p>
 </main>
 </div>
+</div>
+
+<div class="job-detail-overlay" id="resignDialogOverlay" aria-hidden="true">
+  <div class="job-detail-modal" role="dialog" aria-modal="true" aria-labelledby="resignDialogTitle">
+    <div class="job-detail-head">
+      <div>
+        <h3 id="resignDialogTitle">Submit Resignation</h3>
+        <p class="notice" id="resignDialogSubtitle">Confirm before leaving this TA position.</p>
+      </div>
+      <button type="button" class="btn btn-outline" id="closeResignDialogBtn">Close</button>
+    </div>
+    <div class="job-detail-block">
+      <span class="job-detail-label">Position</span>
+      <div class="job-detail-value" id="resignJobTitle">Selected TA position</div>
+    </div>
+    <div class="app-feedback">
+      Are you sure you want to resign from this TA position? After submission, this job will be removed from your active workload and the module organiser will be notified.
+    </div>
+    <div class="job-detail-block">
+      <label class="job-detail-label" for="resignReasonInput">Reason</label>
+      <textarea id="resignReasonInput" rows="4" maxlength="200" placeholder="Briefly explain why you are resigning." style="width:100%;resize:vertical;border:1px solid #dbe2ee;border-radius:8px;padding:10px;font:inherit;"></textarea>
+    </div>
+    <div class="job-detail-actions">
+      <button type="button" class="btn btn-outline" id="cancelResignBtn">Cancel</button>
+      <button type="button" class="btn btn-primary" id="confirmResignBtn">Submit Resignation</button>
+    </div>
+  </div>
 </div>
 
 <div class="job-detail-overlay" id="jobDetailOverlay" aria-hidden="true">

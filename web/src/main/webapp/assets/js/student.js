@@ -99,6 +99,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   const detailProfileSnapshotEl = byId("detailProfileSnapshot");
   const detailAttachmentsListEl = byId("detailAttachmentsList");
   const detailAttachmentHintEl = byId("detailAttachmentHint");
+  const resignDialogOverlayEl = byId("resignDialogOverlay");
+  const closeResignDialogBtn = byId("closeResignDialogBtn");
+  const cancelResignBtn = byId("cancelResignBtn");
+  const confirmResignBtn = byId("confirmResignBtn");
+  const resignJobTitleEl = byId("resignJobTitle");
+  const resignReasonInputEl = byId("resignReasonInput");
 
   const uploadAreaEl = byId("uploadArea");
   const fileInputEl = byId("fileInput");
@@ -107,6 +113,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const attachmentsListEl = byId("attachmentsList");
 
   let selectedJobId = "";
+  let pendingResignApplicationId = "";
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -121,6 +128,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const raw = String(status || "pending").toLowerCase();
     if (raw === "hired") return "hired";
     if (raw === "rejected" || raw === "not selected") return "rejected";
+    if (raw === "overdue") return "overdue";
+    if (raw === "resigned") return "resigned";
+    if (raw === "dismissed") return "dismissed";
     if (raw === "shortlisted") return "shortlisted";
     return "pending";
   }
@@ -132,6 +142,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     if (normalized === "rejected") {
       return '<span class="tag danger">Not Selected</span>';
+    }
+    if (normalized === "overdue") {
+      return '<span class="tag muted">Overdue</span>';
+    }
+    if (normalized === "resigned") {
+      return '<span class="tag muted">Resigned</span>';
+    }
+    if (normalized === "dismissed") {
+      return '<span class="tag muted">Dismissed</span>';
     }
     if (normalized === "shortlisted") {
       return '<span class="tag">Shortlisted</span>';
@@ -291,6 +310,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  function jobExpired(job) {
+    return !!(job && job.expired === true);
+  }
+
+  function jobAcceptingApplications(job) {
+    return !!(job && job.acceptingApplications === true);
+  }
+
+  function jobDisplayStatus(job) {
+    if (jobExpired(job)) return "closed";
+    return String((job && job.status) || "unknown").toLowerCase();
+  }
+
   function normalizedSchedule(value) {
     const text = String(value || "").trim();
     return text && text !== "-" ? text : "";
@@ -349,7 +381,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         searchableText.includes(query);
 
       const matchesStatus =
-        state.statusFilter === "all" || String(job.status || "").toLowerCase() === state.statusFilter;
+        state.statusFilter === "all" || jobDisplayStatus(job) === state.statusFilter;
 
       const matchesHours =
         state.hoursFilter === "all" ||
@@ -382,9 +414,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       const tone = matchTone(percent);
       const partialMatches = formatPartialMatches(job.relatedMatches);
       const detailBtn = `<button class="btn btn-outline open-detail-btn" data-job-id="${escapeHtml(job.id)}">View Details</button>`;
+      const closedLabel = job.closedReason || (jobExpired(job) ? "Deadline Passed" : "Closed");
       const applyBtn = applied
         ? '<button class="btn btn-outline" disabled>Already Applied</button>'
-        : `<button class="btn btn-primary open-detail-btn" data-job-id="${escapeHtml(job.id)}">Apply via Details</button>`;
+        : !jobAcceptingApplications(job)
+          ? `<button class="btn btn-outline" disabled>${escapeHtml(closedLabel)}</button>`
+          : `<button class="btn btn-primary open-detail-btn" data-job-id="${escapeHtml(job.id)}">Apply via Details</button>`;
+      const statusLabel = jobExpired(job)
+        ? "Closed: Deadline Passed"
+        : !jobAcceptingApplications(job) && job.closedReason
+          ? job.closedReason
+        : (job.status || "unknown");
 
       return `
         <article class="job-card">
@@ -396,7 +436,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             ${escapeHtml(job.hours || "0")}h/week | Deadline: ${escapeHtml(job.deadline || "TBA")}
           </p>
           <p class="job-meta">Schedule: ${escapeHtml(job.schedule || "-")} | Location: ${escapeHtml(job.location || "-")}</p>
-          <p class="job-meta">Status: ${escapeHtml(job.status || "unknown")}</p>
+          <p class="job-meta">Status: ${escapeHtml(statusLabel)}</p>
           <div class="job-match job-match-${tone}">
             <div class="job-match-rate">
               <span>Match Rate</span>
@@ -438,17 +478,20 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     appsListEl.innerHTML = apps.map((app) => {
       const statusClass = normalizeStatus(app.status);
-      const canWithdraw = normalizeStatus(app.status) !== "hired";
+      const canWithdraw = app.withdrawable === true && !["hired", "overdue", "resigned", "dismissed"].includes(normalizeStatus(app.status));
       const withdrawBtn = canWithdraw
         ? `<button class="withdraw-app-btn" data-app-id="${escapeHtml(app.id)}">Withdraw</button>`
         : "";
+      const feedback = normalizeStatus(app.status) === "overdue"
+        ? "Application expired due to passed deadline."
+        : (app.feedback || "No feedback yet.");
       return `
       <article class="app-item status-${statusClass}">
         ${withdrawBtn}
         <h3>${escapeHtml(app.jobTitle || "Unknown Job")}</h3>
         <p class="app-meta">Applied on ${escapeHtml(app.appliedAt || "Unknown Date")}</p>
         <div>${toStatusTag(app.status)}</div>
-        <div class="app-feedback">${escapeHtml(app.feedback || "No feedback yet.")}</div>
+        <div class="app-feedback">${escapeHtml(feedback)}</div>
       </article>
     `;
     }).join("");
@@ -505,6 +548,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     hiredListEl.classList.remove("hidden");
     hiredListEl.innerHTML = hiredApps.map((app) => {
       const hours = weeklyHoursForApplication(app);
+      const resignBtn = `<button class="resign-job-btn" data-app-id="${escapeHtml(app.id)}">Submit Resignation</button>`;
       return `
         <article class="hired-item">
           <h3>${escapeHtml(app.jobTitle || "Unknown Job")}</h3>
@@ -513,9 +557,17 @@ document.addEventListener("DOMContentLoaded", async () => {
           </p>
           <p class="hired-meta">${hours}h/week | Applied on ${escapeHtml(app.appliedAt || "Unknown Date")}</p>
           <div>${toStatusTag(app.status)}</div>
+          <div class="hired-actions">${resignBtn}</div>
         </article>
       `;
     }).join("");
+
+    hiredListEl.querySelectorAll(".resign-job-btn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        openResignDialog(btn.dataset.appId);
+      });
+    });
   }
 
   function buildHiredCalendarEvents(hiredApps, referenceDate) {
@@ -886,6 +938,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       detailProfileSnapshotEl.textContent = snapshot;
     }
     renderDetailAttachmentSelection();
+    if (!jobAcceptingApplications(job)) {
+      if (detailApplyBtn) detailApplyBtn.disabled = true;
+      if (detailAttachmentHintEl) {
+        detailAttachmentHintEl.textContent = job.closedReason || "This job is no longer accepting applications.";
+        detailAttachmentHintEl.style.color = "#dc2626";
+      }
+    }
 
     jobDetailOverlayEl.classList.add("open");
     jobDetailOverlayEl.setAttribute("aria-hidden", "false");
@@ -908,21 +967,28 @@ document.addEventListener("DOMContentLoaded", async () => {
       </label>
     `).join("");
 
-    if (detailApplyBtn) detailApplyBtn.disabled = false;
+    const job = state.jobs.find((item) => item.id === selectedJobId);
+    if (detailApplyBtn) detailApplyBtn.disabled = !jobAcceptingApplications(job);
     if (detailAttachmentHintEl) {
-      detailAttachmentHintEl.textContent = "At least one attachment is required. All are selected by default.";
-      detailAttachmentHintEl.style.color = "";
+      detailAttachmentHintEl.textContent = jobAcceptingApplications(job)
+        ? "At least one attachment is required. All are selected by default."
+        : (job && job.closedReason) || "This job is no longer accepting applications.";
+      detailAttachmentHintEl.style.color = jobAcceptingApplications(job) ? "" : "#dc2626";
     }
 
     detailAttachmentsListEl.querySelectorAll(".detail-attachment-checkbox").forEach((checkbox) => {
       checkbox.addEventListener("change", () => {
         const selectedCount = getSelectedAttachmentIds().length;
-        if (detailApplyBtn) detailApplyBtn.disabled = selectedCount === 0;
+        const currentJob = state.jobs.find((item) => item.id === selectedJobId);
+        const accepting = jobAcceptingApplications(currentJob);
+        if (detailApplyBtn) detailApplyBtn.disabled = selectedCount === 0 || !accepting;
         if (detailAttachmentHintEl) {
-          detailAttachmentHintEl.textContent = selectedCount === 0
-            ? "Please select at least one attachment."
-            : "At least one attachment is required. All are selected by default.";
-          detailAttachmentHintEl.style.color = selectedCount === 0 ? "#dc2626" : "";
+          detailAttachmentHintEl.textContent = !accepting
+            ? ((currentJob && currentJob.closedReason) || "This job is no longer accepting applications.")
+            : selectedCount === 0
+              ? "Please select at least one attachment."
+              : "At least one attachment is required. All are selected by default.";
+          detailAttachmentHintEl.style.color = selectedCount === 0 || !accepting ? "#dc2626" : "";
         }
       });
     });
@@ -938,6 +1004,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function applyForJob(jobId, selectedAttachmentIds) {
     const job = state.jobs.find((item) => item.id === jobId);
     if (!job || hasApplied(jobId)) return;
+    if (!jobAcceptingApplications(job)) {
+      throw new Error(job.closedReason || "This job is no longer accepting applications.");
+    }
 
     if (!selectedAttachmentIds || selectedAttachmentIds.length === 0) {
       throw new Error("Please select at least one attachment.");
@@ -1054,6 +1123,59 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  function openResignDialog(applicationId) {
+    pendingResignApplicationId = applicationId || "";
+    const app = state.applications.find((item) => item.id === pendingResignApplicationId);
+    if (resignJobTitleEl) {
+      resignJobTitleEl.textContent = app ? `${app.jobTitle || "TA position"} (${app.moduleCode || app.jobId || "N/A"})` : "Selected TA position";
+    }
+    if (resignReasonInputEl) {
+      resignReasonInputEl.value = "";
+    }
+    if (resignDialogOverlayEl) {
+      resignDialogOverlayEl.classList.add("open");
+      resignDialogOverlayEl.setAttribute("aria-hidden", "false");
+      resignReasonInputEl?.focus();
+    }
+  }
+
+  function closeResignDialog() {
+    pendingResignApplicationId = "";
+    if (resignReasonInputEl) {
+      resignReasonInputEl.value = "";
+    }
+    if (!resignDialogOverlayEl) return;
+    resignDialogOverlayEl.classList.remove("open");
+    resignDialogOverlayEl.setAttribute("aria-hidden", "true");
+  }
+
+  async function resignFromJob(applicationId) {
+    const reason = resignReasonInputEl ? resignReasonInputEl.value.trim() : "";
+    try {
+      if (confirmResignBtn) {
+        confirmResignBtn.disabled = true;
+        confirmResignBtn.textContent = "Submitting...";
+      }
+      await requestApi("/jobs/resign", {
+        method: "POST",
+        body: { applicationId, reason }
+      });
+      await loadFromBackend();
+      closeResignDialog();
+      renderJobs();
+      renderApplications();
+      renderHiredJobs();
+      showNotice("Resignation submitted successfully.", false);
+    } catch (err) {
+      showNotice(err.message || "Failed to submit resignation.", true);
+    } finally {
+      if (confirmResignBtn) {
+        confirmResignBtn.disabled = false;
+        confirmResignBtn.textContent = "Submit Resignation";
+      }
+    }
+  }
+
   calendarPrevBtn?.addEventListener("click", () => {
     changeCalendarMonth(-1);
   });
@@ -1091,6 +1213,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
   }
+
+  closeResignDialogBtn?.addEventListener("click", closeResignDialog);
+  cancelResignBtn?.addEventListener("click", closeResignDialog);
+  resignDialogOverlayEl?.addEventListener("click", (event) => {
+    if (event.target === resignDialogOverlayEl) {
+      closeResignDialog();
+    }
+  });
+  confirmResignBtn?.addEventListener("click", async () => {
+    if (!pendingResignApplicationId) return;
+    await resignFromJob(pendingResignApplicationId);
+  });
 
   if (detailApplyBtn) {
     detailApplyBtn.addEventListener("click", async () => {

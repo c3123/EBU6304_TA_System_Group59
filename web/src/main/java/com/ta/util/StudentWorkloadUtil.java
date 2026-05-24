@@ -31,7 +31,6 @@ public final class StudentWorkloadUtil {
         if (studentId == null || studentId.isBlank() || applications == null) {
             return 0;
         }
-        Set<String> historyHiredIds = collectHistoryHiredIds(history);
         int total = 0;
         Set<String> countedApplicationIds = new HashSet<>();
         for (ApplicationRecord application : applications) {
@@ -42,8 +41,7 @@ public final class StudentWorkloadUtil {
                     && excludeApplicationId.equals(application.getId())) {
                 continue;
             }
-            boolean hired = "hired".equalsIgnoreCase(trim(application.getStatus()))
-                    || historyHiredIds.contains(application.getId());
+            boolean hired = "hired".equalsIgnoreCase(trim(application.getStatus()));
             if (!hired || !countedApplicationIds.add(application.getId())) {
                 continue;
             }

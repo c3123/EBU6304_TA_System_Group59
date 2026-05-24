@@ -5,16 +5,22 @@ import com.ta.dto.mo.MoApplicationAttachmentResponse;
 import com.ta.dto.mo.MoApplicationDetailResponse;
 import com.ta.dto.mo.MoApplicationListItemResponse;
 import com.ta.dto.mo.MoApplicationListResponse;
+import com.ta.dto.mo.MoHiredStudentItemResponse;
+import com.ta.dto.mo.MoHiredStudentListResponse;
 import com.ta.model.ApplicationRecord;
 import com.ta.model.Attachment;
 import com.ta.model.HiringHistoryRecord;
 import com.ta.model.JobPosting;
+import com.ta.model.NotificationRecord;
 import com.ta.model.StudentProfile;
+import com.ta.model.User;
 import com.ta.service.admin.WorkloadOverloadAnnouncementService;
 import com.ta.service.student.JobMatchResult;
 import com.ta.service.student.JobMatchingService;
 import com.ta.service.student.SkillRelationHint;
 import com.ta.util.AgentDebugLog;
+import com.ta.util.JobDeadlineUtil;
+import com.ta.util.JobHoursUtil;
 import com.ta.util.JobRecruitmentUtil;
 import com.ta.util.JsonUtility;
 import com.ta.util.StudentWorkloadUtil;
@@ -91,6 +97,9 @@ public class MoApplicationService {
             }
 
             List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            if (JobDeadlineUtil.syncOverdueApplications(applications, jobs)) {
+                JsonUtility.saveApplications(context, applications);
+            }
             List<StudentProfile> profiles = JsonUtility.loadStudents(context);
             Map<String, StudentProfile> profileByUserId = profiles.stream()
                     .filter(p -> p.getUserId() != null)
@@ -140,9 +149,12 @@ public class MoApplicationService {
      */
     public MoApplicationListResponse listApplicationsForAdmin(ServletContext context, String jobIdFilter) {
         try {
-            List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
             List<StudentProfile> profiles = JsonUtility.loadStudents(context);
             List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            if (JobDeadlineUtil.syncOverdueApplications(applications, jobs)) {
+                JsonUtility.saveApplications(context, applications);
+            }
             Map<String, StudentProfile> profileByUserId = profiles.stream()
                     .filter(p -> p.getUserId() != null)
                     .collect(Collectors.toMap(StudentProfile::getUserId, Function.identity(), (a, b) -> a));
@@ -202,8 +214,8 @@ public class MoApplicationService {
         if (raw.isEmpty()) {
             return null;
         }
-        Set<String> allFour = Set.of("pending", "shortlisted", "rejected", "hired");
-        if (raw.size() == 4 && raw.containsAll(allFour)) {
+        Set<String> allStatuses = Set.of("pending", "shortlisted", "rejected", "hired", "overdue");
+        if (raw.size() == allStatuses.size() && raw.containsAll(allStatuses)) {
             return null;
         }
         return raw;
@@ -256,6 +268,10 @@ public class MoApplicationService {
 
         try {
             List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            if (JobDeadlineUtil.syncOverdueApplications(applications, jobs)) {
+                JsonUtility.saveApplications(context, applications);
+            }
             ApplicationRecord record = applications.stream()
                     .filter(a -> applicationId.equals(a.getId()))
                     .findFirst()
@@ -273,7 +289,6 @@ public class MoApplicationService {
                 );
             }
 
-            List<JobPosting> jobs = JsonUtility.loadJobs(context);
             JobPosting job = jobs.stream()
                     .filter(j -> record.getJobId() != null && record.getJobId().equals(j.getId()))
                     .findFirst()
@@ -364,6 +379,9 @@ public class MoApplicationService {
         try {
             List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
             List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            if (JobDeadlineUtil.syncOverdueApplications(applications, jobs)) {
+                JsonUtility.saveApplications(context, applications);
+            }
             Map<String, JobPosting> jobById = jobs.stream()
                     .filter(j -> j.getId() != null)
                     .collect(Collectors.toMap(JobPosting::getId, Function.identity(), (a, b) -> a));
@@ -505,6 +523,10 @@ public class MoApplicationService {
         String notes = evaluationNotes == null ? "" : evaluationNotes;
         try {
             List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            if (JobDeadlineUtil.syncOverdueApplications(applications, jobs)) {
+                JsonUtility.saveApplications(context, applications);
+            }
             ApplicationRecord record = applications.stream()
                     .filter(a -> applicationId.equals(a.getId()))
                     .findFirst()
@@ -520,7 +542,7 @@ public class MoApplicationService {
                         HttpServletResponse.SC_NOT_FOUND
                 );
             }
-            JobPosting job = requireOwnedJob(context, moId, record.getJobId());
+            JobPosting job = requireOwnedJob(jobs, moId, record.getJobId());
             if (Boolean.TRUE.equals(job.getRecruitmentClosed())) {
                 throw new MoBusinessException(
                         ErrorCodes.JOB_RECRUITMENT_CLOSED,
@@ -553,6 +575,10 @@ public class MoApplicationService {
         }
         try {
             List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            if (JobDeadlineUtil.syncOverdueApplications(applications, jobs)) {
+                JsonUtility.saveApplications(context, applications);
+            }
             ApplicationRecord record = applications.stream()
                     .filter(a -> applicationId.equals(a.getId()))
                     .findFirst()
@@ -568,7 +594,7 @@ public class MoApplicationService {
                         HttpServletResponse.SC_NOT_FOUND
                 );
             }
-            JobPosting job = requireOwnedJob(context, moId, record.getJobId());
+            JobPosting job = requireOwnedJob(jobs, moId, record.getJobId());
             if (Boolean.TRUE.equals(job.getRecruitmentClosed())) {
                 throw new MoBusinessException(
                         ErrorCodes.JOB_RECRUITMENT_CLOSED,
@@ -593,6 +619,170 @@ public class MoApplicationService {
 
     private JobPosting requireOwnedJob(ServletContext context, String moId, String jobId) throws IOException {
         List<JobPosting> jobs = JsonUtility.loadJobs(context);
+        return requireOwnedJob(jobs, moId, jobId);
+    }
+
+    public MoHiredStudentListResponse listHiredStudents(ServletContext context, String moId, String jobIdFilter) {
+        return listHiredStudents(context, moId, jobIdFilter, false);
+    }
+
+    public MoHiredStudentListResponse listHiredStudents(ServletContext context, String moId, String jobIdFilter, boolean includeHistory) {
+        try {
+            List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            Map<String, JobPosting> jobById = jobs.stream()
+                    .filter(j -> j.getId() != null)
+                    .collect(Collectors.toMap(JobPosting::getId, Function.identity(), (a, b) -> a));
+            Set<String> ownedJobIds = jobs.stream()
+                    .filter(j -> moId.equals(j.getTeacherId()))
+                    .map(JobPosting::getId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            List<User> users = JsonUtility.loadUsers(context);
+            Map<String, User> userById = users.stream()
+                    .filter(u -> u.getId() != null)
+                    .collect(Collectors.toMap(User::getId, Function.identity(), (a, b) -> a));
+
+            List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            List<MoHiredStudentItemResponse> items = new ArrayList<>();
+            for (ApplicationRecord record : applications) {
+                if (!record.isActive() || !ownedJobIds.contains(record.getJobId())) {
+                    continue;
+                }
+                if (jobIdFilter != null && !jobIdFilter.isBlank() && !jobIdFilter.equals(record.getJobId())) {
+                    continue;
+                }
+                String status = normalizeStatus(record.getStatus());
+                if (!Set.of("hired", "resigned", "dismissed").contains(status)) {
+                    continue;
+                }
+                if (!"hired".equals(status) && (!includeHistory || record.isHiddenFromHiredManagement())) {
+                    continue;
+                }
+                JobPosting job = jobById.get(record.getJobId());
+                User user = userById.get(record.getStudentId());
+                MoHiredStudentItemResponse item = new MoHiredStudentItemResponse();
+                item.setApplicationId(record.getId());
+                item.setJobId(record.getJobId());
+                item.setJobTitle(job != null ? job.getTitle() : "Unknown Job");
+                item.setModuleCode(job != null ? job.getModuleCode() : "");
+                item.setStudentId(record.getStudentId());
+                item.setStudentName(record.getStudentName());
+                item.setStudentNo(record.getStudentNo());
+                item.setStudentEmail(user != null ? user.getEmail() : "");
+                item.setHiredDate(record.getAppliedAt());
+                item.setWeeklyHours(JobHoursUtil.resolveWeeklyHours(job));
+                item.setSchedule(job != null ? blankToEmpty(job.getSchedule()) : "");
+                item.setStatus(status);
+                items.add(item);
+            }
+
+            items.sort(Comparator
+                    .comparing(MoHiredStudentItemResponse::getJobTitle, Comparator.nullsLast(String::compareToIgnoreCase))
+                    .thenComparing(MoHiredStudentItemResponse::getStudentName, Comparator.nullsLast(String::compareToIgnoreCase)));
+            MoHiredStudentListResponse response = new MoHiredStudentListResponse();
+            response.setItems(items);
+            return response;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to list hired students.", e);
+        }
+    }
+
+    public Map<String, Object> hideFormerHiredStudent(ServletContext context, String moId, String applicationId) {
+        if (applicationId == null || applicationId.isBlank()) {
+            throw new MoBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    "applicationId is required.",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+        try {
+            List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            ApplicationRecord record = applications.stream()
+                    .filter(a -> applicationId.equals(a.getId()))
+                    .findFirst()
+                    .orElseThrow(() -> new MoBusinessException(
+                            ErrorCodes.APPLICATION_NOT_FOUND,
+                            "Application not found.",
+                            HttpServletResponse.SC_NOT_FOUND
+                    ));
+            List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            requireOwnedJob(jobs, moId, record.getJobId());
+            String status = normalizeStatus(record.getStatus());
+            if (!Set.of("resigned", "dismissed").contains(status)) {
+                throw new MoBusinessException(
+                        ErrorCodes.VALIDATION_ERROR,
+                        "Only resigned or dismissed TA records can be removed from this page.",
+                        HttpServletResponse.SC_BAD_REQUEST
+                );
+            }
+            record.setHiddenFromHiredManagement(true);
+            JsonUtility.saveApplications(context, applications);
+            return Map.of(
+                    "applicationId", record.getId(),
+                    "hiddenFromHiredManagement", true,
+                    "message", "Former TA record removed from this page."
+            );
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to hide former hired student.", e);
+        }
+    }
+
+    public Map<String, Object> dismissHiredStudent(ServletContext context, String moId, String applicationId) {
+        return dismissHiredStudent(context, moId, applicationId, "");
+    }
+
+    public Map<String, Object> dismissHiredStudent(ServletContext context, String moId, String applicationId, String reason) {
+        if (applicationId == null || applicationId.isBlank()) {
+            throw new MoBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    "applicationId is required.",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+        try {
+            List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            ApplicationRecord record = applications.stream()
+                    .filter(a -> applicationId.equals(a.getId()))
+                    .findFirst()
+                    .orElseThrow(() -> new MoBusinessException(
+                            ErrorCodes.APPLICATION_NOT_FOUND,
+                            "Application not found.",
+                            HttpServletResponse.SC_NOT_FOUND
+                    ));
+            if (!record.isActive() || !"hired".equalsIgnoreCase(record.getStatus())) {
+                throw new MoBusinessException(
+                        ErrorCodes.VALIDATION_ERROR,
+                        "Only hired TA positions can be dismissed.",
+                        HttpServletResponse.SC_BAD_REQUEST
+                );
+            }
+
+            List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            JobPosting job = requireOwnedJob(jobs, moId, record.getJobId());
+            record.setStatus("dismissed");
+            String normalizedReason = normalizeReason(reason);
+            record.setDecisionFeedback(normalizedReason.isEmpty() ? "Dismissal reason: -" : "Dismissal reason: " + normalizedReason);
+            boolean reopened = JobRecruitmentUtil.reopenRecruitmentIfCapacityAvailable(jobs, job, applications);
+            JsonUtility.saveApplications(context, applications);
+            if (reopened) {
+                JsonUtility.saveJobs(context, jobs);
+            }
+            appendDismissalHistory(context, moId, record);
+            notifyStudentOfDismissal(context, record, job, normalizedReason);
+            return Map.of(
+                    "applicationId", record.getId(),
+                    "status", "dismissed",
+                    "jobReopened", reopened,
+                    "reason", normalizedReason,
+                    "message", "The student has been dismissed from this TA position."
+            );
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to dismiss hired student.", e);
+        }
+    }
+
+    private JobPosting requireOwnedJob(List<JobPosting> jobs, String moId, String jobId) {
         JobPosting job = jobs.stream()
                 .filter(j -> jobId != null && jobId.equals(j.getId()))
                 .findFirst()
@@ -662,6 +852,14 @@ public class MoApplicationService {
             return;
         }
 
+        if (Set.of("overdue", "resigned", "dismissed").contains(current)) {
+            throw new MoBusinessException(
+                    ErrorCodes.VALIDATION_ERROR,
+                    "This application is closed and cannot be changed.",
+                    HttpServletResponse.SC_BAD_REQUEST
+            );
+        }
+
         if ("hired".equals(current)) {
             throw new MoBusinessException(
                     ErrorCodes.VALIDATION_ERROR,
@@ -706,9 +904,53 @@ public class MoApplicationService {
         JsonUtility.saveHiringHistory(context, history);
     }
 
+    private void appendDismissalHistory(ServletContext context, String moId, ApplicationRecord dismissedRecord) throws IOException {
+        List<HiringHistoryRecord> history = JsonUtility.loadHiringHistory(context);
+        HiringHistoryRecord record = new HiringHistoryRecord();
+        record.setId("hist_" + UUID.randomUUID().toString().replace("-", ""));
+        record.setAction("dismissed");
+        record.setJobId(dismissedRecord.getJobId());
+        record.setMoId(moId);
+        record.setSubmittedAt(Instant.now().toString());
+        record.setHiredApplicationIds(List.of(dismissedRecord.getId()));
+        record.setHiredStudentNames(List.of(dismissedRecord.getStudentName()));
+        history.add(record);
+        JsonUtility.saveHiringHistory(context, history);
+    }
+
+    private void notifyStudentOfDismissal(ServletContext context, ApplicationRecord record, JobPosting job, String reason) throws IOException {
+        String now = Instant.now().toString();
+        List<NotificationRecord> notifications = JsonUtility.loadNotifications(context);
+        NotificationRecord notification = new NotificationRecord();
+        notification.setId("noti_dismiss_" + UUID.randomUUID().toString().replace("-", ""));
+        notification.setMoId(job != null ? job.getTeacherId() : "");
+        notification.setJobId(record.getJobId());
+        notification.setApplicationId(record.getId());
+        notification.setApplicantName(record.getStudentName());
+        notification.setApplicationTime(now);
+        notification.setCreatedAt(now);
+        notification.setRead(false);
+        notification.setRecipientId(record.getStudentId());
+        notification.setRecipientRole("student");
+        String reasonPart = reason == null || reason.isBlank() ? "" : " Reason: " + reason;
+        notification.setMessage("You have been dismissed from " + (job != null ? job.getTitle() : "this TA position")
+                + "." + reasonPart + " Please contact the teaching organiser if needed.");
+        notifications.add(notification);
+        JsonUtility.saveNotifications(context, notifications);
+    }
+
+    private String normalizeReason(String reason) {
+        String value = reason == null ? "" : reason.trim();
+        return value.length() > MAX_DECISION_FEEDBACK_CHARS ? value.substring(0, MAX_DECISION_FEEDBACK_CHARS) : value;
+    }
+
     public MoApplicationDetailResponse getDetailAndMarkViewed(ServletContext context, String moId, String applicationId) {
         try {
             List<ApplicationRecord> applications = JsonUtility.loadApplications(context);
+            List<JobPosting> jobs = JsonUtility.loadJobs(context);
+            if (JobDeadlineUtil.syncOverdueApplications(applications, jobs)) {
+                JsonUtility.saveApplications(context, applications);
+            }
             ApplicationRecord record = applications.stream()
                     .filter(a -> applicationId.equals(a.getId()))
                     .findFirst()
@@ -726,7 +968,6 @@ public class MoApplicationService {
                 );
             }
 
-            List<JobPosting> jobs = JsonUtility.loadJobs(context);
             JobPosting job = jobs.stream()
                     .filter(j -> record.getJobId() != null && record.getJobId().equals(j.getId()))
                     .findFirst()
@@ -745,7 +986,7 @@ public class MoApplicationService {
             }
 
             String updatedAt = null;
-            if ("pending".equalsIgnoreCase(record.getStatus())) {
+            if ("pending".equalsIgnoreCase(record.getStatus()) && !JobDeadlineUtil.isJobExpired(job)) {
                 record.setStatus("viewed");
                 updatedAt = Instant.now().toString();
                 JsonUtility.saveApplications(context, applications);
