@@ -33,9 +33,17 @@ class MoApplicationStatusFilterTest extends MoTestSupport {
     }
 
     @Test
-    void allFourTokens_parsedAsNoFilter() {
-        assertNull(MoApplicationService.parseStatusFilter("pending,shortlisted,rejected,hired"));
+    void allStatusTokens_parsedAsNoFilter() {
+        assertNull(MoApplicationService.parseStatusFilter("pending,shortlisted,rejected,hired,overdue"));
         assertTrue(MoApplicationService.matchesStatusFilter("viewed", null));
+    }
+
+    @Test
+    void overdueToken_matchesOverdueOnly() {
+        Set<String> tokens = MoApplicationService.parseStatusFilter("overdue");
+        assertTrue(MoApplicationService.matchesStatusFilter("overdue", tokens));
+        assertFalse(MoApplicationService.matchesStatusFilter("pending", tokens));
+        assertFalse(MoApplicationService.matchesStatusFilter("viewed", tokens));
     }
 
     @Test

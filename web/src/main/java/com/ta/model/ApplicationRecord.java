@@ -13,6 +13,7 @@ import java.util.List;
  * 4) selectedAttachmentIds: list of attachment IDs included in this application
  * 5) evaluationNotes: MO-only private notes (MO_05); persisted in applications.json
  * 6) decisionFeedback: MO/Admin-only short reason for hired/shortlisted/rejected (MO_10); max 200 chars enforced in service
+ * 7) hiddenFromHiredManagement=true hides resigned/dismissed records from MO hired management without deleting history
  */
 public class ApplicationRecord {
     private String id;
@@ -29,6 +30,8 @@ public class ApplicationRecord {
     private String evaluationNotes;
     /** Hiring/rejection feedback visible to MO and Admin only */
     private String decisionFeedback;
+    /** UI archive flag for former hired TA records */
+    private boolean hiddenFromHiredManagement;
 
     public ApplicationRecord() {
         this.selectedAttachmentIds = new ArrayList<>();
@@ -128,5 +131,13 @@ public class ApplicationRecord {
 
     public void setDecisionFeedback(String decisionFeedback) {
         this.decisionFeedback = decisionFeedback;
+    }
+
+    public boolean isHiddenFromHiredManagement() {
+        return hiddenFromHiredManagement;
+    }
+
+    public void setHiddenFromHiredManagement(boolean hiddenFromHiredManagement) {
+        this.hiddenFromHiredManagement = hiddenFromHiredManagement;
     }
 }

@@ -146,14 +146,22 @@ class MoJobServiceTest extends MoTestSupport {
     }
 
     @Test
-    void editJob_rejectsPublishedJob() throws Exception {
-        writeJobs(List.of(publishedJob(JOB_ID, MO_ID)));
+    void editJob_allowsPublishedFullyStaffedJobAndKeepsItPublished() throws Exception {
+        JobPosting job = publishedJob(JOB_ID, MO_ID);
+        job.setPositions(1);
+        job.setRecruitmentClosed(true);
+        writeJobs(List.of(job));
+        writeApplications(List.of(application("app_hired", JOB_ID, "hired", true)));
 
-        assertMoBusinessException(
-                () -> service.editJob(servletContext, MO_ID, JOB_ID, editRequest()),
-                ErrorCodes.VALIDATION_ERROR,
-                HttpServletResponse.SC_BAD_REQUEST
-        );
+        service.editJob(servletContext, MO_ID, JOB_ID, editRequest());
+
+        JobPosting saved = JsonUtility.loadJobs(servletContext).get(0);
+        assertEquals("Advanced Java", saved.getTitle());
+        assertEquals(5, saved.getHourMin());
+        assertEquals(9, saved.getHourMax());
+        assertTrue(Boolean.TRUE.equals(saved.getPublished()));
+        assertFalse(Boolean.TRUE.equals(saved.getRecruitmentClosed()));
+        assertEquals("open", saved.getStatus());
     }
 
     @Test

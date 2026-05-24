@@ -8,6 +8,8 @@ import com.ta.dto.mo.MoJobPublishResponse;
 import com.ta.dto.mo.MoJobWithdrawResponse;
 import com.ta.model.ApplicationRecord;
 import com.ta.model.JobPosting;
+import com.ta.util.JobDeadlineUtil;
+import com.ta.util.JobRecruitmentUtil;
 import com.ta.util.JsonUtility;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,6 +28,10 @@ import java.util.List;
  * 3) Published jobs can be taken offline and republished later.
  */
 public class MoJobService {
+
+    public boolean isJobExpired(JobPosting job) {
+        return JobDeadlineUtil.isJobExpired(job);
+    }
 
     public MoJobPublishResponse publishJob(ServletContext context, String moId, String jobId, MoJobPublishRequest request) {
         validatePublishRequest(request);
@@ -114,6 +120,7 @@ public class MoJobService {
             List<JobPosting> jobs = JsonUtility.loadJobs(context);
             JobPosting job = findOwnedJob(jobs, moId, jobId);
             ensureEditable(job);
+            boolean wasPublished = Boolean.TRUE.equals(job.getPublished());
             String now = Instant.now().toString();
             job.setTitle(request.getCourseName().trim());
             job.setModuleCode(request.getCourseName().trim());
@@ -124,13 +131,33 @@ public class MoJobService {
             if (!isBlank(request.getRequirements())) {
                 job.setRequirements(request.getRequirements().trim());
             }
-            job.setPublished(false);
-            job.setWithdrawn(false);
-            job.setStatus("draft");
-            job.setApprovalStatus("pending");
-            job.setReviewedAt(null);
-            job.setRejectionReason(null);
+            if (!isBlank(request.getSchedule())) {
+                job.setSchedule(request.getSchedule().trim());
+            }
+            if (!isBlank(request.getLocation())) {
+                job.setLocation(request.getLocation().trim());
+            }
+            if (!isBlank(request.getDeadline())) {
+                job.setDeadline(request.getDeadline().trim());
+            }
+            if (wasPublished) {
+                job.setPublished(true);
+                job.setWithdrawn(false);
+                if (!JobDeadlineUtil.isJobExpired(job)) {
+                    job.setStatus("open");
+                }
+            } else {
+                job.setPublished(false);
+                job.setWithdrawn(false);
+                job.setStatus("draft");
+                job.setApprovalStatus("pending");
+                job.setReviewedAt(null);
+                job.setRejectionReason(null);
+            }
             job.setUpdatedAt(now);
+            if (wasPublished) {
+                JobRecruitmentUtil.reopenRecruitmentIfCapacityAvailable(jobs, job, JsonUtility.loadApplications(context));
+            }
             JsonUtility.saveJobs(context, jobs);
             return toDemandItem(job);
         } catch (IOException e) {
@@ -310,17 +337,10 @@ public class MoJobService {
     }
 
     private void ensureEditable(JobPosting job) {
-        if (Boolean.TRUE.equals(job.getRecruitmentClosed())) {
-            throw new MoBusinessException(
-                    ErrorCodes.JOB_RECRUITMENT_CLOSED,
-                    "Recruitment closed jobs cannot be edited.",
-                    HttpServletResponse.SC_BAD_REQUEST
-            );
-        }
-        if (Boolean.TRUE.equals(job.getPublished())) {
+        if (Boolean.TRUE.equals(job.getWithdrawn())) {
             throw new MoBusinessException(
                     ErrorCodes.VALIDATION_ERROR,
-                    "Published jobs cannot be edited directly. Take offline first.",
+                    "Withdrawn jobs cannot be edited. Reuse the job to create a new demand.",
                     HttpServletResponse.SC_BAD_REQUEST
             );
         }

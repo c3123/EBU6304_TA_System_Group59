@@ -116,10 +116,9 @@ public class JobMatchingService {
     }
 
     private boolean isRecommendable(JobPosting job, Map<String, Integer> hiredByJobId) {
-        if (Boolean.TRUE.equals(job.getRecruitmentClosed())) {
-            return false;
-        }
-        if (hasText(job.getStatus()) && !"open".equalsIgnoreCase(job.getStatus())) {
+        if (hasText(job.getStatus())
+                && !"open".equalsIgnoreCase(job.getStatus())
+                && !(Boolean.TRUE.equals(job.getRecruitmentClosed()) && "closed".equalsIgnoreCase(job.getStatus()))) {
             return false;
         }
         if (hasText(job.getApprovalStatus()) && !"approved".equalsIgnoreCase(job.getApprovalStatus())) {
@@ -130,13 +129,6 @@ public class JobMatchingService {
         }
         if (job.getWithdrawn() != null && Boolean.TRUE.equals(job.getWithdrawn())) {
             return false;
-        }
-        int positions = job.getPositions();
-        if (positions > 0 && job.getId() != null) {
-            int hired = hiredByJobId.getOrDefault(job.getId(), 0);
-            if (hired >= positions) {
-                return false;
-            }
         }
         return true;
     }

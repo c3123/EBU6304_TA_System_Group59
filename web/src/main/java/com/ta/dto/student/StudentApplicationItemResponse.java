@@ -10,6 +10,7 @@ public class StudentApplicationItemResponse {
     private String appliedAt;
     private String status;
     private String feedback;
+    private boolean withdrawable;
 
     public String getId() {
         return id;
@@ -81,5 +82,13 @@ public class StudentApplicationItemResponse {
 
     public void setFeedback(String feedback) {
         this.feedback = feedback;
+    }
+
+    public boolean isWithdrawable() {
+        return withdrawable;
+    }
+
+    public void setWithdrawable(boolean withdrawable) {
+        this.withdrawable = withdrawable;
     }
 }

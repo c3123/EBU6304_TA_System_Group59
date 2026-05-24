@@ -71,6 +71,7 @@ public class AuthFilter extends HttpFilter implements Filter {
         if (path.startsWith("/api/mo/")
                 || "/pages/teacher.jsp".equals(path)
                 || "/pages/mo-applications.jsp".equals(path)
+                || "/pages/teacher-hired.jsp".equals(path)
                 || "/pages/teacher-profile.jsp".equals(path)) {
             return "teacher".equals(normalizedRole);
         }
