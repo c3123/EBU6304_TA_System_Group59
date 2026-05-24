@@ -303,6 +303,256 @@ Students can update their account password through the Profile page.
 
 ![Profile Page](./web/images/profile_password.png)
 
+## 4. Teacher (Module Organiser) User Manual
+
+### 4.1 Overview
+
+This chapter is intended for Module Organiser (MO) users. The MO portal supports the main teaching assistant recruitment workflow, including submitting TA demands, publishing approved jobs, reviewing applicants, completing final hiring, receiving notifications, and managing account information.
+
+MO users can:
+
+- Submit TA recruitment demands
+- Publish jobs after Admin approval
+- View and manage applicants
+- Shortlist, reject, or hire applicants
+- Export applicant data
+- Receive recruitment notifications
+- Change their own password
+
+---
+
+### 4.2 Portal Navigation
+
+The MO portal contains three main sections:
+
+- **My Jobs**: Submit demands, publish jobs, and view job history
+- **Applicants**: Review applications and make hiring decisions
+- **Profile**: View account information and change password
+
+The current page is highlighted in the left navigation bar.
+
+---
+
+### 4.3 My Jobs
+
+The **My Jobs** page is the main workspace for managing TA recruitment tasks.
+
+It includes:
+
+- Workflow summary cards
+- Submit New Demand form
+- My Demand Progress list
+- Job History table
+
+#### 4.3.1 Submit a New Demand
+
+To submit a new TA demand:
+
+1. Open the **My Jobs** page.
+2. Fill in the course name, department, planned TA count, expected working hours, and demand notes.
+3. Click **Submit Demand**.
+4. The demand will be sent to Admin for approval.
+
+After submission, the demand enters the pending review stage.
+
+![alt text](web/images/job_post_and_list.png)
+
+#### 4.3.2 Demand Status
+
+A demand may have the following statuses:
+
+- **Pending**: Waiting for Admin approval
+- **Approved**: Approved by Admin and ready to publish
+- **Rejected**: Rejected by Admin
+- **Published**: Visible to students
+- **Withdrawn**: Taken offline
+- **Closed**: Recruitment has been completed
+
+Only approved demands can be published as TA jobs.
+
+![alt text](web/images/jobsituation.png)
+
+#### 4.3.3 Publish a Job
+
+After a demand is approved by Admin, the MO can publish it.
+
+Operation steps:
+
+1. Find the approved demand.
+2. Click **Publish**.
+3. Enter the location, schedule, deadline, and job requirements.
+4. Confirm publication.
+
+After publication, students can view and apply for the job.
+
+![alt text](web/images/jobpublish.png)
+
+#### 4.3.4 Edit, Delete, or Withdraw a Demand
+
+MO users can manage demands according to their current status.
+
+- Unpublished demands can be edited or deleted.
+- Published jobs must be taken offline before editing.
+- Closed jobs cannot be edited directly.
+- Edited demands must be reviewed by Admin again.
+
+![alt text](web/images/jobedit.png)
+
+#### 4.3.5 Job History
+
+The Job History table shows previously published jobs.
+
+It may include:
+
+- Job title
+- Status
+- Number of applicants
+- Number of hired students
+- Release time
+- Deadline
+- Available actions
+
+MO users can view job details, reuse old job information, and export applicant data.
+
+![alt text](web/images/jobhistory.png)
+
+---
+
+### 4.4 Applicants
+
+The **Applicants** page is used to review and manage student applications.
+
+MO users can:
+
+- View applicant cards
+- Filter applications by status
+- Search applicants by name, student number, or skills
+- Sort applicants by application time, match score, or workload risk
+- Change application status
+- Add evaluation notes and decision feedback
+- Complete final hiring
+
+![alt text](web/images/applicantviewpage.png)
+
+#### 4.4.1 Applicant Information
+
+Each applicant card usually shows:
+
+- Student name and ID
+- Major
+- Application time
+- Skill match score
+- Matched and missing skills
+- Current workload level
+- Application status
+- Evaluation notes
+- Decision feedback
+
+The skill match score helps MO users compare applicant skills with job requirements.
+
+![alt text](web/images/applicantdetails.png)
+![alt text](web/images/applicantfilter.png)
+
+#### 4.4.2 Application Status Management
+
+MO users can update application status according to the review result.
+
+Common statuses include:
+
+- **Pending**: Application has not been reviewed
+- **Viewed**: Application details have been opened
+- **Shortlisted**: Applicant is selected as a candidate
+- **Rejected**: Applicant is not selected
+- **Hired**: Applicant is finally hired
+
+MO users can also select multiple applicants and apply batch actions.
+
+![alt text](web/images/applicantselect.png)
+
+#### 4.4.3 Final Hiring
+
+Final Hiring is used to complete the recruitment process for a job.
+
+Operation steps:
+
+1. Review all applications.
+2. Mark suitable applicants as **Shortlisted**.
+3. Open the **Final Hiring** dialog.
+4. Select the final hired applicants.
+5. Click **Confirm & Submit**.
+
+After final hiring:
+
+- Selected applicants become **Hired**.
+- Other shortlisted applicants become **Rejected**.
+- The job is marked as closed.
+- Hired students receive notifications.
+- Admin receives recruitment completion information.
+
+![alt text](web/images/applicanthireconfirm.png)
+
+#### 4.4.4 Export Applicant Data
+
+MO users can export applicant data from the Applicants page or Job History details.
+
+Exported data may include:
+
+- All applicants
+- Shortlisted applicants
+- Filtered application results
+
+![alt text](web/images/applicantdata.png)
+![alt text](web/images/applicantexport.png)
+
+#### 4.4.5 Reject Applications
+
+MO users can reject applications that are not matching and give feedback to students.
+
+![alt text](web/images/applicantrejectfeedback.png)
+
+---
+
+### 4.5 Notifications
+
+MO users can open the notification panel to view recruitment-related messages.
+
+Notifications may include:
+
+- New student applications
+- Admin approval or rejection results
+- System announcements
+- Recruitment workflow updates
+
+Unread notifications are marked with a red dot. Clicking a notification marks it as read.
+
+![alt text](web/images/teacher_notification.png)
+
+---
+
+### 4.6 Profile
+
+The **Profile** page shows the MO user's account information, including name, email, and role.
+
+MO users can also change their password.
+
+Operation steps:
+
+1. Open the **Profile** page.
+2. Enter the current password.
+3. Enter the new password.
+4. Confirm the new password.
+5. Click **Change Password**.
+
+![alt text](web/images/teacher_account.png)
+
+### 4.7 AI-Assisted Recommendation
+
+The **View AI Suggestion** button on each applicant card provides an AI-assisted recommendation based on skill match and estimated workload. The system assigns a recommendation level (e.g., **Highly Recommended**, **Recommended**) with a brief explanation for reference only and does not replace the final hiring decision. If the AI service is unavailable, a system-generated explanation will be shown automatically.
+
+![alt text](web/images/teacher_aiassist.png)
+
+---
+
 ## 5. Administrator Portal User Manual
 
 ### 5.1 Overview
@@ -334,7 +584,143 @@ The administrator homepage provides access to the main management modules:
 
 The administrator can switch between these sections using the navigation bar.
 
+![Page](./web/images/admin_overview.png)
 
+### 5.3 User Management
+
+The User Management page allows administrators to create, search, reset, and delete user accounts.
+
+Administrators can manage three types of users:
+
+- Students
+- Teachers / Module Organisers
+- Administrators
+
+Main operations:
+
+1. Open the **Users** page.
+2. Search for an existing user by name, email, role, or ID.
+3. Create a new user by entering the required information.
+4. Reset a user's password when needed.
+5. Delete invalid or unnecessary accounts.
+
+Notes:
+
+- Student accounts require Student ID and Programme information.
+- The current administrator cannot delete their own account.
+- The system must keep at least one administrator account.
+
+![Page](./web/images/admin_user.png)
+
+### 5.4 Workload Management
+
+The Workload page helps administrators monitor students who have been hired for TA positions.
+
+The system calculates each student's weekly workload based on hired TA jobs. Administrators can set a workload threshold to identify students who may be overloaded.
+
+Main operations:
+
+1. Open the **Workload** page.
+2. Set the workload threshold.
+3. Check students' weekly working hours.
+4. View detailed assigned jobs.
+5. Notify overloaded students if necessary.
+6. Export workload reports in CSV or TXT format.
+
+![Page](./web/images/admin_workload.png)
+
+### 5.5 Demand Review
+
+The Demand Review page is used to review TA demand submissions from Module Organisers.
+
+Administrators can:
+
+- View pending TA demands
+- Approve valid demands
+- Reject unsuitable demands
+- Reset demands to pending status if needed
+
+Operation steps:
+
+1. Open the **Demand Review** page.
+2. Select a demand from the list.
+3. Review the module code, job title, organiser, planned TA count, and hour requirements.
+4. Choose `approved`, `rejected`, or `pending`.
+5. Save the review result.
+
+Only approved demands can be published as TA job postings by Module Organisers.
+
+![Page](./web/images/admin_approval.png)
+
+### 5.6 Job Management and Recruitment Results
+
+The Jobs page allows administrators to view and monitor TA job postings across the system.
+
+Administrators can:
+
+- Filter jobs by status, department, or organiser
+- View job details
+- Inspect application records in read-only mode
+- Reopen closed recruitment when necessary
+- Export job and application reports
+
+The Recruitment Results page provides a summary of the overall hiring outcome, including total applications, hired students, vacancies, and department-level recruitment status.
+![Page](./web/images/admin_job.png)
+![Page](./web/images/admin_results.png)
+
+### 5.7 System Announcements
+
+The Announcements page allows administrators to send messages to system users.
+
+Administrators can send announcements to:
+
+- Students
+- Module Organisers
+- All users
+
+Operation steps:
+
+1. Open the **Announcements** page.
+2. Enter the announcement title.
+3. Enter the announcement content.
+4. Select the target user group.
+5. Click **Send announcement**.
+   
+![Page](./web/images/admin_announcement.png)
+
+### 5.8 My Account
+
+The My Account page allows the current administrator to change their own password.
+
+Operation steps:
+
+1. Open the **My Account** page.
+2. Enter the current password.
+3. Enter the new password.
+4. Confirm the new password.
+5. Click **Change Password**.
+   
+![Page](./web/images/admin_account.png)
+
+### 5.9 Report Export
+
+Administrators can export recruitment and workload data for offline review and reporting.
+
+Available export functions include:
+
+- Recruitment report export
+- Workload report export
+- Job application report export
+- Recruitment results export
+
+Operation steps:
+
+1. Open the relevant management page.
+2. Apply filters if necessary.
+3. Click the export button.
+4. Save the downloaded CSV or TXT file.
+
+![Page](./web/images/admin_export.png)
 
 ## 9. 附录：术语说明
 
