@@ -242,7 +242,14 @@ def main():
     (ROOT / "students.json").write_text(json.dumps(students, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     (ROOT / "jobs.json").write_text(json.dumps(jobs, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     (ROOT / "applications.json").write_text(json.dumps(applications, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(f"Wrote {len(users)} users, {len(students)} students, {len(jobs)} jobs, {len(applications)} applications")
+
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from backfill_hiring_history import build_manual_hire_records
+
+    history, _ = build_manual_hire_records(applications, jobs, [])
+    (ROOT / "hiring_history.json").write_text(json.dumps(history, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(f"Wrote {len(users)} users, {len(students)} students, {len(jobs)} jobs, {len(applications)} applications, {len(history)} hiring history records")
 
 
 if __name__ == "__main__":
